@@ -1,1 +1,6 @@
-print("Hello world, from client!")
+--!strict
+local HealthBar = require(script.HealthBar)
+local SwordClient = require(script.SwordClient)
+
+HealthBar.start()
+SwordClient.start()

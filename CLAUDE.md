@@ -5,6 +5,8 @@
 - src/server → ServerScriptService.Server (init.server.luau is the entry point)
 - src/client → StarterPlayer.StarterPlayerScripts.Client (init.client.luau is the entry point)
 - src/shared → ReplicatedStorage.Shared
+- assets/town → ServerStorage.TownAssets (Studio-imported models saved as .rbxmx; TownBuilder places them)
+- assets/source → raw art (.fbx etc.), not synced; import via Studio's Import 3D, then save the result as .rbxmx into assets/town
 - File suffixes: `.server.luau` = Script, `.client.luau` = LocalScript, plain `.luau` = ModuleScript
 
 ## Rules
