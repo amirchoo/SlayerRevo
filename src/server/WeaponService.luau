@@ -1,5 +1,5 @@
 --!strict
--- Gives players their click-combo weapons (sword, mace, spear) and resolves their hits on the server.
+-- Gives players their click-combo weapons (sword, Emberfang, mace, spear, axe) and resolves their hits on the server.
 -- The client only reports "I swung" (MeleeSwing); the server finds which combo weapon is in
 -- hand, works out which step of its combo this is (from its own timing, so clients can't
 -- skip to the finisher), checks the cooldown, builds the hitbox, and deals that step's
@@ -96,7 +96,7 @@ local function newTool(config: ComboWeapon, grip: CFrame, gripSize: Vector3, gri
 end
 
 -- Swing trail between two points on `part` (local Z offsets); the client turns it on mid-swing.
-local function addTrail(part: BasePart, fromZ: number, toZ: number, lifetime: number)
+local function addTrail(part: BasePart, fromZ: number, toZ: number, lifetime: number, color: Color3?)
 	local base = Instance.new("Attachment")
 	base.Name = "TrailBase"
 	base.Position = Vector3.new(0, 0, fromZ)
@@ -114,6 +114,9 @@ local function addTrail(part: BasePart, fromZ: number, toZ: number, lifetime: nu
 	trail.LightEmission = 0.5
 	trail.Transparency = NumberSequence.new(0.3, 1)
 	trail.Enabled = false
+	if color then
+		trail.Color = ColorSequence.new(color)
+	end
 	trail.Parent = part
 end
 
@@ -137,6 +140,27 @@ local function createSword(): Tool
 	addPart(grip, "Guard", Vector3.new(1.4, 0.3, 0.25), CFrame.new(0, 0, 0.7), Color3.fromRGB(200, 170, 60), Enum.Material.Metal)
 	local blade = addPart(grip, "Blade", Vector3.new(0.15, 0.5, 4), CFrame.new(0, 0, 2.8), Color3.fromRGB(210, 215, 225), Enum.Material.Metal)
 	addTrail(blade, -1.6, 2, 0.15)
+	addSwingSound(grip, "SwordSwing")
+	return tool
+end
+
+-- Placeholder Emberfang (until its model is in assets/weapons): a dark blade edged in ember,
+-- black grip and crossguard.
+local function createEmberfang(): Tool
+	local config = CombatConfig.Emberfang
+	local tool, grip = newTool(
+		config,
+		CFrame.new(0, 0, -0.3) * CFrame.Angles(math.pi / 2, 0, 0),
+		Vector3.new(0.3, 0.3, 1.2),
+		Color3.fromRGB(15, 15, 18),
+		Enum.Material.Fabric
+	)
+	local ember = config.TrailColor or Color3.fromRGB(255, 120, 40)
+	addPart(grip, "Guard", Vector3.new(1.6, 0.32, 0.3), CFrame.new(0, 0, 0.7), Color3.fromRGB(20, 20, 24), Enum.Material.Metal)
+	local blade = addPart(grip, "Blade", Vector3.new(0.12, 0.5, 4.2), CFrame.new(0, 0, 2.9), Color3.fromRGB(125, 130, 140), Enum.Material.Metal)
+	local edge = addPart(grip, "Edge", Vector3.new(0.14, 0.08, 4), CFrame.new(0, 0.26, 2.9), ember, Enum.Material.Neon)
+	edge.Transparency = 0.1
+	addTrail(blade, -1.6, 2.1, 0.15, ember)
 	addSwingSound(grip, "SwordSwing")
 	return tool
 end
@@ -216,12 +240,13 @@ end
 
 local CREATORS: { [string]: () -> Tool } = {
 	[CombatConfig.Sword.ToolName] = createSword,
+	[CombatConfig.Emberfang.ToolName] = createEmberfang,
 	[CombatConfig.Mace.ToolName] = createMace,
 	[CombatConfig.Spear.ToolName] = createSpear,
 	[CombatConfig.Axe.ToolName] = createAxe,
 }
 
-local COMBO_WEAPONS: { ComboWeapon } = { CombatConfig.Sword, CombatConfig.Mace, CombatConfig.Spear, CombatConfig.Axe }
+local COMBO_WEAPONS: { ComboWeapon } = { CombatConfig.Sword, CombatConfig.Emberfang, CombatConfig.Mace, CombatConfig.Spear, CombatConfig.Axe }
 
 local function configFor(tool: Tool): ComboWeapon?
 	for _, config in COMBO_WEAPONS do

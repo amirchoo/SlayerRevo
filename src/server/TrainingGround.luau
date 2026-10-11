@@ -1,13 +1,14 @@
 --!strict
 -- Training Grounds: a floating arena for working on combat, away from the hub.
 -- West side: wooden dummies that reset after "dying" (for testing damage).
--- East side: a sparring ring with one demon behind a low wall (for testing dodging);
--- players can jump the wall, enemies never jump. A grid on the floor marks every
+-- East side: a sparring ring with an Orc and a Lesser Demon behind a low wall (for testing
+-- dodging); players can jump the wall, enemies never jump. A grid on the floor marks every
 -- 10 studs for judging ranges. Teleport pads link the arena and the hub plaza.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local EnemyConfig = require(ReplicatedStorage.Shared.Config.EnemyConfig)
 local TrainingArea = require(ReplicatedStorage.Shared.TrainingArea)
 local HealthService = require(script.Parent.HealthService)
 local EnemyService = require(script.Parent.EnemyService)
@@ -22,7 +23,10 @@ local DUMMY_ROW_Z = -30
 
 local DIVIDER_X = 10 -- the sparring ring is everything east of this line
 local DIVIDER_HEIGHT = 4 -- low enough for players to jump (default jump clears ~7 studs)
-local SPARRING_SPAWN = Vector2.new(CENTER.X + 40, CENTER.Z)
+local SPARRING_SPAWNS = { -- what spars where: X/Z in the ring
+	{ kind = EnemyConfig.Orc, at = Vector2.new(CENTER.X + 32, CENTER.Z - 12) },
+	{ kind = EnemyConfig.LesserDemon, at = Vector2.new(CENTER.X + 46, CENTER.Z + 12) },
+}
 
 local GRID_SPACING = 10
 local PAD_COOLDOWN = 2
@@ -212,7 +216,9 @@ function TrainingGround.build()
 		lastTeleport[player] = nil
 	end)
 
-	task.spawn(EnemyService.spawnAt, SPARRING_SPAWN)
+	for _, sparring in SPARRING_SPAWNS do
+		task.spawn(EnemyService.spawnAt, sparring.at, sparring.kind)
+	end
 end
 
 return TrainingGround

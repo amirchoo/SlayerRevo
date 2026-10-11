@@ -25,6 +25,8 @@ local SPECS: { [string]: SoundSpec } = {
 	SpearSwing = { Id = WHOOSH, Pitch = 2.0, Volume = 0.35 },
 	GreatswordSwing = { Id = WHOOSH, Pitch = 0.8, Volume = 0.5 },
 	AxeSwing = { Id = WHOOSH, Pitch = 1.3, Volume = 0.45 },
+	StaffCast = { Id = WHOOSH, Pitch = 2.2, Volume = 0.4 },
+	StaffBlast = { Id = BOOM, Pitch = 1.6, Volume = 0.45 },
 
 	-- Impacts when an enemy is hit (heard by everyone nearby).
 	SwordHit = { Id = THUD, Pitch = 1.5, Volume = 0.8 },
@@ -32,6 +34,11 @@ local SPECS: { [string]: SoundSpec } = {
 	SpearHit = { Id = THUD, Pitch = 1.9, Volume = 0.7 },
 	GreatswordHit = { Id = BOOM, Pitch = 1.3, Volume = 0.5 },
 	AxeHit = { Id = THUD, Pitch = 1.1, Volume = 0.9 },
+	StaffFireHit = { Id = BOOM, Pitch = 1.8, Volume = 0.5 },
+	StaffWaterHit = { Id = THUD, Pitch = 1.6, Volume = 0.7 },
+	StaffEarthHit = { Id = THUD, Pitch = 0.8, Volume = 1 },
+	StaffElectricHit = { Id = TICK, Pitch = 0.6, Volume = 1 },
+	StaffFaithHit = { Id = TICK, Pitch = 1.4, Volume = 0.7 },
 	BowHit = { Id = THUD, Pitch = 2.3, Volume = 0.6 },
 
 	-- Other feedback.

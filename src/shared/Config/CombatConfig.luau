@@ -118,6 +118,7 @@ export type ComboWeapon = {
 	-- hand holds it, as a fraction of Length from the handle end. FlipBlade: true if it comes
 	-- out held by the tip.
 	ModelFit: { Length: number, GripFrom: number, FlipBlade: boolean?, FlipEdge: boolean?, Shift: Vector3? }?,
+	TrailColor: Color3?, -- the swing trail's color (white if unset)
 }
 
 -- One click in the greatsword's combo: a wide sweep hitting everything within Radius studs
@@ -163,6 +164,46 @@ local Sword: ComboWeapon = {
 		TickInterval = 0.5, -- matches one full turn of SwordSpin
 		Damage = 15,
 		Radius = 8,
+		MaxDuration = 3,
+		Recovery = 0.6,
+		WalkSpeed = 8,
+	},
+}
+
+-- Emberfang (Epic): the sword's moves and animations, hitting about 30% harder for a little
+-- less stamina, with a sturdier guard and an ember swing trail. Uses the Sword's skill tree
+-- (SkillTrees.SharedTrees).
+local Emberfang: ComboWeapon = {
+	ToolName = "Emberfang",
+	Hand = "Right",
+	IdleAnimation = Sword.IdleAnimation,
+	AnimationSpeed = 1,
+	Stamina = 7,
+	ModelFit = { Length = 5.4, GripFrom = 0.12 }, -- the hand on the grip wrap
+	TrailColor = Color3.fromRGB(255, 120, 40),
+	Combo = {
+		{ Animation = Sword.Combo[1].Animation, Damage = 26, Cooldown = 0.3, HitDelay = 0.15 },
+		{ Animation = Sword.Combo[2].Animation, Damage = 32, Cooldown = 0.3, HitDelay = 0.13 },
+		{ Animation = Sword.Combo[3].Animation, Damage = 52, Cooldown = 0.6, HitDelay = 0.27 },
+	},
+	ComboWindow = 0.8,
+	Range = 6.5,
+	Width = 6,
+	Height = 6,
+	Block = {
+		Animation = Sword.Block.Animation,
+		BlockAmount = 25,
+		ParryWindow = 0.25,
+	},
+	Heavy = {
+		Kind = "Spin",
+		Stamina = 6,
+		Animation = "rbxassetid://105976549343738", -- SwordSpin
+		HoldTime = 0.2,
+		WindUp = 0.3,
+		TickInterval = 0.5,
+		Damage = 20,
+		Radius = 8.5,
 		MaxDuration = 3,
 		Recovery = 0.6,
 		WalkSpeed = 8,
@@ -320,11 +361,109 @@ local Axe: ComboWeapon = {
 	},
 }
 
+-- One element of the staff: its light missile and its charged heavy attack.
+--   Light: a missile flying at Speed; Damage on the first enemy it hits, plus optional
+--     Slow { Factor, Duration }, Knockback (studs/s), Chain { Count, Range, DamageScale },
+--     or Heal (Faith: heals the ally it hits; only nicks enemies).
+--   Heavy: charged up to the staff's FullChargeTime; damage (or healing) goes from Min to Max
+--     by charge. Its Kind decides what it does:
+--       FireWave: slam the ground; a wall of fire rolls forward Range studs at Speed,
+--         Width wide, burning (Burn { Damage, Interval, Duration }) everything it passes
+--       WaterBlast: a torrent straight ahead, Range long and Width wide, with Knockback
+--       Boulder: a giant rock (Size) thrown in an arc (Speed, Gravity) that crashes down in a
+--         Radius, with Knockback and Stun
+--       Thunder: lightning strikes the aim point (within Range) after Delay, hitting a Radius
+--         around it and slowing (Slow) everything caught
+--       HealBurst: heals you and every player within Radius (MinHeal..MaxHeal)
+export type StaffElement = {
+	Name: string,
+	Icon: string,
+	Color: Color3,
+	Light: { Damage: number, Speed: number, Size: number, Heal: number?, Knockback: number?, Slow: { Factor: number, Duration: number }?, Burn: { Damage: number, Interval: number, Duration: number }?, Chain: { Count: number, Range: number, DamageScale: number }? },
+	Heavy: {
+		Kind: "FireWave" | "WaterBlast" | "Boulder" | "Thunder" | "HealBurst",
+		MinDamage: number,
+		MaxDamage: number,
+		Range: number?,
+		Width: number?,
+		Radius: number?,
+		Speed: number?,
+		Size: number?,
+		Gravity: number?,
+		Delay: number?,
+		MinHeal: number?,
+		MaxHeal: number?,
+		Knockback: number?,
+		Stun: number?,
+		Slow: { Factor: number, Duration: number }?,
+		Burn: { Damage: number, Interval: number, Duration: number }?,
+	},
+}
+
+-- Staff: a caster weapon with five elements (switch with R or the touch element button).
+-- Tap to fire a missile at what you're aiming at (or your lock-on target); hold to charge a
+-- stronger blast. Animations from tools/sword_anims.py (Staff*); "" until published.
+local Staff = {
+	ToolName = "Staff",
+	Hand = "Right",
+	IdleAnimation = "123330122713275", -- StaffIdle
+	CastAnimation = "113419380544278", -- StaffCast (light)
+	ChargeAnimation = "80897307077510", -- StaffCharge (held raised while charging)
+	BlastAnimation = "73647528064933", -- StaffBlast (heavy release: Water, Earth, Lightning, Faith)
+	SlamAnimation = "", -- StaffSlam (Fire\'s heavy: the staff slammed into the ground)
+	GuardAnimation = Sword.Block.Animation,
+	ElementKey = Enum.KeyCode.R, -- cycles the element
+	CastMana = 15, -- mana per light missile (see Mana: about 6 missiles from full)
+	ChargeMana = 40, -- mana to start charging a blast
+	CastCooldown = 0.45, -- seconds between light missiles
+	CastDelay = 0.14, -- seconds from click to the missile leaving (matches StaffCast's "Hit")
+	HoldTime = 0.2, -- hold this long to charge instead of casting
+	FullChargeTime = 1.4,
+	MaxHold = 3, -- charging this long releases by itself
+	BlastDelay = 0.12, -- seconds from release to the blast leaving (matches StaffBlast's "Hit")
+	Recovery = 0.8, -- seconds after a blast before the next charge
+	ChargeWalkSpeed = 8,
+	MaxRange = 140, -- studs a missile flies before fizzling
+	BlockAmount = 12,
+	ParryWindow = 0.22,
+	-- A real model (assets/weapons/Staff.rbxmx); see Sword.ModelFit. Held below the middle.
+	ModelFit = { Length = 6, GripFrom = 0.38 },
+	Elements = {
+		{
+			Name = "Fire", Icon = "🔥", Color = Color3.fromRGB(255, 120, 40),
+			Light = { Damage = 14, Speed = 110, Size = 1 },
+			Heavy = { Kind = "FireWave", MinDamage = 25, MaxDamage = 55, Range = 28, Width = 9, Speed = 38, Burn = { Damage = 4, Interval = 0.5, Duration = 3 } },
+		},
+		{
+			Name = "Water", Icon = "💧", Color = Color3.fromRGB(70, 160, 255),
+			Light = { Damage = 12, Speed = 110, Size = 1, Slow = { Factor = 0.6, Duration = 2 } },
+			Heavy = { Kind = "WaterBlast", MinDamage = 25, MaxDamage = 55, Range = 26, Width = 7, Knockback = 40 },
+		},
+		{
+			Name = "Earth", Icon = "🪨", Color = Color3.fromRGB(170, 125, 70),
+			Light = { Damage = 18, Speed = 70, Size = 1.3, Knockback = 15 },
+			Heavy = { Kind = "Boulder", MinDamage = 40, MaxDamage = 90, Radius = 8, Speed = 75, Size = 4, Gravity = 45, Knockback = 25, Stun = 0.6 },
+		},
+		{
+			Name = "Electric", Icon = "⚡", Color = Color3.fromRGB(255, 235, 90),
+			Light = { Damage = 10, Speed = 170, Size = 0.8, Chain = { Count = 2, Range = 12, DamageScale = 0.6 } },
+			Heavy = { Kind = "Thunder", MinDamage = 30, MaxDamage = 65, Range = 70, Radius = 10, Delay = 0.35, Slow = { Factor = 0.5, Duration = 3 } },
+		},
+		{
+			Name = "Faith", Icon = "✨", Color = Color3.fromRGB(255, 245, 190),
+			Light = { Damage = 6, Speed = 120, Size = 1, Heal = 12 },
+			Heavy = { Kind = "HealBurst", MinDamage = 0, MaxDamage = 0, Radius = 15, MinHeal = 10, MaxHeal = 30 },
+		},
+	} :: { StaffElement },
+}
+
 return {
 	Sword = Sword,
+	Emberfang = Emberfang,
 	Mace = Mace,
 	Spear = Spear,
 	Axe = Axe,
+	Staff = Staff,
 	-- Shared by every weapon that can block (sword, mace, greatsword). Hold right-click to
 	-- block; each block uses one charge, and each used charge comes back RechargeTime later.
 	Blocking = {
@@ -415,6 +554,17 @@ return {
 	},
 	-- Press Key to dash. Up to MaxCharges stored; spent charges refill one at a time,
 	-- each taking RechargeTime.
+	-- Lock-on (see LockOn): face and follow one enemy, with the camera framing you both.
+	LockOn = {
+		Key = Enum.KeyCode.Q, -- toggles the lock (touch screens get a button)
+		Range = 60, -- studs: how far away a target can be picked
+		BreakRange = 90, -- studs: the lock lets go past this
+		MaxAngle = 75, -- degrees from the centre of the view a target can be picked
+		CameraDistance = 13, -- studs behind you
+		CameraHeight = 4.5,
+		CameraShoulder = 4.5, -- studs over your right shoulder, so you're off to the left of the view and don't block the target
+		CameraSmoothing = 9, -- higher = the camera catches up faster
+	},
 	-- Getting hurt, on your own screen (see DamageFeedback): a red flash and camera shake per
 	-- hit, scaled by the share of max health lost; below LowHealth, a pulsing red vignette,
 	-- drained colours, and a heartbeat.
@@ -436,6 +586,14 @@ return {
 		PerDamage = 0.0008,
 		Min = 0.04,
 		Max = 0.1,
+	},
+	-- Mana: what the staff's spells spend (other weapons use stamina). It refills at
+	-- RegenPerSecond once you've gone RegenDelay seconds without spending any, but not while
+	-- charging a blast. Skills (the Arcana branch) raise both.
+	Mana = {
+		Max = 100,
+		RegenPerSecond = 6,
+		RegenDelay = 1.5,
 	},
 	-- Stamina: attacks spend it (each weapon's cost is in its own section above) and the
 	-- server refuses an attack you can't afford. It refills at RegenPerSecond once you've

@@ -18,7 +18,7 @@ function ArmorReadout.start()
 	gui.Parent = player:WaitForChild("PlayerGui")
 
 	-- Just left of the health bar (420 wide, centered, bottom at -88).
-	local shield = HudStyle.caption(gui, "", 18)
+	local shield = HudStyle.caption(HudStyle.holder(gui, Vector2.new(0.5, 1)), "", 18)
 	shield.AnchorPoint = Vector2.new(1, 1)
 	shield.Position = UDim2.new(0.5, -218, 1, -88)
 	shield.Size = UDim2.fromOffset(70, 28)

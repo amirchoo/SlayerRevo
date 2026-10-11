@@ -67,6 +67,18 @@
         },
         "XPGained": {
           "$className": "RemoteEvent"
+        },
+        "StaffElement": {
+          "$className": "RemoteEvent"
+        },
+        "StaffCast": {
+          "$className": "RemoteEvent"
+        },
+        "StaffCharge": {
+          "$className": "RemoteEvent"
+        },
+        "StaffRelease": {
+          "$className": "RemoteEvent"
         }
       }
     },

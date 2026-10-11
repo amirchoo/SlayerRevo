@@ -17,7 +17,8 @@ local HitEffects = require(script.Parent.HitEffects)
 local EnemyConfig = require(ReplicatedStorage.Shared.Config.EnemyConfig)
 local SafeZone = require(ReplicatedStorage.Shared.SafeZone)
 
-local LESSER_DEMON = EnemyConfig.LesserDemon
+type EnemyType = EnemyConfig.EnemyType
+
 local SPAWN_RAY_HEIGHT = 500
 local SPAWN_HEIGHT_ABOVE_GROUND = 4
 
@@ -31,7 +32,9 @@ local EnemyService = {}
 local enemiesFolder = Instance.new("Folder")
 enemiesFolder.Name = "Enemies"
 
+-- Where each live enemy spawned and what it is, so it respawns as the same thing there.
 local spawnPointOf: { [Model]: Vector2 } = {}
+local typeOf: { [Model]: EnemyType } = {}
 
 local function groundCFrame(spawnPoint: Vector2): CFrame
 	local params = RaycastParams.new()
@@ -77,7 +80,7 @@ local function findNearestCharacter(position: Vector3, maxDistance: number): (Mo
 	return nearest, nearestRoot, nearestDistance
 end
 
-local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vector3)
+local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vector3, kind: EnemyType)
 	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
 	-- Idle always runs underneath, so the enemy never shows its rest pose (a T-pose for
 	-- models made with Avatar Auto Setup); walking and attacking play over it.
@@ -88,7 +91,7 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 	local walkTrack = loadAnimation(animator, WALK_ANIMATION)
 	walkTrack.Priority = Enum.AnimationPriority.Movement
 	walkTrack.Looped = true
-	local attackTrack = loadAnimation(animator, if LESSER_DEMON.AttackAnimation ~= "" then LESSER_DEMON.AttackAnimation else DEFAULT_ATTACK_ANIMATION)
+	local attackTrack = loadAnimation(animator, if kind.AttackAnimation ~= "" then kind.AttackAnimation else DEFAULT_ATTACK_ANIMATION)
 	attackTrack.Priority = Enum.AnimationPriority.Action -- plays over the walk
 
 	humanoid.Running:Connect(function(speed)
@@ -108,31 +111,32 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 			continue
 		end
 
-		local target, targetRoot, distance = findNearestCharacter(root.Position, LESSER_DEMON.AggroRange)
+		humanoid.WalkSpeed = kind.WalkSpeed * EnemyEffects.speedFactor(enemy) -- slowed by Water, etc.
+		local target, targetRoot, distance = findNearestCharacter(root.Position, kind.AggroRange)
 
 		if target and targetRoot then
-			if distance > LESSER_DEMON.AttackRange then
+			if distance > kind.AttackRange then
 				humanoid:MoveTo(targetRoot.Position)
 			else
 				humanoid:MoveTo(root.Position)
 				local lookAt = Vector3.new(targetRoot.Position.X, root.Position.Y, targetRoot.Position.Z)
 				root.CFrame = CFrame.lookAt(root.Position, lookAt)
 
-				if os.clock() - lastAttack >= LESSER_DEMON.AttackCooldown then
+				if os.clock() - lastAttack >= kind.AttackCooldown then
 					lastAttack = os.clock()
 					attackTrack:Play(0.1)
 					enemy:SetAttribute("Attacking", true) -- no flinching mid-attack (EnemyEffects.flinch)
-					task.delay(LESSER_DEMON.AttackWindup, function()
+					task.delay(kind.AttackWindup, function()
 						enemy:SetAttribute("Attacking", false)
 						-- Re-check range after the wind-up so players can dodge out of it, and
 						-- a stun during the wind-up cancels the attack.
-						local stillInRange = (targetRoot.Position - root.Position).Magnitude <= LESSER_DEMON.AttackRange + 1
+						local stillInRange = (targetRoot.Position - root.Position).Magnitude <= kind.AttackRange + 1
 						if HealthService.isAlive(enemy) and stillInRange and not EnemyEffects.isStunned(enemy) then
 							if BlockService.tryParry(target, enemy) then
 								attackTrack:Stop(0.05) -- parried: knocked out of the swing
 								return
 							end
-							local dealt = HealthService.damage(target, LESSER_DEMON.AttackDamage, nil, root.Position)
+							local dealt = HealthService.damage(target, kind.AttackDamage, nil, root.Position)
 							if dealt > 0 then
 								local impact, direction = HitEffects.meleeImpactPoint(target, root.Position)
 								HitEffects.broadcast(target, impact, direction, "DemonClaw", dealt)
@@ -152,14 +156,14 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 end
 
 -- The enemy's own R15 model, ready to spawn, or nil if it hasn't been added (or is unusable).
-local function modelFromTemplate(): Model?
+local function modelFromTemplate(kind: EnemyType): Model?
 	local folder = ServerStorage:FindFirstChild("EnemyModels")
-	local template = folder and folder:FindFirstChild(LESSER_DEMON.Model)
+	local template = folder and folder:FindFirstChild(kind.Model)
 	if not template or not template:IsA("Model") then
 		return nil
 	end
 	if not template:FindFirstChildOfClass("Humanoid") or not template:FindFirstChild("HumanoidRootPart") then
-		warn(`[EnemyService] EnemyModels.{LESSER_DEMON.Model} needs a Humanoid and a HumanoidRootPart (an R15 rig); using the plain body`)
+		warn(`[EnemyService] EnemyModels.{kind.Model} needs a Humanoid and a HumanoidRootPart (an R15 rig); using the plain body`)
 		return nil
 	end
 	local enemy = template:Clone()
@@ -177,14 +181,14 @@ local function modelFromTemplate(): Model?
 end
 
 -- A plain R15 body in the enemy's color.
-local function plainBody(): Model?
+local function plainBody(kind: EnemyType): Model?
 	local description = Instance.new("HumanoidDescription")
-	description.HeadColor = LESSER_DEMON.Color
-	description.TorsoColor = LESSER_DEMON.Color
-	description.LeftArmColor = LESSER_DEMON.Color
-	description.RightArmColor = LESSER_DEMON.Color
-	description.LeftLegColor = LESSER_DEMON.Color
-	description.RightLegColor = LESSER_DEMON.Color
+	description.HeadColor = kind.Color
+	description.TorsoColor = kind.Color
+	description.LeftArmColor = kind.Color
+	description.RightArmColor = kind.Color
+	description.LeftLegColor = kind.Color
+	description.RightLegColor = kind.Color
 
 	local ok, result = pcall(Players.CreateHumanoidModelFromDescription, Players, description, Enum.HumanoidRigType.R15)
 	if not ok then
@@ -194,17 +198,20 @@ local function plainBody(): Model?
 	return result :: Model
 end
 
-local function spawnEnemy(spawnPoint: Vector2)
-	local enemy = modelFromTemplate() or plainBody()
+local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType)
+	local enemy = modelFromTemplate(kind) or plainBody(kind)
 	if not enemy then
 		return
 	end
-	enemy.Name = LESSER_DEMON.DisplayName
+	if kind.Scale and kind.Scale ~= 1 then
+		enemy:ScaleTo(enemy:GetScale() * kind.Scale)
+	end
+	enemy.Name = kind.DisplayName
 
 	local humanoid = enemy:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local root = enemy:FindFirstChild("HumanoidRootPart") :: BasePart
-	humanoid.DisplayName = LESSER_DEMON.DisplayName
-	humanoid.WalkSpeed = LESSER_DEMON.WalkSpeed
+	humanoid.DisplayName = kind.DisplayName
+	humanoid.WalkSpeed = kind.WalkSpeed
 	-- The name and health bar are drawn by the client (EnemyHealthBars), not the Humanoid.
 	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 
@@ -221,13 +228,15 @@ local function spawnEnemy(spawnPoint: Vector2)
 	print(`[EnemyService] Spawned {enemy.Name} at {root.Position}`)
 
 	spawnPointOf[enemy] = spawnPoint
-	HealthService.register(enemy, LESSER_DEMON.MaxHealth)
-	enemy:SetAttribute("XPReward", LESSER_DEMON.XP) -- ProgressionService gives it to whoever defeats it
-	task.spawn(runAI, enemy, humanoid, root, spawnCFrame.Position)
+	typeOf[enemy] = kind
+	HealthService.register(enemy, kind.MaxHealth)
+	enemy:SetAttribute("XPReward", kind.XP) -- ProgressionService gives it to whoever defeats it
+	enemy:SetAttribute("Level", kind.Level) -- shown over its head (EnemyHealthBars)
+	task.spawn(runAI, enemy, humanoid, root, spawnCFrame.Position, kind)
 end
 
--- Spawns one more enemy at X/Z (dropped onto the ground there); it respawns there too.
--- Yields while the model loads, so call it with task.spawn.
+-- Spawns one more enemy of `kind` (an EnemyConfig entry) at X/Z (dropped onto the ground
+-- there); it respawns there too. Yields while the model loads, so call it with task.spawn.
 EnemyService.spawnAt = spawnEnemy
 
 function EnemyService.start()
@@ -238,16 +247,20 @@ function EnemyService.start()
 		if not spawnPoint then
 			return
 		end
+		local kind = typeOf[model]
 		spawnPointOf[model] = nil
+		typeOf[model] = nil
 
-		task.delay(LESSER_DEMON.RespawnDelay, function()
+		task.delay(kind.RespawnDelay, function()
 			model:Destroy()
-			spawnEnemy(spawnPoint)
+			spawnEnemy(spawnPoint, kind)
 		end)
 	end)
 
-	for _, spawnPoint in LESSER_DEMON.SpawnPoints do
-		task.spawn(spawnEnemy, spawnPoint)
+	for _, kind in EnemyConfig.Types do
+		for _, spawnPoint in kind.SpawnPoints do
+			task.spawn(spawnEnemy, spawnPoint, kind)
+		end
 	end
 end
 

@@ -41,6 +41,11 @@ function SkillMath.branchOf(nodeId: string): SkillTrees.Branch?
 	return branchOfNode[nodeId]
 end
 
+-- The skill tree a weapon (its ToolName) uses: its own, or the one it shares (SharedTrees).
+function SkillMath.treeOf(weapon: string): string
+	return SkillTrees.SharedTrees[weapon] or weapon
+end
+
 function SkillMath.isTree(treeId: string): boolean
 	return nodesByTree[treeId] ~= nil
 end
@@ -201,24 +206,46 @@ end
 
 -- A weapon tree stat bonus for `player` with `weapon` (its ToolName).
 function SkillMath.weapon(player: Player, weapon: string, stat: string): number
-	return treeStat(SkillMath.allocations(player), weapon, stat)
+	return treeStat(SkillMath.allocations(player), SkillMath.treeOf(weapon), stat)
 end
 
 -- `base` damage after the player's skills, for a "Light" (combo, arrow) or "Heavy" attack.
 function SkillMath.damage(player: Player, weapon: string, base: number, kind: "Light" | "Heavy"): number
 	local alloc = SkillMath.allocations(player)
+	local tree = SkillMath.treeOf(weapon)
 	local multiplier = 1
 		+ treeStat(alloc, "General", "Damage")
-		+ treeStat(alloc, weapon, "Damage")
-		+ treeStat(alloc, weapon, kind .. "Damage")
+		+ treeStat(alloc, tree, "Damage")
+		+ treeStat(alloc, tree, kind .. "Damage")
 	return math.round(base * multiplier)
 end
 
 -- `base` stamina cost after the player's skills (never below 30% of it).
 function SkillMath.staminaCost(player: Player, weapon: string, base: number, kind: "Light" | "Heavy"): number
 	local alloc = SkillMath.allocations(player)
-	local multiplier = 1 + treeStat(alloc, weapon, "StaminaCost") + treeStat(alloc, weapon, kind .. "StaminaCost")
+	local tree = SkillMath.treeOf(weapon)
+	local multiplier = 1 + treeStat(alloc, tree, "StaminaCost") + treeStat(alloc, tree, kind .. "StaminaCost")
 	return base * math.max(multiplier, 0.3)
+end
+
+-- Has `player` unlocked the Mage class (and, given an element name, that element)?
+function SkillMath.staffUnlocked(player: Player, element: string?): boolean
+	local alloc = SkillMath.allocations(player)
+	if rankOf(alloc, "Staff", SkillTrees.StaffClass) == 0 then
+		return false
+	end
+	if element == nil then
+		return true
+	end
+	local unlock = SkillTrees.StaffElementUnlocks[element]
+	return unlock ~= nil and rankOf(alloc, "Staff", unlock) > 0
+end
+
+-- A staff spell's damage after skills, including that element's own upgrades
+-- (e.g. Inferno for Fire).
+function SkillMath.spellDamage(player: Player, element: string, base: number, kind: "Light" | "Heavy"): number
+	local bonus = treeStat(SkillMath.allocations(player), "Staff", `{element}Damage`)
+	return math.round(SkillMath.damage(player, "Staff", base, kind) * (1 + bonus))
 end
 
 return SkillMath

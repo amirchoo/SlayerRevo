@@ -37,7 +37,7 @@ function ProgressionHud.start()
 	bar.Position = UDim2.new(0.5, 0, 0, TOP)
 	bar.Size = UDim2.fromOffset(WIDTH, HEIGHT)
 	bar.BackgroundColor3 = HudStyle.EMPTY
-	bar.Parent = gui
+	bar.Parent = HudStyle.holder(gui, Vector2.new(0.5, 0)) -- shrinks toward the top centre
 	HudStyle.chunky(bar, 6, 2.5)
 	local fill = Instance.new("Frame")
 	fill.Size = UDim2.fromScale(0, 1)
@@ -115,7 +115,7 @@ function ProgressionHud.start()
 	end)
 
 	-- The popup.
-	local popup = HudStyle.caption(gui, "", 46)
+	local popup = HudStyle.caption(HudStyle.holder(gui, Vector2.new(0.5, 0.5)), "", 46)
 	popup.AnchorPoint = Vector2.new(0.5, 0.5)
 	popup.Position = UDim2.fromScale(0.5, 0.3)
 	popup.Size = UDim2.fromOffset(600, 60)

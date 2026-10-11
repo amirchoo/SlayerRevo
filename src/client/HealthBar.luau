@@ -1,7 +1,8 @@
 --!strict
 -- Player health bar, bottom center: a chunky cartoon bar (see HudStyle).
 -- Display only: reads the Health/MaxHealth attributes the server sets. Green, turning red
--- when low; damage leaves a pale chunk that drains away after a moment.
+-- when low; damage leaves a pale chunk that drains away after a moment. Pops with "+N"
+-- when max health goes up (skills, armor).
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
@@ -24,7 +25,7 @@ local player = Players.LocalPlayer
 
 local HealthBar = {}
 
-local function createGui(): (Frame, Frame, TextLabel)
+local function createGui(): (Frame, Frame, Frame, TextLabel)
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "HealthBar"
 	gui.ResetOnSpawn = false
@@ -36,8 +37,10 @@ local function createGui(): (Frame, Frame, TextLabel)
 	background.Position = UDim2.new(0.5, 0, 1, BOTTOM)
 	background.Size = UDim2.fromOffset(WIDTH, HEIGHT)
 	background.BackgroundColor3 = HudStyle.EMPTY
-	background.Parent = gui
+	background.Parent = HudStyle.holder(gui, Vector2.new(0.5, 1)) -- shrinks toward the bottom centre on small screens
 	HudStyle.chunky(background, 10)
+	Instance.new("UIScale").Parent = background
+	HudStyle.barTag(background, "HP", HIGH_COLOR)
 
 	-- The pale chunk that lingers after damage, under the fill.
 	local trail = Instance.new("Frame")
@@ -65,13 +68,14 @@ local function createGui(): (Frame, Frame, TextLabel)
 	label.Size = UDim2.fromScale(1, 1)
 	label.ZIndex = 3
 
-	return fill, trail, label
+	return background, fill, trail, label
 end
 
 function HealthBar.start()
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
-	local fill, trail, label = createGui()
+	local background, fill, trail, label = createGui()
 	local lastRatio = 1
+	local lastMax: number? = nil -- per character: a respawn isn't a gain
 	local trailToken = 0
 
 	local function update(character: Model)
@@ -86,7 +90,8 @@ function HealthBar.start()
 		fill.BackgroundColor3 = if ratio > LOW_THRESHOLD then HIGH_COLOR else LOW_COLOR
 		label.Text = string.format("%d / %d", math.ceil(health), math.ceil(maxHealth))
 
-		if ratio < lastRatio then
+		local maxRose = lastMax ~= nil and maxHealth > lastMax
+		if ratio < lastRatio and not maxRose then
 			-- Took damage: the lost chunk lingers, then drains.
 			trailToken += 1
 			local token = trailToken
@@ -96,13 +101,18 @@ function HealthBar.start()
 				end
 			end)
 		else
-			trail.Size = UDim2.fromScale(ratio, 1) -- healing: no trail
+			trail.Size = UDim2.fromScale(ratio, 1) -- healing, or a bigger max: no trail
 		end
 		lastRatio = ratio
+		if maxRose then
+			HudStyle.maxGain(background, math.round(maxHealth - (lastMax :: number)), HIGH_COLOR) -- e.g. Toughness
+		end
+		lastMax = maxHealth
 	end
 
 	local function onCharacterAdded(character: Model)
 		lastRatio = 1
+		lastMax = nil
 		-- The server may set the attributes after we see the character, so listen and also check now.
 		character:GetAttributeChangedSignal("Health"):Connect(function()
 			update(character)

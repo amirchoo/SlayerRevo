@@ -26,9 +26,11 @@ local BLOCK = CombatConfig.Blocking -- charges, recharge, and knockback are shar
 -- Weapons that can block, and how much damage each absorbs per block.
 local BLOCK_AMOUNTS: { [string]: number } = {
 	[CombatConfig.Sword.ToolName] = CombatConfig.Sword.Block.BlockAmount,
+	[CombatConfig.Emberfang.ToolName] = CombatConfig.Emberfang.Block.BlockAmount,
 	[CombatConfig.Mace.ToolName] = CombatConfig.Mace.Block.BlockAmount,
 	[CombatConfig.Spear.ToolName] = CombatConfig.Spear.Block.BlockAmount,
 	[CombatConfig.Axe.ToolName] = CombatConfig.Axe.Block.BlockAmount,
+	[CombatConfig.Staff.ToolName] = CombatConfig.Staff.BlockAmount,
 	[CombatConfig.Greatsword.ToolName] = CombatConfig.Greatsword.BlockAmount,
 }
 
@@ -47,9 +49,11 @@ end
 -- Seconds after raising the guard that a hit is parried, per weapon (heavier = shorter).
 local PARRY_WINDOWS: { [string]: number } = {
 	[CombatConfig.Sword.ToolName] = CombatConfig.Sword.Block.ParryWindow,
+	[CombatConfig.Emberfang.ToolName] = CombatConfig.Emberfang.Block.ParryWindow,
 	[CombatConfig.Mace.ToolName] = CombatConfig.Mace.Block.ParryWindow,
 	[CombatConfig.Spear.ToolName] = CombatConfig.Spear.Block.ParryWindow,
 	[CombatConfig.Axe.ToolName] = CombatConfig.Axe.Block.ParryWindow,
+	[CombatConfig.Staff.ToolName] = CombatConfig.Staff.ParryWindow,
 	[CombatConfig.Greatsword.ToolName] = CombatConfig.Greatsword.ParryWindow,
 }
 

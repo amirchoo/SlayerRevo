@@ -27,6 +27,7 @@ local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local Stamina = require(ReplicatedStorage.Shared.Stamina)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
+local CombatInput = require(script.Parent.CombatInput)
 local Push = require(script.Parent.Push)
 
 type ComboWeapon = CombatConfig.ComboWeapon
@@ -573,19 +574,27 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		end
 	end
 
-	local function onInputBegan(input: InputObject, gameProcessed: boolean)
-		if gameProcessed then
-			return
+	local function onBlockBegan()
+		local tool = equippedTool()
+		if tool and not stopBlock and not stopHeavy then
+			startBlock(tool)
 		end
+	end
+
+	local function onBlockEnded()
+		if stopBlock then
+			stopBlock()
+		end
+	end
+
+	local function onAttackBegan()
 		local tool = equippedTool()
 		if not tool then
 			return
 		end
-		if input.UserInputType == Enum.UserInputType.MouseButton2 then
-			if not stopBlock and not stopHeavy then
-				startBlock(tool)
-			end
-		elseif input.UserInputType == Enum.UserInputType.MouseButton1 and heavy then
+		if not heavy then
+			onActivated(tool) -- no heavy: every press is a swing
+		else
 			-- Wait to see whether this is a tap (normal swing on release) or a hold (heavy).
 			pressedAt = os.clock()
 			pressToken += 1
@@ -598,10 +607,8 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		end
 	end
 
-	local function onInputEnded(input: InputObject)
-		if input.UserInputType == Enum.UserInputType.MouseButton2 and stopBlock then
-			stopBlock()
-		elseif input.UserInputType == Enum.UserInputType.MouseButton1 and heavy then
+	local function onAttackEnded()
+		if heavy then
 			local wasPressedAt = pressedAt
 			pressedAt = nil
 			pressToken += 1
@@ -633,13 +640,6 @@ function ComboWeaponClient.new(config: ComboWeapon)
 
 		if not hookedTools[child] then
 			hookedTools[child] = true
-			-- Weapons with a heavy attack read the mouse directly (tap vs hold); the rest
-			-- swing as soon as the tool is activated.
-			if not heavy then
-				child.Activated:Connect(function()
-					onActivated(child)
-				end)
-			end
 			child.Unequipped:Connect(function()
 				if stopBlock then
 					stopBlock()
@@ -678,8 +678,10 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			end
 		end)
 
-		UserInputService.InputBegan:Connect(onInputBegan)
-		UserInputService.InputEnded:Connect(onInputEnded)
+		CombatInput.AttackBegan:Connect(onAttackBegan)
+		CombatInput.AttackEnded:Connect(onAttackEnded)
+		CombatInput.BlockBegan:Connect(onBlockBegan)
+		CombatInput.BlockEnded:Connect(onBlockEnded)
 
 		local function onCharacterAdded(character: Model)
 			-- A respawn clears any block, spin, or combo in progress (the server resets too).

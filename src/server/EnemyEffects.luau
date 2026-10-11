@@ -1,5 +1,5 @@
 --!strict
--- Hit effects on enemies: knockback, stun, bleed, and the flinch when hit. Enemies are simulated by the server,
+-- Hit effects on enemies: knockback, stun, bleed and burn, slow, and the flinch when hit. Enemies are simulated by the server,
 -- so these happen here (players' own characters are pushed by their clients instead).
 -- A stunned enemy has a "StunnedUntil" attribute (server os.clock() time); EnemyService
 -- checks it to freeze the enemy and cancel its wind-up attacks.
@@ -11,7 +11,6 @@ local HealthService = require(script.Parent.HealthService)
 local EnemyConfig = require(ReplicatedStorage.Shared.Config.EnemyConfig)
 
 local STUN_LABEL_NAME = "StunLabel"
-local BLEED_DRIPS_NAME = "BleedDrips"
 
 local damageRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DamageDealt") :: RemoteEvent
 
@@ -23,8 +22,6 @@ if EnemyConfig.FlinchAnimation ~= "" then
 end
 local flinchTracks: { [Animator]: AnimationTrack } = setmetatable({}, { __mode = "k" }) :: any
 
--- The running bleed per model (a unique table, so a replaced bleed's loop knows to stop).
-local bleeds: { [Model]: {} } = setmetatable({}, { __mode = "k" }) :: any
 
 local EnemyEffects = {}
 
@@ -120,51 +117,101 @@ function EnemyEffects.flinch(model: Model)
 	track:Play(0.05)
 end
 
--- Makes `model` bleed: `damage` every `interval` seconds for `duration` seconds, credited to
--- `source` (who sees red damage numbers). A new bleed replaces the current one (restarting
--- the timer) rather than stacking. Red drips fall from the model while it bleeds.
-function EnemyEffects.bleed(model: Model, source: Player?, damage: number, interval: number, duration: number)
-	local token = {}
-	bleeds[model] = token
-	local root = model:FindFirstChild("UpperTorso") or model:FindFirstChild("HumanoidRootPart")
+-- Damage over time, by kind (each kind runs separately, so a bleed and a burn can tick
+-- together): its particles and the colour its damage numbers show in.
+type DotKind = { particles: string, color: Color3, texture: string, rise: boolean }
+local DOT_KINDS: { [string]: DotKind } = {
+	Bleed = { particles = "BleedDrips", color = Color3.fromRGB(200, 20, 30), texture = "rbxasset://textures/particles/sparkles_main.dds", rise = false },
+	Burn = { particles = "BurnFlames", color = Color3.fromRGB(255, 130, 40), texture = "rbxasset://textures/particles/fire_main.dds", rise = true },
+}
+local dots: { [string]: { [Model]: {} } } = {}
 
-	local drips = root and root:FindFirstChild(BLEED_DRIPS_NAME)
-	if root and not drips then
+-- Damages `model` by `damage` every `interval` seconds for `duration` seconds, credited to
+-- `source` (who sees the damage numbers, tagged `kind`). A new one of the same kind replaces
+-- the current one (restarting the timer) rather than stacking.
+local function damageOverTime(kind: string, model: Model, source: Player?, damage: number, interval: number, duration: number)
+	local style = DOT_KINDS[kind]
+	local running = dots[kind]
+	if not running then
+		running = setmetatable({}, { __mode = "k" }) :: any
+		dots[kind] = running
+	end
+	local token = {}
+	running[model] = token
+	local root = model:FindFirstChild("UpperTorso") or model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart
+
+	local particles = root and root:FindFirstChild(style.particles)
+	if root and not particles then
 		local emitter = Instance.new("ParticleEmitter")
-		emitter.Name = BLEED_DRIPS_NAME
-		emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-		emitter.Color = ColorSequence.new(Color3.fromRGB(200, 20, 30))
-		emitter.Size = NumberSequence.new(0.25, 0.1)
+		emitter.Name = style.particles
+		emitter.Texture = style.texture
+		emitter.Color = ColorSequence.new(style.color)
+		emitter.LightEmission = if style.rise then 0.8 else 0
+		emitter.Size = if style.rise then NumberSequence.new(0.9, 0.2) else NumberSequence.new(0.25, 0.1)
 		emitter.Transparency = NumberSequence.new(0.1, 1)
 		emitter.Lifetime = NumberRange.new(0.4, 0.7)
-		emitter.Rate = 14
+		emitter.Rate = if style.rise then 20 else 14
 		emitter.Speed = NumberRange.new(1, 3)
 		emitter.SpreadAngle = Vector2.new(60, 60)
-		emitter.Acceleration = Vector3.new(0, -25, 0)
+		emitter.Acceleration = if style.rise then Vector3.new(0, 6, 0) else Vector3.new(0, -25, 0)
 		emitter.Parent = root
-		drips = emitter
+		particles = emitter
 	end
 
 	task.spawn(function()
 		local ends = os.clock() + duration
-		while bleeds[model] == token and os.clock() < ends do
+		while running[model] == token and os.clock() < ends do
 			task.wait(interval)
-			if bleeds[model] ~= token or not model.Parent or not HealthService.isAlive(model) then
+			if running[model] ~= token or not model.Parent or not HealthService.isAlive(model) then
 				break
 			end
 			local dealt = HealthService.damage(model, damage, source)
 			if dealt > 0 and source then
 				local cframe, size = model:GetBoundingBox()
-				damageRemote:FireClient(source, cframe.Position + Vector3.new(0, size.Y / 2, 0), dealt, "Bleed")
+				damageRemote:FireClient(source, cframe.Position + Vector3.new(0, size.Y / 2, 0), dealt, kind)
 			end
 		end
-		if bleeds[model] == token then
-			bleeds[model] = nil
-			if drips then
-				drips:Destroy()
+		if running[model] == token then
+			running[model] = nil
+			if particles then
+				particles:Destroy()
 			end
 		end
 	end)
+end
+
+-- Makes `model` bleed (the axe): `damage` every `interval` seconds for `duration` seconds,
+-- credited to `source`. Red drips fall from it while it bleeds.
+function EnemyEffects.bleed(model: Model, source: Player?, damage: number, interval: number, duration: number)
+	damageOverTime("Bleed", model, source, damage, interval, duration)
+end
+
+-- Sets `model` on fire (the staff's Fire): like bleed, with flames.
+function EnemyEffects.burn(model: Model, source: Player?, damage: number, interval: number, duration: number)
+	damageOverTime("Burn", model, source, damage, interval, duration)
+end
+
+-- Slows `model` to `factor` of its speed for `duration` seconds (the staff's Water). The
+-- strongest current slow wins. EnemyService reads it through speedFactor.
+function EnemyEffects.slow(model: Model, factor: number, duration: number)
+	local now = os.clock()
+	local untilTime = model:GetAttribute("SlowUntil")
+	local current = model:GetAttribute("SlowFactor")
+	if typeof(untilTime) == "number" and untilTime > now and typeof(current) == "number" and current < factor then
+		return -- already slowed harder
+	end
+	model:SetAttribute("SlowFactor", factor)
+	model:SetAttribute("SlowUntil", now + duration)
+end
+
+-- The speed multiplier from any current slow (1 if none).
+function EnemyEffects.speedFactor(model: Model): number
+	local untilTime = model:GetAttribute("SlowUntil")
+	local factor = model:GetAttribute("SlowFactor")
+	if typeof(untilTime) == "number" and os.clock() < untilTime and typeof(factor) == "number" then
+		return factor
+	end
+	return 1
 end
 
 return EnemyEffects

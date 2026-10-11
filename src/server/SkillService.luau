@@ -15,6 +15,7 @@ local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local DataService = require(script.Parent.DataService)
 local HealthService = require(script.Parent.HealthService)
 local StaminaService = require(script.Parent.StaminaService)
+local ManaService = require(script.Parent.ManaService)
 local BlockService = require(script.Parent.BlockService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 
@@ -34,6 +35,7 @@ function SkillService.refresh(player: Player)
 	player:SetAttribute("SkillPoints", SkillMath.availablePoints(data.Skills, data.Level))
 	HealthService.refreshPlayer(player)
 	StaminaService.refreshMax(player)
+	ManaService.refreshMax(player)
 	BlockService.refreshCharges(player)
 end
 

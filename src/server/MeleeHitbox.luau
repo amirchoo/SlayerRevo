@@ -1,6 +1,7 @@
 --!strict
 -- Shared melee hit detection (sword, mace, spear, greatsword): a box in front of the
--- attacker, a wide arc for sweeps, or a radius all around them for spin attacks.
+-- attacker, a wide arc for sweeps, a radius all around them for spin attacks, or a radius
+-- around any point (blasts that burst where they land).
 -- Hits each damageable model at most once, never other players (co-op, no friendly fire),
 -- sends the attacker damage numbers for every hit that lands, and shows everyone the
 -- weapon's hit effect.
@@ -20,19 +21,19 @@ export type Hit = { model: Model, dealt: number }
 
 -- Damages each model found among `parts` once (skipping the attacker's own character
 -- and other players), with damage numbers and hit effects. Returns every model that took damage.
-local function damageParts(player: Player, root: BasePart, parts: { BasePart }, damage: number, weapon: string): { Hit }
+local function damageParts(player: Player, origin: Vector3, parts: { BasePart }, damage: number, weapon: string): { Hit }
 	local alreadyHit: { [Model]: boolean } = {}
 	local hits: { Hit } = {}
 	for _, part in parts do
 		local model = HealthService.findDamageable(part)
 		if model and not alreadyHit[model] and not Players:GetPlayerFromCharacter(model) then
 			alreadyHit[model] = true
-			local dealt = HealthService.damage(model, damage, player, root.Position)
+			local dealt = HealthService.damage(model, damage, player, origin)
 			if dealt > 0 then
 				-- Damage numbers, shown just above the target.
 				local modelCFrame, modelSize = model:GetBoundingBox()
 				damageRemote:FireClient(player, modelCFrame.Position + Vector3.new(0, modelSize.Y / 2, 0), dealt, nil, model)
-				local impact, direction = HitEffects.meleeImpactPoint(model, root.Position)
+				local impact, direction = HitEffects.meleeImpactPoint(model, origin)
 				HitEffects.broadcast(model, impact, direction, weapon, dealt)
 				if HealthService.isAlive(model) then
 					EnemyEffects.flinch(model)
@@ -63,13 +64,13 @@ end
 function MeleeHitbox.strikeFrom(player: Player, character: Model, root: BasePart, origin: CFrame, size: Vector3, damage: number, weapon: string): { Hit }
 	local boxCFrame = origin * CFrame.new(0, 0, -size.Z / 2)
 	local parts = workspace:GetPartBoundsInBox(boxCFrame, size, excludeAttacker(character))
-	return damageParts(player, root, parts, damage, weapon)
+	return damageParts(player, root.Position, parts, damage, weapon)
 end
 
 -- Hits everything within `radius` studs of the attacker, in every direction (spin attacks).
 function MeleeHitbox.strikeAround(player: Player, character: Model, root: BasePart, radius: number, damage: number, weapon: string): { Hit }
 	local parts = workspace:GetPartBoundsInRadius(root.Position, radius, excludeAttacker(character))
-	return damageParts(player, root, parts, damage, weapon)
+	return damageParts(player, root.Position, parts, damage, weapon)
 end
 
 -- Hits everything within `radius` studs that lies inside an `arc` (degrees, centred on where
@@ -90,7 +91,14 @@ function MeleeHitbox.strikeArc(player: Player, character: Model, root: BasePart,
 		end
 		parts = inArc
 	end
-	return damageParts(player, root, parts, damage, weapon)
+	return damageParts(player, root.Position, parts, damage, weapon)
+end
+
+-- Hits everything within `radius` studs of `center` (e.g. where a blast landed), except the
+-- attacker. Hit effects point away from `center`.
+function MeleeHitbox.strikeAt(player: Player, character: Model, center: Vector3, radius: number, damage: number, weapon: string): { Hit }
+	local parts = workspace:GetPartBoundsInRadius(center, radius, excludeAttacker(character))
+	return damageParts(player, center, parts, damage, weapon)
 end
 
 return MeleeHitbox

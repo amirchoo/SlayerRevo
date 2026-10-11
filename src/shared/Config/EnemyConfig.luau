@@ -6,8 +6,10 @@ local SafeZone = require(script.Parent.Parent.SafeZone)
 
 export type EnemyType = {
 	DisplayName: string,
+	Level: number, -- shown over its head; how tough it is next to the player's level
 	Model: string, -- R15 model in assets/enemies (e.g. Orc.rbxmx); falls back to a plain body in Color
 	Color: Color3,
+	Scale: number?, -- size of the model (1 = as saved); AttackRange is in the scaled size
 	MaxHealth: number,
 	WalkSpeed: number,
 	AggroRange: number, -- studs
@@ -27,10 +29,12 @@ local HUNTING_GROUNDS_Z = -SafeZone.HALF_SIZE - 55
 
 local EnemyConfig = {}
 
-EnemyConfig.LesserDemon = {
-	DisplayName = "Lesser Demon",
+-- The little green guys: the first thing players fight.
+EnemyConfig.Orc = {
+	DisplayName = "Orc",
+	Level = 3,
 	Model = "Orc",
-	Color = Color3.fromRGB(120, 25, 30),
+	Color = Color3.fromRGB(70, 130, 50),
 	MaxHealth = 200,
 	WalkSpeed = 10,
 	AggroRange = 60,
@@ -47,6 +51,32 @@ EnemyConfig.LesserDemon = {
 		Vector2.new(-22, HUNTING_GROUNDS_Z - 15),
 	},
 } :: EnemyType
+
+-- A winged demon a size up from the orcs: three times the health, hits half again as hard
+-- with a longer reach, but swings a little slower (so it's readable). Waits behind the orcs.
+EnemyConfig.LesserDemon = {
+	DisplayName = "Lesser Demon",
+	Level = 8,
+	Model = "LesserDemon",
+	Scale = 1.3,
+	Color = Color3.fromRGB(120, 25, 30),
+	MaxHealth = 600,
+	WalkSpeed = 11,
+	AggroRange = 70,
+	AttackRange = 6.5,
+	AttackDamage = 45,
+	AttackWindup = 0.4, -- DemonClaw again (its "Hit" keyframe)
+	AttackAnimation = "rbxassetid://135668765525905", -- DemonClaw
+	AttackCooldown = 1.8,
+	RespawnDelay = 20,
+	XP = 60,
+	SpawnPoints = {
+		Vector2.new(0, HUNTING_GROUNDS_Z - 45),
+	},
+} :: EnemyType
+
+-- Every enemy type, spawned at its SpawnPoints when the server starts.
+EnemyConfig.Types = { EnemyConfig.Orc, EnemyConfig.LesserDemon }
 
 -- Shared by every enemy.
 EnemyConfig.AiTick = 0.2 -- seconds between AI decisions

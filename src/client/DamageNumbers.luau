@@ -10,7 +10,11 @@ local LIFETIME = 0.9
 local RISE = 3 -- studs the number floats up
 local JITTER = 1.5 -- random sideways offset so rapid hits don't stack exactly
 local COLOR = Color3.fromRGB(255, 225, 90)
-local BLEED_COLOR = Color3.fromRGB(230, 50, 50)
+local KIND_COLORS: { [string]: Color3 } = {
+	Bleed = Color3.fromRGB(230, 50, 50),
+	Burn = Color3.fromRGB(255, 140, 40),
+	Heal = Color3.fromRGB(110, 235, 120),
+}
 
 local damageRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DamageDealt") :: RemoteEvent
 
@@ -50,10 +54,11 @@ function DamageNumbers.popup(position: Vector3, text: string, color: Color3?)
 end
 
 function DamageNumbers.start()
-	-- `kind` (optional): "Bleed" for damage over time, shown in red. (A 4th argument, the
-	-- model hit, is for HitFeel's hitstop.)
+	-- `kind` (optional): "Bleed" or "Burn" for damage over time, "Heal" for healing (shown as
+	-- "+N" in green). (A 4th argument, the model hit, is for HitFeel's hitstop.)
 	damageRemote.OnClientEvent:Connect(function(position: Vector3, amount: number, kind: string?)
-		DamageNumbers.popup(position, tostring(math.round(amount)), if kind == "Bleed" then BLEED_COLOR else nil)
+		local text = if kind == "Heal" then `+{math.round(amount)}` else tostring(math.round(amount))
+		DamageNumbers.popup(position, text, if kind then KIND_COLORS[kind] else nil)
 	end)
 end
 

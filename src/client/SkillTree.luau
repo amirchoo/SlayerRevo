@@ -1,6 +1,7 @@
 --!strict
--- The skill tree screen: press K, or click the star icon on the left of the screen. Same
--- look as the backpack (HudStyle, world blurred behind). Tabs: GENERAL, then one per weapon.
+-- The skill tree screen: press K, or click the star icon on the left of the screen (its
+-- outline glows gold while there are points to spend). Same look as the backpack (HudStyle,
+-- world blurred behind). Tabs: GENERAL, then one per weapon.
 -- Each tree is drawn as a tree: round skill nodes joined by crooked branches (thick near the
 -- root, thinner toward the tips) that light up as you learn them.
 --   General: five branches fan out and up from you at the root; rivals sit on opposite
@@ -28,6 +29,8 @@ local WeaponIcon = require(script.Parent.WeaponIcon)
 local OPEN_KEY = Enum.KeyCode.K
 local PANEL_SIZE = Vector2.new(1000, 620)
 local PANEL_COLOR = Color3.fromRGB(30, 28, 42)
+local GLOW_COLOR = Color3.fromRGB(255, 215, 90)
+local GLOW_TWEEN = TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
 local NODE_COLOR = Color3.fromRGB(58, 54, 74)
 local LOCKED_COLOR = Color3.fromRGB(36, 34, 46)
 local SOFT_TEXT = Color3.fromRGB(190, 185, 205)
@@ -59,7 +62,9 @@ local GENERAL_TIER_DISTANCE = { 200, 345, 490 }
 local GENERAL_BRANCH_WIDTH = { 13, 10, 7 } -- branch thickness into each tier
 local DRAG_CLICK_SLOP = 6 -- a press that moves further than this is a drag, not a click
 local GENERAL_BEND = 0.05 -- each tier leans this much further out, like a branch curling up
-local BRANCH_ANGLES: { [string]: number } = { Mobility = -55, Vitality = -27, Endurance = 0, Might = 27, Guard = 55 }
+local BRANCH_ANGLES: { [string]: number } = { Mobility = -66, Vitality = -40, Endurance = -13, Arcana = 13, Might = 40, Guard = 66 }
+-- The staff's Mage tree uses the same shape, one branch per element plus Arcane.
+local STAFF_BRANCH_ANGLES: { [string]: number } = { Fire = -66, Water = -40, Earth = -13, Electric = 13, Faith = 40, Arcane = 66 }
 
 -- Weapon tree shape: root, then each tier's height; tiers with two nodes split left/right.
 local WEAPON_ROOT = Vector2.new(320, 352)
@@ -80,6 +85,10 @@ local NODE_ICONS: { [string]: string } = {
 	Toughness = "❤️", Recovery = "💚", Juggernaut = "🗿",
 	Power = "💪", Brutality = "🔥", Executioner = "💀",
 	StaminaPool = "🌬️", SecondBreath = "🔋",
+	Wellspring = "🔮", Flow = "🌊", Archmage = "🧙",
+	Mage = "🧙", FireUnlock = "🔥", WaterUnlock = "💧", EarthUnlock = "🪨", ElectricUnlock = "⚡", FaithUnlock = "✨",
+	Inferno = "🌋", Scorch = "♨️", Torrent = "🌊", Undertow = "🌪️", Bedrock = "⛰️", Tremor = "💥",
+	Storm = "⛈️", Overload = "🌩️", Devotion = "🙏", Sanctuary = "🕊️", Overcharge = "⏫", Spellweaver = "📜",
 	Sharpness = "🗡️", Efficiency = "🔋", HeavyTraining = "💥", Guardcraft = "🛡️", HuntersFocus = "🎯",
 	Whirlwind = "🌀", SwiftCharge = "⏩", Aftershock = "💢", LongLunge = "📏", DeepCuts = "🩸", QuickDraw = "🏹",
 	Blademaster = "⚔️", Cyclone = "🌪️", Sweeper = "🧹", Crusher = "🔨", Brawler = "👊",
@@ -126,7 +135,7 @@ function SkillTree.start()
 	gui.Parent = player:WaitForChild("PlayerGui")
 
 	-- The always-on icon, under the backpack's, with a counter of unspent points.
-	local icon = HudStyle.badge(gui, ICON_SIZE, Color3.fromRGB(150, 110, 220), "🌟")
+	local icon = HudStyle.badge(HudStyle.holder(gui, Vector2.new(0, 0.5)), ICON_SIZE, Color3.fromRGB(150, 110, 220), "🌟")
 	icon.AnchorPoint = Vector2.new(0, 0.5)
 	icon.Position = UDim2.new(0, 20, 0.5, 76)
 	local keyHint = HudStyle.caption(icon, OPEN_KEY.Name, 16)
@@ -149,6 +158,23 @@ function SkillTree.start()
 	iconButton.Text = ""
 	iconButton.ZIndex = 4
 	iconButton.Parent = icon
+	-- While there are points to spend, the icon's outline glows gold on and off.
+	local iconStroke = icon:FindFirstChildOfClass("UIStroke") :: UIStroke
+	local glow: Tween? = nil
+	local function setGlowing(on: boolean)
+		if on == (glow ~= nil) then
+			return
+		end
+		if glow then
+			glow:Cancel()
+			glow = nil
+			iconStroke.Color = HudStyle.OUTLINE
+		else
+			local tween = TweenService:Create(iconStroke, GLOW_TWEEN, { Color = GLOW_COLOR })
+			tween:Play()
+			glow = tween
+		end
+	end
 
 	-- The panel, in a holder that scales it down on small screens.
 	local holder = Instance.new("Frame")
@@ -532,28 +558,25 @@ function SkillTree.start()
 		return root
 	end
 
-	-- General: branches fanning out and up from you.
-	do
-		local page = makePage("General", GENERAL_WORLD, GENERAL_ROOT)
-		local root = makeRoot(page, GENERAL_ROOT, "YOU")
-		local star = text(root, "⭐", 32)
-		star.Size = UDim2.fromScale(1, 1)
-		star.TextXAlignment = Enum.TextXAlignment.Center
-		star.ZIndex = 3
+	-- A tree drawn as branches fanning out and up from a root (the General tree, and the
+	-- staff's Mage tree): each branch climbs node by node in its own direction (`angles`, by
+	-- branch id), with its name past its tip. Links from the root light up once `rootNode` is
+	-- learned (or always, with no root node).
+	local function radialTree(page: Frame, treeId: string, branches: { SkillTrees.Branch }, angles: { [string]: number }, rootNode: string?)
 		local function along(angle: number, distance: number): Vector2
 			local radians = math.rad(angle)
 			return GENERAL_ROOT + Vector2.new(math.sin(radians) * distance, -math.cos(radians) * distance)
 		end
-		for _, branch in SkillTrees.General do
-			local angle = BRANCH_ANGLES[branch.Id] or 0
+		for _, branch in branches do
+			local angle = angles[branch.Id] or 0
 			local previous = GENERAL_ROOT
-			local previousNode: string? = nil
+			local previousNode: string? = rootNode
 			local views: { NodeView } = {}
 			local last = GENERAL_ROOT
-			for _, node in branch.Nodes do
-				local center = along(angle * (1 + GENERAL_BEND * (node.Tier - 1)), GENERAL_TIER_DISTANCE[node.Tier] or 300)
-				branchLine(page, previous, center, "General", previousNode, GENERAL_BRANCH_WIDTH[node.Tier] or 6)
-				table.insert(views, makeNode(page, "General", node, center, branch.Icon))
+			for step, node in branch.Nodes do
+				local center = along(angle * (1 + GENERAL_BEND * (step - 1)), GENERAL_TIER_DISTANCE[step] or 300)
+				branchLine(page, previous, center, treeId, previousNode, GENERAL_BRANCH_WIDTH[step] or 6)
+				table.insert(views, makeNode(page, treeId, node, center, branch.Icon))
 				previous, previousNode, last = center, node.Id, center
 			end
 			-- The branch's name past its tip.
@@ -569,8 +592,29 @@ function SkillTree.start()
 		end
 	end
 
+	-- General: branches fanning out and up from you.
+	do
+		local page = makePage("General", GENERAL_WORLD, GENERAL_ROOT)
+		local root = makeRoot(page, GENERAL_ROOT, "YOU")
+		local star = text(root, "⭐", 32)
+		star.Size = UDim2.fromScale(1, 1)
+		star.TextXAlignment = Enum.TextXAlignment.Center
+		star.ZIndex = 3
+		radialTree(page, "General", SkillTrees.General, BRANCH_ANGLES, nil)
+	end
+
+	-- Staff: the Mage class. The Mage node is the root; each element's branch grows from it.
+	do
+		local page = makePage("Staff", GENERAL_WORLD, GENERAL_ROOT)
+		makeNode(page, "Staff", SkillTrees.StaffClassNode, GENERAL_ROOT, "🧙")
+		radialTree(page, "Staff", SkillTrees.StaffBranches, STAFF_BRANCH_ANGLES, SkillTrees.StaffClass)
+	end
+
 	-- Weapons: a trunk from the weapon that splits into two branches and ends in the masteries.
 	for _, weapon in SkillTrees.WeaponOrder do
+		if weapon == "Staff" then
+			continue -- drawn as the Mage tree, above
+		end
 		local page = makePage(weapon)
 		local root = makeRoot(page, WEAPON_ROOT, weapon:upper())
 		local viewport = WeaponIcon.viewport(root)
@@ -639,6 +683,7 @@ function SkillTree.start()
 		pointsLabel.Text = `SKILL POINTS: {points}`
 		pointsDot.Text = tostring(points)
 		pointsDot.Visible = points > 0
+		setGlowing(points > 0)
 
 		-- Tabs (trees with points in them are tinted gold).
 		for _, tab in tabs do
@@ -731,12 +776,13 @@ function SkillTree.start()
 			end
 			learn.Visible = true
 		else
-			infoIcon.Text = if selectedTab == "General" then "⭐" else "🗡️"
-			infoName.Text = if selectedTab == "General" then "General" else selectedTab
+			infoIcon.Text = if selectedTab == "General" then "⭐" elseif selectedTab == "Staff" then "🧙" else "🗡️"
+			infoName.Text = if selectedTab == "General" then "General" elseif selectedTab == "Staff" then "Mage" else selectedTab
 			infoTree.Text = `{SkillMath.spent(alloc, selectedTab)} points spent here`
 			infoRank.Text = ""
 			infoBody.Text = if selectedTab == "General"
-				then "Grow the branches you want. Points are shared by every tree, and spending in a branch locks its rival on the other side (Mobility ↔ Guard, Vitality ↔ Might) until you reset.\n\nClick a skill to see it."
+				then "Grow the branches you want. Points are shared by every tree, and spending in a branch locks its rival on the other side (Mobility ↔ Guard, Vitality ↔ Might, Endurance ↔ Arcana) until you reset.\n\nClick a skill to see it."
+				elseif selectedTab == "Staff" then "The staff's magic. Unlock the Mage class (the root) to cast at all, then unlock each element's branch to use that element, and grow its upgrades.\n\nClick a skill to see it."
 				else `Make the {selectedTab} hit harder and handle better. Higher tiers need points spent in this tree. The masteries at the top are a choice: take one and the other locks.\n\nClick a skill to see it.`
 			infoStatus.Text = ""
 			learn.Visible = false

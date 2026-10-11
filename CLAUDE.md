@@ -23,3 +23,5 @@
 - Read `docs/design.md` before building any system: it's the source of truth for game direction.
   Its §12 lists where already-built systems differ from it (the built version wins).
 - Work one system/phase at a time; don't decide its [TBD] items without asking.
+- 3D models are designed in Claude Design from `docs/model-brief.md`; its last section is the
+  steps for getting a delivered .glb into the game.

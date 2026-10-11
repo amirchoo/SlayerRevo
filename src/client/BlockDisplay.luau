@@ -43,10 +43,10 @@ local function createRow(): (Frame, Frame)
 	local row = Instance.new("Frame")
 	row.Name = "Pips"
 	row.AnchorPoint = Vector2.new(1, 1)
-	row.Position = UDim2.new(0.5, 210, 1, -144)
+	row.Position = UDim2.new(0.5, 210, 1, -158)
 	row.Size = UDim2.fromOffset(150, BADGE_SIZE)
 	row.BackgroundTransparency = 1
-	row.Parent = gui
+	row.Parent = HudStyle.holder(gui, Vector2.new(0.5, 1))
 
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal

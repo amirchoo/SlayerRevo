@@ -18,6 +18,7 @@ local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local HudStyle = require(script.Parent.HudStyle)
 local DamageNumbers = require(script.Parent.DamageNumbers)
+local CombatInput = require(script.Parent.CombatInput)
 local Push = require(script.Parent.Push)
 
 local DASH = CombatConfig.Dash
@@ -65,10 +66,10 @@ local function createMeter()
 	local row = Instance.new("Frame")
 	row.Name = "Meter"
 	row.AnchorPoint = Vector2.new(0, 1)
-	row.Position = UDim2.new(0.5, -210, 1, -144)
+	row.Position = UDim2.new(0.5, -210, 1, -158)
 	row.Size = UDim2.fromOffset(METER_WIDTH, BADGE_SIZE)
 	row.BackgroundTransparency = 1
-	row.Parent = gui
+	row.Parent = HudStyle.holder(gui, Vector2.new(0.5, 1))
 
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
@@ -185,12 +186,7 @@ function Dash.start()
 		end
 	end)
 
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		-- gameProcessed is true while typing in chat, so typing V there doesn't dash.
-		if not gameProcessed and input.KeyCode == DASH.Key then
-			tryDash()
-		end
-	end)
+	CombatInput.Dash:Connect(tryDash) -- the dash key, or the touch Dash button
 
 	-- Refill spent charges one at a time.
 	RunService.Heartbeat:Connect(function(dt)

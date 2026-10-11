@@ -15,11 +15,12 @@ local UserInputService = game:GetService("UserInputService")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local Stamina = require(ReplicatedStorage.Shared.Stamina)
+local CombatInput = require(script.Parent.CombatInput)
+local Aim = require(script.Parent.Aim)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 
 local BOW = CombatConfig.Bow
-local AIM_DISTANCE = 1000
 local METER_COLOR = Color3.fromRGB(240, 240, 240)
 local METER_FULL_COLOR = Color3.fromRGB(255, 200, 70)
 
@@ -84,25 +85,10 @@ local stopDraw: ((fired: boolean) -> ())? = nil
 
 -- The world point under the cursor (or the screen center when the mouse is locked),
 -- ignoring our own character and arrows in flight.
+-- Where the arrow goes (the lock-on target, the mouse, or the screen centre; see Aim).
 local function getAimPoint(): Vector3
-	local camera = workspace.CurrentCamera
-	local screenPoint = UserInputService:GetMouseLocation()
-	local ray = camera:ViewportPointToRay(screenPoint.X, screenPoint.Y)
-
-	local exclude: { Instance } = { camera }
-	if player.Character then
-		table.insert(exclude, player.Character)
-	end
 	local arrows = workspace:FindFirstChild("Arrows")
-	if arrows then
-		table.insert(exclude, arrows)
-	end
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = exclude
-
-	local result = workspace:Raycast(ray.Origin, ray.Direction * AIM_DISTANCE, params)
-	return if result then result.Position else ray.Origin + ray.Direction * AIM_DISTANCE
+	return Aim.point(if arrows then { arrows } else nil)
 end
 
 local function createMeter(): (Frame, Frame)
@@ -293,8 +279,12 @@ local function equippedBow(): Tool?
 	return if tool and tool.Name == BOW.ToolName then tool else nil
 end
 
-local function onInputBegan(input: InputObject, gameProcessed: boolean)
-	if gameProcessed or input.UserInputType ~= Enum.UserInputType.MouseButton2 or stopDraw then
+-- The bow draws on Attack (left click, or the touch Attack button) or Block (right click),
+-- and fires when that same input is let go.
+local drawnWith: string? = nil
+
+local function beginDraw(action: string)
+	if stopDraw then
 		return
 	end
 	local tool = equippedBow()
@@ -306,13 +296,15 @@ local function onInputBegan(input: InputObject, gameProcessed: boolean)
 	if not Stamina.canAfford(player, SkillMath.staminaCost(player, BOW.ToolName, BOW.ShotStamina, "Light")) then
 		return
 	end
+	drawnWith = action
 	startDraw(tool)
 end
 
-local function onInputEnded(input: InputObject)
-	if input.UserInputType ~= Enum.UserInputType.MouseButton2 or not stopDraw then
+local function releaseDraw(action: string)
+	if not stopDraw or drawnWith ~= action then
 		return
 	end
+	drawnWith = nil
 	local aimPoint = getAimPoint()
 	stopDraw(true)
 	lastShot = os.clock()
@@ -357,8 +349,18 @@ function BowClient.start()
 	task.spawn(function()
 		ContentProvider:PreloadAsync({ IDLE_ANIMATION, DRAW_ANIMATION, RELEASE_ANIMATION })
 	end)
-	UserInputService.InputBegan:Connect(onInputBegan)
-	UserInputService.InputEnded:Connect(onInputEnded)
+	CombatInput.AttackBegan:Connect(function()
+		beginDraw("Attack")
+	end)
+	CombatInput.AttackEnded:Connect(function()
+		releaseDraw("Attack")
+	end)
+	CombatInput.BlockBegan:Connect(function()
+		beginDraw("Block")
+	end)
+	CombatInput.BlockEnded:Connect(function()
+		releaseDraw("Block")
+	end)
 
 	local function onCharacterAdded(character: Model)
 		-- A respawn mid-draw cancels it.

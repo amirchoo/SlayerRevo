@@ -59,7 +59,7 @@ Session loop: log in → join party/guild → hunt a target (monster, boss, drop
 - Enemy attacks must be readable: wind-up telegraphs before damage frames.
 
 ### Weapons
-Current: **One-Handed Sword, Greatsword, Mace, Spear, Axe, Bow.** More will be added — the weapon system must be **data-driven** so a new weapon = new config + animations, not new core code.
+Current: **One-Handed Sword, Greatsword, Mace, Spear, Axe, Bow, Staff.** More will be added — the weapon system must be **data-driven** so a new weapon = new config + animations, not new core code.
 
 | Weapon | Identity (direction) |
 |---|---|
@@ -69,6 +69,7 @@ Current: **One-Handed Sword, Greatsword, Mace, Spear, Axe, Bow.** More will be a
 | Spear | Reach, pokes, strong blocking |
 | Axe | Aggressive, high damage, bleed-style |
 | Bow | Ranged, weak up close, relies on dash positioning |
+| Staff | Caster: five elements (Fire burn, Water slow, Earth knockback/stun, Electric chain, Faith heals allies); tap for missiles, hold to charge a blast |
 
 Each weapon has: base stats, light combo, heavy attack, stamina costs, block/parry properties, and weapon-specific skill tree branch.
 
@@ -86,14 +87,16 @@ Each weapon has: base stats, light combo, heavy attack, stamina costs, block/par
 - **General branch**: stats (HP, stamina, damage, defense, stamina regen).
 - **Weapon branches**: one per weapon type — unlock new moves, combo extensions, weapon-specific bonuses.
 - Respec allowed so experimenting with builds isn't punished: **free for now** (a cost can come once there's currency).
-- **Rival branches**: General branches come in rival pairs (Mobility ↔ Guard, Vitality ↔ Might); any point in one **hard-locks** its rival until respec. Endurance has no rival.
+- **Rival branches**: General branches come in rival pairs (Mobility ↔ Guard, Vitality ↔ Might, Endurance ↔ Arcana); any point in one **hard-locks** its rival until respec.
+- **Mana**: the staff's spells spend mana (its own bar), not stamina; the Arcana branch grows it, as the rival of stamina's Endurance.
+- **Mage class**: the staff's tree is the Mage class. The staff can't cast until Mage is unlocked, and each element (Fire, Water, Earth, Lightning, Faith) is its own branch that must be unlocked before it can be used, with upgrades beyond.
 - Skill points are **one pool shared by every tree** (General + every weapon), so no one can max everything.
 - Each weapon tree ends in a **mastery fork**: two options, taking one locks the other.
 
 ### Gear
 - **Armor slots**: Helmet, Chestplate, Armwear, Leggings, Boots *(as built)*.
 - **Mix and match**: any armor with any weapon.
-- **Rarity tiers**: Common → Uncommon → Rare → Epic → Legendary **[confirm]**.
+- **Rarity tiers**: Common → Uncommon → Rare → Epic → Legendary *(confirmed; see §12)*.
 - **Armor sets** from the same area/boss give set bonuses (optional, so mixing is still viable).
 - Gear sources: drops (monsters/bosses) and crafting from materials **[TBD — is there crafting?]**.
 
@@ -247,3 +250,4 @@ Everything in the doc that isn't built yet still applies.
 | Armor defense | Defense stat | Each piece negates a % of damage, summed, capped at 80% |
 | Inventory | Phase 3 | Backpack with a 5-weapon hotbar is built and saved |
 | Roadmap order | Skill tree was Phase 5 | Skill tree is Phase 2 (XP/levels and saving built with it) |
+| Rarity | Tiers [confirm]; gear from drops | Five tiers confirmed. Each weapon has a fixed rarity for now (starter weapons Common). Emberfang (Epic): Sword moves, stronger stats, shares the Sword skill tree; everyone owns it until drops exist |

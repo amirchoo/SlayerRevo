@@ -320,6 +320,71 @@ SWINGS = {
             (0.35, pose(arm=(0.1, -1, 0.05), wrist=0, blade_lean=(0, 0, -1), lelbow=0, head_forward=False)),
         ],
     },
+    # --- Staff (one-handed, held a little below the middle). A wrist near +90 stands the staff
+    # up when the arm hangs; near -90 it continues the arm's line. Hit times match the Staff
+    # section of src/shared/Config/CombatConfig.luau (CastDelay, BlastDelay).
+    "StaffIdle": {  # held upright at your side; upper body only so the legs walk
+        "hit": None,
+        "loop": True,
+        "upper_body_only": True,
+        "plane": None,
+        "keys": [
+            (0.0, pose(arm=(0.25, -0.9, -0.3), wrist=80, blade_lean=(0, 0, -1), larm=5)),
+            (0.8, pose(arm=(0.25, -0.88, -0.33), wrist=78, blade_lean=(0, 0, -1), larm=7, lean=-3)),
+            (1.6, pose(arm=(0.25, -0.9, -0.3), wrist=80, blade_lean=(0, 0, -1), larm=5)),
+        ],
+    },
+    "StaffCast": {  # a quick thrust that sends the missile off
+        "hit": 0.14,
+        "upper_body_only": True,
+        "plane": ((0.35, -0.2, 0.35), (0.1, 0.2, -1)),
+        "keys": [
+            (0.00, pose(arm=(0.25, -0.9, -0.3), wrist=70)),
+            (0.07, pose(arm=(0.35, -0.2, 0.35), wrist=40, chest=-20, larm=20)),
+            (0.105, pose(arm=(0.35, 0.05, -0.6), wrist=10, chest=-5, larm=5)),
+            (0.14, pose(arm=(0.1, 0.2, -1), wrist=-20, chest=10, lean=-8, larm=-10)),
+            (0.40, pose(arm=(0.25, -0.9, -0.3), wrist=70)),
+        ],
+    },
+    "StaffCharge": {  # raised high overhead, held on its last frame while charging
+        "hit": None,
+        "upper_body_only": True,
+        "plane": ((0.15, 0.95, 0.15), (0.1, 0.2, -1)),
+        "keys": [
+            (0.00, pose(arm=(0.25, -0.9, -0.3), wrist=70)),
+            (0.15, pose(arm=(0.3, 0.2, -0.9), wrist=0, larm=60, lelbow=40)),
+            (0.30, pose(arm=(0.15, 0.95, 0.15), wrist=-80, lean=10, chest=-10, larm=140, lelbow=30)),
+            (1.00, pose(arm=(0.15, 0.95, 0.12), wrist=-80, lean=14, chest=-12, larm=145, lelbow=30)),
+        ],
+    },
+    "StaffBlast": {  # drive the staff forward in a lunge, releasing the blast
+        "hit": 0.12,
+        "plane": ((0.15, 0.95, 0.15), (0.1, 0.2, -1)),
+        "keys": [
+            (0.00, pose(arm=(0.15, 0.95, 0.12), wrist=-80, lean=14, chest=-12, larm=145, lelbow=30, **COIL_BACK)),
+            (0.06, pose(arm=(0.15, 0.6, -0.8), wrist=-60, lean=0, larm=110, lelbow=30, drop=0.3,
+                        lleg=(30, -45, 15), rleg=(15, -40, 25))),
+            (0.12, pose(arm=(0.1, 0.15, -1), wrist=-85, lean=-15, larm=60, lelbow=20, **LUNGE_LEFT)),
+            (0.45, pose(arm=(0.1, 0.15, -1), wrist=-85, lean=-13, larm=55, lelbow=20, **LUNGE_LEFT)),
+            (0.60, pose(arm=(0.2, -0.45, -0.85), wrist=-30, lean=-5, larm=20, lelbow=20, **READY)),
+            (0.80, NEUTRAL),
+        ],
+    },
+    # Fire's heavy: the staff, raised overhead, is slammed down into the ground in front.
+    # "hit" matches Staff.BlastDelay.
+    "StaffSlam": {
+        "hit": 0.12,
+        "plane": ((0.15, 0.95, 0.15), (0.05, -0.35, -0.95)),
+        "keys": [
+            (0.00, pose(arm=(0.15, 0.95, 0.12), wrist=-80, lean=14, chest=-12, larm=145, lelbow=30, **COIL_BACK)),
+            (0.06, pose(arm=(0.1, 0.55, -0.85), wrist=-70, lean=0, larm=110, lelbow=30, drop=-0.2,
+                        lleg=(30, -45, 15), rleg=(20, -40, 20))),
+            (0.12, pose(arm=(0.05, -0.35, -0.95), wrist=-85, lean=-30, larm=40, lelbow=30, **KNEEL)),
+            (0.45, pose(arm=(0.05, -0.35, -0.95), wrist=-85, lean=-28, larm=40, lelbow=30, **KNEEL)),
+            (0.65, pose(arm=(0.2, -0.6, -0.75), wrist=-30, lean=-8, larm=15, lelbow=20, **READY)),
+            (0.85, NEUTRAL),
+        ],
+    },
 }
 
 

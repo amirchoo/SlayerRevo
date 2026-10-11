@@ -30,10 +30,16 @@ type Look = { style: Style, color: Color3, size: number }
 -- Per weapon (by ToolName). size scales the whole effect; the sound is "<ToolName>Hit".
 local LOOKS: { [string]: Look } = {
 	Sword = { style = "Slash", color = Color3.fromRGB(255, 240, 190), size = 1 },
+	Emberfang = { style = "Slash", color = Color3.fromRGB(255, 130, 50), size = 1.15 },
 	Greatsword = { style = "Slash", color = Color3.fromRGB(255, 200, 120), size = 1.6 },
 	Mace = { style = "Blunt", color = Color3.fromRGB(255, 215, 150), size = 1.1 },
 	Spear = { style = "Pierce", color = Color3.fromRGB(200, 230, 255), size = 1 },
 	Axe = { style = "Slash", color = Color3.fromRGB(255, 190, 150), size = 1.15 },
+	StaffFire = { style = "Blunt", color = Color3.fromRGB(255, 120, 40), size = 1 },
+	StaffWater = { style = "Blunt", color = Color3.fromRGB(70, 160, 255), size = 1 },
+	StaffEarth = { style = "Blunt", color = Color3.fromRGB(170, 125, 70), size = 1.2 },
+	StaffElectric = { style = "Pierce", color = Color3.fromRGB(255, 235, 90), size = 1 },
+	StaffFaith = { style = "Pierce", color = Color3.fromRGB(255, 245, 190), size = 0.8 },
 	Bow = { style = "Pierce", color = Color3.fromRGB(230, 220, 200), size = 0.7 },
 	DemonClaw = { style = "Slash", color = Color3.fromRGB(255, 70, 60), size = 0.9 }, -- enemies hitting players
 	Parry = { style = "Blunt", color = Color3.fromRGB(255, 235, 150), size = 1.3 }, -- a parried enemy (see BlockService)

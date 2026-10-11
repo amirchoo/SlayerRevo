@@ -186,7 +186,7 @@ function Backpack.start()
 	gui.Parent = player:WaitForChild("PlayerGui")
 
 	-- The always-on icon, left side of the screen.
-	local icon = HudStyle.badge(gui, ICON_SIZE, Color3.fromRGB(190, 120, 60), "🎒")
+	local icon = HudStyle.badge(HudStyle.holder(gui, Vector2.new(0, 0.5)), ICON_SIZE, Color3.fromRGB(190, 120, 60), "🎒")
 	icon.AnchorPoint = Vector2.new(0, 0.5)
 	icon.Position = UDim2.new(0, 16, 0.5, 0)
 	local keyHint = HudStyle.caption(icon, InventoryConfig.OpenKey.Name, 16)
@@ -499,9 +499,12 @@ function Backpack.start()
 				shownPreview[tile] = if WeaponIcon.show(tile.viewport, weapon) then weapon else nil
 			end
 			local hotbarIndex = if weapon then table.find(hotbar, weapon) else nil
+			local rarity = if weapon then InventoryConfig.rarity(weapon) else nil
+			local special = rarity ~= nil and rarity ~= InventoryConfig.Rarities[1]
 			tile.name.Text = weapon or ""
+			tile.name.TextColor3 = if rarity and special then rarity.Color else Color3.new(1, 1, 1)
 			tile.badge.Text = if hotbarIndex then tostring(hotbarIndex) else ""
-			tile.stroke.Color = if hotbarIndex then HOTBAR_BORDER else HudStyle.OUTLINE
+			tile.stroke.Color = if hotbarIndex then HOTBAR_BORDER elseif rarity and special then rarity.Color else HudStyle.OUTLINE
 			tile.stroke.Thickness = if hotbarIndex then 3.5 else 3
 		end
 
@@ -510,7 +513,8 @@ function Backpack.start()
 		if info then
 			local inHotbar = table.find(hotbar, info.Name) ~= nil
 			local hint = if inHotbar then "click to store" elseif #hotbar >= capacity then "hotbar full" else "click to add to hotbar"
-			detail.Text = `{info.Name}  ·  {info.Description}  ({hint})`
+			local rarity = InventoryConfig.rarity(info.Name)
+			detail.Text = `{info.Name} ({rarity.Id})  ·  {info.Description}  ({hint})`
 		else
 			detail.Text = `{count}  ·  click a weapon to move it between your hotbar and backpack`
 		end

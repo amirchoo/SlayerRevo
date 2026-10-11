@@ -1,8 +1,14 @@
 --!strict
--- Arrow counter in the bottom-right corner. Display only: reads the Arrows/MaxArrows
--- attributes the server keeps on the player.
+-- Arrow counter in the top-right corner, shown only while you're holding the bow.
+-- Display only: reads the Arrows/MaxArrows attributes the server keeps on the player.
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
+local HudStyle = require(script.Parent.HudStyle)
+
+local BOW_NAME = CombatConfig.Bow.ToolName
 
 local NORMAL_COLOR = Color3.new(1, 1, 1)
 local LOW_COLOR = Color3.fromRGB(255, 200, 90)
@@ -13,21 +19,23 @@ local player = Players.LocalPlayer
 
 local AmmoDisplay = {}
 
-local function createGui(): (TextLabel, TextLabel)
+local function createGui(): (Frame, TextLabel, TextLabel)
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "AmmoDisplay"
 	gui.ResetOnSpawn = false
 	gui.Parent = player:WaitForChild("PlayerGui")
 
+	local corner = Vector2.new(1, 0) -- top right
 	local panel = Instance.new("Frame")
 	panel.Name = "Panel"
-	panel.AnchorPoint = Vector2.new(1, 1)
-	panel.Position = UDim2.new(1, -24, 1, -24)
+	panel.AnchorPoint = corner
+	panel.Position = UDim2.new(1, -20, 0, 10)
+	panel.Visible = false
 	panel.Size = UDim2.fromOffset(190, 64)
 	panel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 	panel.BackgroundTransparency = 0.3
 	panel.BorderSizePixel = 0
-	panel.Parent = gui
+	panel.Parent = HudStyle.holder(gui, corner)
 	Instance.new("UICorner").Parent = panel
 
 	local title = Instance.new("TextLabel")
@@ -52,11 +60,11 @@ local function createGui(): (TextLabel, TextLabel)
 	count.TextXAlignment = Enum.TextXAlignment.Right
 	count.Parent = panel
 
-	return title, count
+	return panel, title, count
 end
 
 function AmmoDisplay.start()
-	local title, count = createGui()
+	local panel, title, count = createGui()
 
 	local function update()
 		local arrows = player:GetAttribute("Arrows")
@@ -79,6 +87,21 @@ function AmmoDisplay.start()
 	player:GetAttributeChangedSignal("Arrows"):Connect(update)
 	player:GetAttributeChangedSignal("MaxArrows"):Connect(update)
 	update()
+
+	-- Only while the bow is in hand (equipping moves a tool into the character).
+	local function watch(character: Model)
+		local function refresh()
+			local tool = character:FindFirstChildOfClass("Tool")
+			panel.Visible = tool ~= nil and tool.Name == BOW_NAME
+		end
+		character.ChildAdded:Connect(refresh)
+		character.ChildRemoved:Connect(refresh)
+		refresh()
+	end
+	player.CharacterAdded:Connect(watch)
+	if player.Character then
+		watch(player.Character)
+	end
 end
 
 return AmmoDisplay

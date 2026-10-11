@@ -1,8 +1,8 @@
 --!strict
 -- Stamina bar: a chunky cartoon bar (see HudStyle) just above the health bar. Display only:
 -- reads the Stamina/MaxStamina attributes the server sets (see StaminaService). Golden,
--- turning orange when low; when an attack is refused for lack of stamina, the bar flashes
--- red and wobbles.
+-- turning orange when low; pops with "+N" when a skill raises max stamina. When an attack
+-- is refused for lack of stamina, the bar flashes red and wobbles.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -37,9 +37,10 @@ local function createGui(): (Frame, Frame)
 	background.Position = UDim2.new(0.5, 0, 1, BOTTOM)
 	background.Size = UDim2.fromOffset(WIDTH, HEIGHT)
 	background.BackgroundColor3 = HudStyle.EMPTY
-	background.Parent = gui
+	background.Parent = HudStyle.holder(gui, Vector2.new(0.5, 1))
 	HudStyle.chunky(background, 7, 2.5)
 	Instance.new("UIScale").Parent = background
+	HudStyle.barTag(background, "STA", FULL_COLOR)
 
 	local fill = Instance.new("Frame")
 	fill.Name = "Fill"
@@ -56,6 +57,7 @@ end
 
 function StaminaBar.start()
 	local background, fill = createGui()
+	local lastMax: number? = nil
 
 	local function update()
 		local stamina = player:GetAttribute("Stamina")
@@ -66,6 +68,10 @@ function StaminaBar.start()
 		local ratio = math.clamp(stamina / maxStamina, 0, 1)
 		TweenService:Create(fill, FILL_TWEEN, { Size = UDim2.fromScale(ratio, 1) }):Play()
 		fill.BackgroundColor3 = if ratio > LOW_THRESHOLD then FULL_COLOR else LOW_COLOR
+		if lastMax and maxStamina > lastMax then
+			HudStyle.maxGain(background, math.round(maxStamina - lastMax), FULL_COLOR) -- e.g. Deep Lungs
+		end
+		lastMax = maxStamina
 	end
 
 	player:GetAttributeChangedSignal("Stamina"):Connect(update)
@@ -73,7 +79,10 @@ function StaminaBar.start()
 	update()
 
 	-- Not enough for that attack: flash the empty part red and wobble the bar.
-	Stamina.NotEnough:Connect(function()
+	Stamina.NotEnough:Connect(function(resource: string?)
+		if resource == "Mana" then
+			return -- the mana bar flashes for that
+		end
 		background.BackgroundColor3 = EMPTY_FLASH_COLOR
 		TweenService:Create(background, FLASH_TWEEN, { BackgroundColor3 = HudStyle.EMPTY }):Play()
 		HudStyle.pop(background, 1.08)

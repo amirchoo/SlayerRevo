@@ -17,6 +17,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
+local CombatInput = require(script.Parent.CombatInput)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local Stamina = require(ReplicatedStorage.Shared.Stamina)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
@@ -374,16 +375,16 @@ local function startGuard(state: Equipped)
 	state.humanoid.WalkSpeed = walkSpeedFor(state)
 end
 
-local function onInputBegan(input: InputObject, gameProcessed: boolean)
+local function onAttackBegan()
 	local state = equipped
-	if gameProcessed or not state then
+	if not state then
 		return
 	end
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+	do
 		if stopCharge or stopGuard then
 			return
 		end
-		-- Tap or hold? Released before HoldTime is a combo swing (see onInputEnded);
+		-- Tap or hold? Released before HoldTime is a combo swing (see onAttackEnded);
 		-- still held after it starts a charge, once any swing or slam has finished.
 		local pressed = os.clock()
 		pressedAt = pressed
@@ -399,25 +400,32 @@ local function onInputBegan(input: InputObject, gameProcessed: boolean)
 				end
 			end
 		end)
-	elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-		if not stopCharge and not stopGuard and os.clock() >= busyUntil and os.clock() >= swingUntil then
-			pressedAt = nil
-			startGuard(state)
-		end
 	end
 end
 
-local function onInputEnded(input: InputObject)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 and stopCharge then
+local function onBlockBegan()
+	local state = equipped
+	if state and not stopCharge and not stopGuard and os.clock() >= busyUntil and os.clock() >= swingUntil then
+		pressedAt = nil
+		startGuard(state)
+	end
+end
+
+local function onAttackEnded()
+	if stopCharge then
 		stopCharge(true)
-	elseif input.UserInputType == Enum.UserInputType.MouseButton1 and pressedAt then
+	elseif pressedAt then
 		local held = os.clock() - pressedAt
 		pressedAt = nil
 		local state = equipped
 		if state and not stopGuard and held < GREATSWORD.HoldTime then
 			swing(state)
 		end
-	elseif input.UserInputType == Enum.UserInputType.MouseButton2 and stopGuard then
+	end
+end
+
+local function onBlockEnded()
+	if stopGuard then
 		stopGuard()
 	end
 end
@@ -509,8 +517,10 @@ function GreatswordClient.start()
 		end
 	end)
 
-	UserInputService.InputBegan:Connect(onInputBegan)
-	UserInputService.InputEnded:Connect(onInputEnded)
+	CombatInput.AttackBegan:Connect(onAttackBegan)
+	CombatInput.AttackEnded:Connect(onAttackEnded)
+	CombatInput.BlockBegan:Connect(onBlockBegan)
+	CombatInput.BlockEnded:Connect(onBlockEnded)
 
 	local function onCharacterAdded(character: Model)
 		-- A respawn clears any charge, guard, or slam in progress.

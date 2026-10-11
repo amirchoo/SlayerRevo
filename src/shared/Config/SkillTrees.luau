@@ -12,11 +12,13 @@
 -- Effects are per rank, by stat:
 --   General: MaxHealth, HealthRegen (per second), DashCharges, DashRecharge (fraction off the
 --     recharge time), DashIFrames (seconds), BlockCharges, BlockAmount, ParryWindow (seconds),
---     MaxStamina, StaminaRegen (per second), Damage (fraction, every weapon).
+--     MaxStamina, StaminaRegen (per second), MaxMana, ManaRegen (per second), Damage
+--     (fraction, every weapon).
 --   Weapon: Damage, LightDamage, HeavyDamage (fractions), StaminaCost, LightStaminaCost,
 --     HeavyStaminaCost (fractions, negative = cheaper), BlockAmount, ParryWindow, and each
 --     weapon's own: SpinDuration (s, sword), ChargeSpeed (greatsword), QuakeRadius (mace),
---     LungeDistance (spear), BleedDamage (per tick, axe), DrawSpeed (bow) as fractions.
+--     LungeDistance (spear), BleedDamage (per tick, axe), DrawSpeed (bow) as fractions; the
+--     staff's are listed with StaffBranches below.
 
 export type Node = {
 	Id: string,
@@ -92,9 +94,21 @@ SkillTrees.General = {
 		Id = "Endurance",
 		Name = "Endurance",
 		Icon = "🔋",
+		Rival = "Arcana",
 		Nodes = {
 			{ Id = "StaminaPool", Name = "Deep Lungs", Description = "+10 max stamina.", Tier = 1, MaxRank = 5, Effects = { MaxStamina = 10 } },
 			{ Id = "SecondBreath", Name = "Second Breath", Description = "Stamina refills 5/s faster.", Tier = 2, MaxRank = 3, Effects = { StaminaRegen = 5 } },
+		},
+	},
+	{
+		Id = "Arcana",
+		Name = "Arcana",
+		Icon = "🔮",
+		Rival = "Endurance",
+		Nodes = {
+			{ Id = "Wellspring", Name = "Wellspring", Description = "+15 max mana.", Tier = 1, MaxRank = 5, Effects = { MaxMana = 15 } },
+			{ Id = "Flow", Name = "Flow", Description = "Mana refills 2/s faster.", Tier = 2, MaxRank = 3, Effects = { ManaRegen = 2 } },
+			{ Id = "Archmage", Name = "Archmage", Description = "+40 max mana.", Tier = 3, MaxRank = 1, Effects = { MaxMana = 40 }, Requires = "Flow" },
 		},
 	},
 } :: { Branch }
@@ -162,7 +176,89 @@ SkillTrees.Weapons = {
 	),
 } :: { [string]: { Node } }
 
+-- The staff's tree is the Mage class: drawn as branches growing from the Mage node, like the
+-- General tree. Unlock Mage first (until then the staff only blocks), then each element is
+-- its own branch that must be unlocked before that element can be cast, with upgrades
+-- beyond. All its nodes are tier 1; the Requires chains set the order.
+-- Element stats (fractions unless noted): FireDamage, WaterDamage, EarthDamage,
+-- ElectricDamage (that element's spells), BurnDamage (per tick), WaterKnockback, EarthStun
+-- (seconds), ElectricRadius (thunder), FaithRadius (healing burst), HealPower.
+SkillTrees.StaffClass = "Mage"
+SkillTrees.StaffClassNode = {
+	Id = "Mage",
+	Name = "Mage",
+	Description = "Unlocks the Mage class: the staff can cast spells. Unlock an element next.",
+	Tier = 1,
+	MaxRank = 1,
+	Effects = {},
+} :: Node
+-- Which node unlocks each element (by its name in CombatConfig.Staff.Elements).
+SkillTrees.StaffElementUnlocks = {
+	Fire = "FireUnlock",
+	Water = "WaterUnlock",
+	Earth = "EarthUnlock",
+	Electric = "ElectricUnlock",
+	Faith = "FaithUnlock",
+}
+
+local function elementBranch(id: string, name: string, icon: string, unlockText: string, upgrade: Node, special: Node): Branch
+	upgrade.Tier, upgrade.Requires = 1, `{id}Unlock`
+	special.Tier, special.Requires = 1, upgrade.Id
+	return {
+		Id = id,
+		Name = name,
+		Icon = icon,
+		Nodes = {
+			{ Id = `{id}Unlock`, Name = name, Description = unlockText, Tier = 1, MaxRank = 1, Effects = {}, Requires = "Mage" },
+			upgrade,
+			special,
+		},
+	}
+end
+
+SkillTrees.StaffBranches = {
+	elementBranch("Fire", "Pyromancy", "🔥", "Unlocks Fire: missiles, and a slam that sends a burning wall of flame.",
+		{ Id = "Inferno", Name = "Inferno", Description = "+10% Fire damage.", Tier = 1, MaxRank = 3, Effects = { FireDamage = 0.1 } },
+		{ Id = "Scorch", Name = "Scorch", Description = "Burns deal 1 more damage per tick.", Tier = 1, MaxRank = 2, Effects = { BurnDamage = 1 } }),
+	elementBranch("Water", "Hydromancy", "💧", "Unlocks Water: slowing missiles, and a torrent that knocks back.",
+		{ Id = "Torrent", Name = "Torrent", Description = "+10% Water damage.", Tier = 1, MaxRank = 3, Effects = { WaterDamage = 0.1 } },
+		{ Id = "Undertow", Name = "Undertow", Description = "Water knocks back 25% harder.", Tier = 1, MaxRank = 2, Effects = { WaterKnockback = 0.25 } }),
+	elementBranch("Earth", "Geomancy", "🪨", "Unlocks Earth: heavy rocks, and a thrown boulder that stuns.",
+		{ Id = "Bedrock", Name = "Bedrock", Description = "+10% Earth damage.", Tier = 1, MaxRank = 3, Effects = { EarthDamage = 0.1 } },
+		{ Id = "Tremor", Name = "Tremor", Description = "The boulder stuns 0.2 s longer.", Tier = 1, MaxRank = 2, Effects = { EarthStun = 0.2 } }),
+	elementBranch("Electric", "Electromancy", "⚡", "Unlocks Lightning: chaining bolts, and thunder that slows.",
+		{ Id = "Storm", Name = "Storm", Description = "+10% Lightning damage.", Tier = 1, MaxRank = 3, Effects = { ElectricDamage = 0.1 } },
+		{ Id = "Overload", Name = "Overload", Description = "Thunder strikes 15% wider.", Tier = 1, MaxRank = 2, Effects = { ElectricRadius = 0.15 } }),
+	elementBranch("Faith", "Faith", "✨", "Unlocks Faith: missiles that heal allies, and a healing burst.",
+		{ Id = "Devotion", Name = "Devotion", Description = "Faith heals 10% more.", Tier = 1, MaxRank = 3, Effects = { HealPower = 0.1 } },
+		{ Id = "Sanctuary", Name = "Sanctuary", Description = "The healing burst reaches 15% further.", Tier = 1, MaxRank = 2, Effects = { FaithRadius = 0.15 } }),
+	{
+		Id = "Arcane",
+		Name = "Arcane",
+		Icon = "🌀",
+		Nodes = {
+			{ Id = "Efficiency", Name = "Efficiency", Description = "Spells cost 6% less mana.", Tier = 1, MaxRank = 3, Effects = { StaminaCost = -0.06 }, Requires = "Mage" },
+			{ Id = "Overcharge", Name = "Overcharge", Description = "Heavy spells charge 12% faster.", Tier = 1, MaxRank = 3, Effects = { ChargeSpeed = 0.12 }, Requires = "Efficiency" },
+			{ Id = "Spellweaver", Name = "Spellweaver", Description = "+8% heavy spell damage.", Tier = 1, MaxRank = 3, Effects = { HeavyDamage = 0.08 }, Requires = "Overcharge" },
+		},
+	},
+} :: { Branch }
+
+-- The staff's nodes as one list (for the rules), Mage first.
+local staffNodes: { Node } = { SkillTrees.StaffClassNode }
+for _, branch in SkillTrees.StaffBranches do
+	for _, node in branch.Nodes do
+		table.insert(staffNodes, node)
+	end
+end
+SkillTrees.Weapons.Staff = staffNodes
+
+-- Weapons with no tree of their own use another's (points spent there count for both).
+SkillTrees.SharedTrees = {
+	Emberfang = "Sword",
+} :: { [string]: string }
+
 -- Tabs in the skill screen, in order ("General" first, then each weapon).
-SkillTrees.WeaponOrder = { "Sword", "Greatsword", "Axe", "Mace", "Spear", "Bow" }
+SkillTrees.WeaponOrder = { "Sword", "Greatsword", "Axe", "Mace", "Spear", "Bow", "Staff" }
 
 return SkillTrees

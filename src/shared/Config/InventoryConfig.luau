@@ -7,12 +7,25 @@ export type WeaponInfo = {
 	Name: string, -- the tool's name (its ToolName)
 	Class: string, -- one of Classes' Id
 	Description: string,
+	Rarity: string?, -- one of Rarities' Id; nil = "Common"
 }
+
+export type Rarity = { Id: string, Color: Color3 }
 
 local InventoryConfig = {}
 
 InventoryConfig.OpenKey = Enum.KeyCode.B -- (the armor key, ArmorConfig.PanelKey, opens it too)
 InventoryConfig.HotbarSlots = 5 -- weapons the hotbar holds; the rest are stored
+
+-- Rarity tiers, lowest first. The color tints a weapon's name and outline in the hotbar and
+-- backpack. (Loot will roll these once drops exist; for now each weapon has a fixed one.)
+InventoryConfig.Rarities = {
+	{ Id = "Common", Color = Color3.fromRGB(215, 215, 220) },
+	{ Id = "Uncommon", Color = Color3.fromRGB(100, 220, 110) },
+	{ Id = "Rare", Color = Color3.fromRGB(80, 160, 255) },
+	{ Id = "Epic", Color = Color3.fromRGB(190, 100, 255) },
+	{ Id = "Legendary", Color = Color3.fromRGB(255, 175, 50) },
+} :: { Rarity }
 
 -- Weapon classes, in the order the backpack lists them.
 InventoryConfig.Classes = {
@@ -21,15 +34,18 @@ InventoryConfig.Classes = {
 	{ Id = "Blunt", Icon = "🔨" },
 	{ Id = "Polearms", Icon = "🔱" },
 	{ Id = "Ranged", Icon = "🏹" },
+	{ Id = "Magic", Icon = "🪄" },
 }
 
 InventoryConfig.Weapons = {
 	{ Name = "Sword", Class = "Swords", Description = "Quick 3-hit combo. Hold to spin." },
+	{ Name = "Emberfang", Class = "Swords", Rarity = "Epic", Description = "A slayer's blade: the sword's moves, hitting harder. Shares the Sword skill tree." },
 	{ Name = "Greatsword", Class = "Swords", Description = "Wide sweeps. Hold to charge a slam." },
 	{ Name = "Axe", Class = "Axes", Description = "Hard chops. Hold for a leaping cleave that bleeds." },
 	{ Name = "Mace", Class = "Blunt", Description = "Heavy hits that stun. Hold for a ground pound." },
 	{ Name = "Spear", Class = "Polearms", Description = "Long reach. Hold for a piercing lunge." },
 	{ Name = "Bow", Class = "Ranged", Description = "Hold right-click to draw, release to fire." },
+	{ Name = "Staff", Class = "Magic", Description = "Elemental missiles; hold to charge a blast. R switches element." },
 } :: { WeaponInfo }
 
 -- What a new player's hotbar holds (in order); everything else starts stored.
@@ -42,6 +58,18 @@ function InventoryConfig.weapon(name: string): WeaponInfo?
 		end
 	end
 	return nil
+end
+
+-- A weapon's rarity tier (Common if it has none, or isn't a known weapon).
+function InventoryConfig.rarity(name: string): Rarity
+	local info = InventoryConfig.weapon(name)
+	local id = if info and info.Rarity then info.Rarity else "Common"
+	for _, rarity in InventoryConfig.Rarities do
+		if rarity.Id == id then
+			return rarity
+		end
+	end
+	return InventoryConfig.Rarities[1]
 end
 
 return InventoryConfig

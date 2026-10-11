@@ -2,8 +2,10 @@
 -- Name and health bar over every enemy (models in workspace.Enemies). Display only: reads
 -- the Health/MaxHealth attributes the server sets. The bar keeps a constant size on screen;
 -- when the enemy takes damage the lost chunk shows pale for a moment, then drains away, so
--- each hit's size is easy to read. Hidden beyond MAX_DISTANCE; fades out on death.
+-- each hit's size is easy to read. Hidden beyond MAX_DISTANCE; fades out on death. The name
+-- starts with the enemy's level ("Level" attribute), colored by how it compares to yours.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
@@ -23,7 +25,25 @@ local TRAIL_DELAY = 0.35 -- seconds the lost chunk stays before draining
 local TRAIL_TWEEN = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 local FADE_TWEEN = TweenInfo.new(0.6)
 
+local LEVEL_HARDER = "#FF6450" -- 3+ levels above you
+local LEVEL_EVEN = "#FFD25A" -- within 2 levels
+local LEVEL_EASIER = "#B4B4BE" -- 3+ levels below
+
+local player = Players.LocalPlayer
+
 local EnemyHealthBars = {}
+
+-- "Lv 8  Lesser Demon", the level colored by how it compares to the player's.
+local function nameText(enemy: Model, displayName: string): string
+	local level = enemy:GetAttribute("Level")
+	if typeof(level) ~= "number" then
+		return displayName
+	end
+	local mine = player:GetAttribute("Level")
+	local gap = level - (if typeof(mine) == "number" then mine else 1)
+	local color = if gap >= 3 then LEVEL_HARDER elseif gap <= -3 then LEVEL_EASIER else LEVEL_EVEN
+	return `<font color="{color}">Lv {level}</font>  {displayName}`
+end
 
 local function corner(parent: Instance, radius: number)
 	local uiCorner = Instance.new("UICorner")
@@ -63,7 +83,17 @@ local function attach(enemy: Model)
 	name.TextSize = 17
 	name.TextColor3 = Color3.fromRGB(255, 240, 225)
 	name.TextStrokeTransparency = 0.35
-	name.Text = if humanoid and humanoid.DisplayName ~= "" then humanoid.DisplayName else enemy.Name
+	name.RichText = true
+	local displayName = if humanoid and humanoid.DisplayName ~= "" then humanoid.DisplayName else enemy.Name
+	local function refreshName()
+		name.Text = nameText(enemy, displayName)
+	end
+	refreshName()
+	enemy:GetAttributeChangedSignal("Level"):Connect(refreshName)
+	local levelChanged = player:GetAttributeChangedSignal("Level"):Connect(refreshName)
+	enemy.Destroying:Connect(function()
+		levelChanged:Disconnect()
+	end)
 	name.Parent = group
 
 	local bar = Instance.new("Frame")

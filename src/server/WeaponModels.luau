@@ -98,6 +98,7 @@ function WeaponModels.apply(tool: Tool, fit: Fit?): boolean
 	-- Remove the placeholder (every part but the grip; its trail goes with the blade).
 	local oldTrail = tool:FindFirstChild("SwingTrail", true)
 	local trailLifetime = if oldTrail and oldTrail:IsA("Trail") then oldTrail.Lifetime else 0.15
+	local trailColor = if oldTrail and oldTrail:IsA("Trail") then oldTrail.Color else nil
 	for _, child in tool:GetChildren() do
 		if child:IsA("BasePart") and child ~= grip then
 			child:Destroy()
@@ -139,6 +140,9 @@ function WeaponModels.apply(tool: Tool, fit: Fit?): boolean
 	trail.LightEmission = 0.6
 	trail.Transparency = NumberSequence.new(0.2, 1)
 	trail.Enabled = false
+	if trailColor then
+		trail.Color = trailColor -- e.g. Emberfang's ember
+	end
 	trail.Parent = grip
 	return true
 end
