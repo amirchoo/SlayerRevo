@@ -1,5 +1,7 @@
 --!strict
 -- Greatsword input and visuals. While equipped: heavier walk speed and the idle loops.
+-- Tap left-click (release within HoldTime) for the 3-hit combo of wide sweeps; the swing
+-- fires on release, since that's when a tap can be told apart from a hold.
 -- Hold left-click to charge: feet planted, turn with the camera, the charge animation
 -- winds up, and the blade glows brighter (with a rising clang) at each charge level.
 -- Release to slam: the slam plays, the trail sweeps, and the camera shakes on impact,
@@ -13,9 +15,10 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
-local CombatConfig = require(ReplicatedStorage.Shared.CombatConfig)
+local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
+local Stamina = require(ReplicatedStorage.Shared.Stamina)
 
 local GREATSWORD = CombatConfig.Greatsword
 local LEVELS = GREATSWORD.ChargeLevels
@@ -31,6 +34,8 @@ local LEVEL_LOOKS = {
 local SHAKE_TIME = 0.25
 local SHAKE_PER_LEVEL = 0.25 -- studs of shake added per charge level
 local TRAIL_AFTER_HIT = 0.2
+local SWING_TRAIL_BEFORE_HIT = 0.1
+local FINISHER_SHAKE = 0.2
 -- Fallback guard when no guard animation is set: blade turned flat in front.
 local GUARD_GRIP = CFrame.Angles(math.rad(-15), 0, math.rad(-75))
 local GUARD_TWEEN = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -39,6 +44,7 @@ local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local chargeRemote = remotes:WaitForChild("GreatswordCharge") :: RemoteEvent
 local releaseRemote = remotes:WaitForChild("GreatswordRelease") :: RemoteEvent
+local swingRemote = remotes:WaitForChild("GreatswordSwing") :: RemoteEvent
 local blockRemote = remotes:WaitForChild("SwordBlock") :: RemoteEvent
 
 local GreatswordClient = {}
@@ -48,7 +54,8 @@ local function makeAnimation(id: string): Animation?
 		return nil
 	end
 	local animation = Instance.new("Animation")
-	animation.AnimationId = id
+	-- A bare number (e.g. pasted straight from the Creator Dashboard) still works.
+	animation.AnimationId = if string.match(id, "^%d+$") then `rbxassetid://{id}` else id
 	return animation
 end
 
@@ -56,8 +63,18 @@ local IDLE_ANIMATION = makeAnimation(GREATSWORD.IdleAnimation)
 local CHARGE_ANIMATION = makeAnimation(GREATSWORD.ChargeAnimation)
 local SLAM_ANIMATION = makeAnimation(GREATSWORD.SlamAnimation)
 local GUARD_ANIMATION = makeAnimation(GREATSWORD.GuardAnimation)
+local SWING_ANIMATIONS: { Animation? } = {}
+for index, move in GREATSWORD.Combo do
+	SWING_ANIMATIONS[index] = makeAnimation(move.Animation)
+end
 
-type Tracks = { idle: AnimationTrack?, charge: AnimationTrack?, slam: AnimationTrack?, guard: AnimationTrack? }
+type Tracks = {
+	idle: AnimationTrack?,
+	charge: AnimationTrack?,
+	slam: AnimationTrack?,
+	guard: AnimationTrack?,
+	swings: { [number]: AnimationTrack },
+}
 local tracksByHumanoid: { [Humanoid]: Tracks } = setmetatable({}, { __mode = "k" }) :: any
 
 local function load(animator: Animator, animation: Animation?, priority: Enum.AnimationPriority, looped: boolean): AnimationTrack?
@@ -76,13 +93,19 @@ local function getTracks(humanoid: Humanoid): Tracks
 		return cached
 	end
 	local animator = humanoid:FindFirstChildOfClass("Animator")
-	local tracks: Tracks = {}
+	local tracks: Tracks = { swings = {} }
 	if animator then
 		-- Priorities set here so it doesn't matter how each animation was published.
 		tracks.idle = load(animator, IDLE_ANIMATION, Enum.AnimationPriority.Idle, true)
 		tracks.charge = load(animator, CHARGE_ANIMATION, Enum.AnimationPriority.Action, false)
 		tracks.slam = load(animator, SLAM_ANIMATION, Enum.AnimationPriority.Action, false)
 		tracks.guard = load(animator, GUARD_ANIMATION, Enum.AnimationPriority.Action, true)
+		for index, animation in SWING_ANIMATIONS do
+			local track = load(animator, animation, Enum.AnimationPriority.Action, false)
+			if track then
+				tracks.swings[index] = track
+			end
+		end
 	end
 	tracksByHumanoid[humanoid] = tracks
 	return tracks
@@ -101,6 +124,10 @@ local stopCharge: ((released: boolean) -> ())? = nil
 local stopGuard: (() -> ())? = nil
 local lastSlam = 0
 local busyUntil = 0 -- feet stay planted until the slam recovers
+local comboStep = 0 -- last combo swing played (0 = none)
+local lastSwing = 0
+local swingUntil = 0 -- slowed down until the current swing's cooldown ends
+local pressedAt: number? = nil -- when left-click went down, while it's held and not yet charging
 
 local function blade(tool: Tool): BasePart?
 	local part = tool:FindFirstChild("Blade", true)
@@ -131,16 +158,74 @@ local function walkSpeedFor(state: Equipped): number
 		return BLOCK.WalkSpeed
 	elseif stopCharge or os.clock() < busyUntil then
 		return 0
+	elseif os.clock() < swingUntil then
+		return GREATSWORD.SwingWalkSpeed
 	end
 	return GREATSWORD.WalkSpeed
 end
 
+local function swing(state: Equipped)
+	local now = os.clock()
+	if now < swingUntil or now < busyUntil then
+		return -- still mid-swing or recovering from a slam
+	end
+	if not Stamina.canAfford(player, GREATSWORD.SwingStamina) then
+		return
+	end
+	-- Same rule as the server: the next step if clicked soon enough after the last swing,
+	-- otherwise back to the first.
+	local combo = GREATSWORD.Combo
+	local step = 1
+	if comboStep > 0 and comboStep < #combo and now - lastSwing <= combo[comboStep].Cooldown + GREATSWORD.ComboWindow then
+		step = comboStep + 1
+	end
+	local move = combo[step]
+	comboStep = step
+	lastSwing = now
+	swingUntil = now + move.Cooldown
+	swingRemote:FireServer()
+
+	local track = state.tracks.swings[step]
+	if track then
+		track:Play(0.05)
+	end
+	state.humanoid.WalkSpeed = walkSpeedFor(state)
+
+	local trail = state.tool:FindFirstChild("SwingTrail", true)
+	task.delay(math.max(move.HitDelay - SWING_TRAIL_BEFORE_HIT, 0), function()
+		if equipped == state and trail and trail:IsA("Trail") then
+			trail.Enabled = true
+		end
+		Sounds.play("GreatswordSwing", state.root, if step == #combo then 0.9 else 1.15)
+	end)
+	task.delay(move.HitDelay, function()
+		if equipped == state and step == #combo then
+			shakeCamera(state.humanoid, FINISHER_SHAKE)
+		end
+	end)
+	task.delay(move.HitDelay + TRAIL_AFTER_HIT, function()
+		-- Leave the trail alone if a slam has taken over.
+		if trail and trail:IsA("Trail") and not stopCharge and os.clock() >= busyUntil then
+			trail.Enabled = false
+		end
+	end)
+	task.delay(move.Cooldown, function()
+		if equipped == state then
+			state.humanoid.WalkSpeed = walkSpeedFor(state)
+		end
+	end)
+end
+
 local function startCharge(state: Equipped)
 	chargeRemote:FireServer()
+	comboStep = 0 -- a slam ends the combo
 	local startTime = os.clock()
 	local bladePart = blade(state.tool)
 	local originalColor = bladePart and bladePart.Color
 	local originalMaterial = bladePart and bladePart.Material
+	local modelChild = state.tool:FindFirstChild("Model")
+	local realModel: Model? = if modelChild and modelChild:IsA("Model") then modelChild else nil
+	local glow: Highlight? = nil
 	local shownLevel = 1
 
 	state.humanoid.AutoRotate = false
@@ -177,6 +262,16 @@ local function startCharge(state: Equipped)
 			if bladePart and levelLook.color then
 				bladePart.Color = levelLook.color
 				bladePart.Material = if levelLook.neon then Enum.Material.Neon else Enum.Material.Metal
+			elseif realModel and levelLook.color then
+				-- A real model (see WeaponModels) has textures, not a blade to recolor: glow instead.
+				glow = glow or Instance.new("Highlight")
+				glow.Adornee = realModel
+				glow.FillColor = levelLook.color
+				glow.OutlineColor = levelLook.color
+				glow.FillTransparency = 0.55
+				glow.OutlineTransparency = 0.3
+				glow.DepthMode = Enum.HighlightDepthMode.Occluded
+				glow.Parent = realModel
 			end
 			Sounds.play("ChargeLevel", workspace.CurrentCamera, 0.9 + 0.25 * level)
 		end
@@ -195,6 +290,10 @@ local function startCharge(state: Equipped)
 			if bladePart and originalColor and originalMaterial then
 				bladePart.Color = originalColor
 				bladePart.Material = originalMaterial
+			end
+			if glow then
+				glow:Destroy()
+				glow = nil
 			end
 		end
 
@@ -279,12 +378,28 @@ local function onInputBegan(input: InputObject, gameProcessed: boolean)
 		return
 	end
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		-- Local checks only avoid pointless requests; the server enforces the real ones.
-		if not stopCharge and not stopGuard and os.clock() - lastSlam >= GREATSWORD.Recovery then
-			startCharge(state)
+		if stopCharge or stopGuard then
+			return
 		end
+		-- Tap or hold? Released before HoldTime is a combo swing (see onInputEnded);
+		-- still held after it starts a charge, once any swing or slam has finished.
+		local pressed = os.clock()
+		pressedAt = pressed
+		task.delay(GREATSWORD.HoldTime, function()
+			-- Local checks only avoid pointless requests; the server enforces the real ones.
+			while pressedAt == pressed and equipped == state and (os.clock() < swingUntil or os.clock() - lastSlam < GREATSWORD.Recovery) do
+				task.wait()
+			end
+			if pressedAt == pressed and equipped == state and not stopCharge and not stopGuard then
+				pressedAt = nil
+				if Stamina.canAfford(player, GREATSWORD.SlamStamina) then
+					startCharge(state)
+				end
+			end
+		end)
 	elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-		if not stopCharge and not stopGuard and os.clock() >= busyUntil then
+		if not stopCharge and not stopGuard and os.clock() >= busyUntil and os.clock() >= swingUntil then
+			pressedAt = nil
 			startGuard(state)
 		end
 	end
@@ -293,6 +408,13 @@ end
 local function onInputEnded(input: InputObject)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 and stopCharge then
 		stopCharge(true)
+	elseif input.UserInputType == Enum.UserInputType.MouseButton1 and pressedAt then
+		local held = os.clock() - pressedAt
+		pressedAt = nil
+		local state = equipped
+		if state and not stopGuard and held < GREATSWORD.HoldTime then
+			swing(state)
+		end
 	elseif input.UserInputType == Enum.UserInputType.MouseButton2 and stopGuard then
 		stopGuard()
 	end
@@ -332,11 +454,19 @@ local function onUnequipped(tool: Tool)
 		stopGuard()
 	end
 	equipped = nil
+	pressedAt = nil
 	HandGrip.detach(tool, "LocalGreatswordGrip")
 	for _, track in { state.tracks.idle, state.tracks.charge, state.tracks.slam, state.tracks.guard } do
 		if track then
 			track:Stop(0.2)
 		end
+	end
+	for _, track in state.tracks.swings do
+		track:Stop(0.2)
+	end
+	local trail = tool:FindFirstChild("SwingTrail", true)
+	if trail and trail:IsA("Trail") then
+		trail.Enabled = false
 	end
 	state.humanoid.WalkSpeed = state.baseWalkSpeed
 end
@@ -367,6 +497,11 @@ function GreatswordClient.start()
 				table.insert(preload, animation)
 			end
 		end
+		for _, animation in SWING_ANIMATIONS do
+			if animation then
+				table.insert(preload, animation)
+			end
+		end
 		if #preload > 0 then
 			ContentProvider:PreloadAsync(preload)
 		end
@@ -381,6 +516,9 @@ function GreatswordClient.start()
 		stopCharge = nil
 		stopGuard = nil
 		busyUntil = 0
+		swingUntil = 0
+		comboStep = 0
+		pressedAt = nil
 		character.ChildAdded:Connect(hookTool)
 		for _, child in character:GetChildren() do
 			hookTool(child)

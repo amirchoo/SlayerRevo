@@ -15,4 +15,11 @@
 - Client handles input, animations, and VFX only; never trust values sent from the client
 - Use ModuleScripts for systems; keep entry scripts small
 - Use --!strict type checking
+- After editing scripts, run `sh tools/check_syntax.sh` (StyLua parses every script; `rojo build` doesn't),
+  so a syntax error can't stop every script from loading in Studio
 - Name RemoteEvents clearly and put them in ReplicatedStorage/Remotes
+
+## Design
+- Read `docs/design.md` before building any system: it's the source of truth for game direction.
+  Its §12 lists where already-built systems differ from it (the built version wins).
+- Work one system/phase at a time; don't decide its [TBD] items without asking.

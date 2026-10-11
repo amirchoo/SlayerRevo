@@ -4,10 +4,13 @@
 -- to clients so UI can read them. Only the server should ever change them.
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PLAYER_MAX_HEALTH = 150
-local PLAYER_REGEN_PER_SECOND = 10
-local REGEN_DELAY = 15 -- seconds without taking damage before regen starts
+local PlayerConfig = require(ReplicatedStorage.Shared.Config.PlayerConfig)
+
+local PLAYER_MAX_HEALTH = PlayerConfig.MaxHealth
+local PLAYER_REGEN_PER_SECOND = PlayerConfig.RegenPerSecond
+local REGEN_DELAY = PlayerConfig.RegenDelay -- seconds without taking damage before regen starts
 local REGEN_TICK = 0.25
 
 local HealthService = {}

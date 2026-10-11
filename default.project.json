@@ -32,7 +32,28 @@
         "GreatswordRelease": {
           "$className": "RemoteEvent"
         },
+        "GreatswordSwing": {
+          "$className": "RemoteEvent"
+        },
         "HitEffect": {
+          "$className": "RemoteEvent"
+        },
+        "HeavyAttack": {
+          "$className": "RemoteEvent"
+        },
+        "GroundShockwave": {
+          "$className": "RemoteEvent"
+        },
+        "ArmorEquip": {
+          "$className": "RemoteEvent"
+        },
+        "InventoryMove": {
+          "$className": "RemoteEvent"
+        },
+        "DashStart": {
+          "$className": "RemoteEvent"
+        },
+        "Dodged": {
           "$className": "RemoteEvent"
         }
       }
@@ -81,15 +102,92 @@
     },
     "Lighting": {
       "$properties": {
+        "Technology": "Future",
+        "ClockTime": 15.6,
+        "GeographicLatitude": 35,
+        "Brightness": 2.6,
+        "ExposureCompensation": 0.1,
         "Ambient": [
-          0,
-          0,
-          0
+          0.275,
+          0.251,
+          0.298
         ],
-        "Brightness": 2,
+        "OutdoorAmbient": [
+          0.541,
+          0.502,
+          0.463
+        ],
+        "ColorShift_Top": [
+          1.0,
+          0.91,
+          0.784
+        ],
+        "ColorShift_Bottom": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "EnvironmentDiffuseScale": 1,
+        "EnvironmentSpecularScale": 1,
         "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
+        "ShadowSoftness": 0.2,
+        "Outlines": false
+      },
+      "Atmosphere": {
+        "$className": "Atmosphere",
+        "$properties": {
+          "Density": 0.3,
+          "Offset": 0.25,
+          "Haze": 1.6,
+          "Glare": 0.35,
+          "Color": [
+            0.78,
+            0.69,
+            0.557
+          ],
+          "Decay": [
+            0.408,
+            0.361,
+            0.439
+          ]
+        }
+      },
+      "ColorCorrection": {
+        "$className": "ColorCorrectionEffect",
+        "$properties": {
+          "Brightness": 0.02,
+          "Contrast": 0.12,
+          "Saturation": 0.1,
+          "TintColor": [
+            1.0,
+            0.969,
+            0.925
+          ]
+        }
+      },
+      "Bloom": {
+        "$className": "BloomEffect",
+        "$properties": {
+          "Intensity": 0.6,
+          "Size": 24,
+          "Threshold": 1.6
+        }
+      },
+      "SunRays": {
+        "$className": "SunRaysEffect",
+        "$properties": {
+          "Intensity": 0.06,
+          "Spread": 0.7
+        }
+      },
+      "DepthOfField": {
+        "$className": "DepthOfFieldEffect",
+        "$properties": {
+          "FarIntensity": 0.12,
+          "FocusDistance": 60,
+          "InFocusRadius": 90,
+          "NearIntensity": 0
+        }
       }
     },
     "SoundService": {
@@ -103,6 +201,15 @@
       },
       "AnimationDrafts": {
         "$path": "assets/animations"
+      },
+      "ArmorModels": {
+        "$path": "assets/armor"
+      },
+      "WeaponModels": {
+        "$path": "assets/weapons"
+      },
+      "EnemyModels": {
+        "$path": "assets/enemies"
       }
     }
   }

@@ -11,12 +11,17 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local CombatConfig = require(ReplicatedStorage.Shared.CombatConfig)
+local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local SafeZone = require(ReplicatedStorage.Shared.SafeZone)
 local TrainingArea = require(ReplicatedStorage.Shared.TrainingArea)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 local HealthService = require(script.Parent.HealthService)
+local RemoteGuard = require(script.Parent.RemoteGuard)
 local HitEffects = require(script.Parent.HitEffects)
+local EnemyEffects = require(script.Parent.EnemyEffects)
+local InventoryService = require(script.Parent.InventoryService)
+local WeaponModels = require(script.Parent.WeaponModels)
+local StaminaService = require(script.Parent.StaminaService)
 
 local BOW = CombatConfig.Bow
 
@@ -135,7 +140,10 @@ local function onArrowHit(player: Player, arrow: Part, result: RaycastResult, di
 	if model then
 		local dealt = HealthService.damage(model, damage, player)
 		if dealt > 0 then
-			damageRemote:FireClient(player, result.Position, dealt)
+			damageRemote:FireClient(player, result.Position, dealt, nil, model)
+			if HealthService.isAlive(model) then
+				EnemyEffects.flinch(model)
+			end
 			HitEffects.broadcast(model, result.Position, direction, BOW.ToolName, dealt)
 		end
 		-- Weld it on so it moves with the target.
@@ -231,6 +239,9 @@ local function onShoot(player: Player, aimPoint: unknown)
 		return
 	end
 	local direction = toAim.Unit
+	if not StaminaService.spend(player, BOW.ShotStamina) then
+		return -- too tired
+	end
 
 	-- Power comes from the server's own timing of the draw, so clients can't fake a full draw.
 	local power = math.clamp((now - started) / BOW.MaxDrawTime, 0, 1)
@@ -253,7 +264,7 @@ local function giveBow(player: Player, template: Tool)
 	bow.Unequipped:Connect(function()
 		HandGrip.detach(bow, "BowGrip")
 	end)
-	bow.Parent = player:WaitForChild("Backpack")
+	InventoryService.give(player, bow) -- the hotbar, or stored in the backpack
 end
 
 local function refill(player: Player)
@@ -263,6 +274,17 @@ end
 function BowService.start()
 	arrowsFolder.Parent = workspace
 	local bowTemplate = createBow()
+	-- A real model, if one's been added (assets/weapons). Its string is drawn by the game, so
+	-- move the string's ends to the model's limb tips and put the resting string back.
+	if WeaponModels.apply(bowTemplate, BOW.ModelFit) then
+		local handle = bowTemplate:FindFirstChild(HandGrip.GRIP_NAME) :: BasePart
+		local tips = BOW.StringTips * BOW.ModelFit.Length
+		local upper = handle:FindFirstChild("UpperTip") :: Attachment
+		local lower = handle:FindFirstChild("LowerTip") :: Attachment
+		upper.Position = Vector3.new(0, tips.Y, tips.Z)
+		lower.Position = Vector3.new(0, tips.Y, -tips.Z)
+		addBowPart(handle, "String", Vector3.new(0.05, 0.05, tips.Z * 2), CFrame.new(0, tips.Y, 0), Color3.fromRGB(235, 230, 215), Enum.Material.SmoothPlastic)
+	end
 
 	local function onPlayerAdded(player: Player)
 		player:SetAttribute("MaxArrows", BOW.MaxArrows)
@@ -287,8 +309,8 @@ function BowService.start()
 		drawStarted[player] = nil
 	end)
 
-	drawRemote.OnServerEvent:Connect(onDraw)
-	shootRemote.OnServerEvent:Connect(onShoot)
+	RemoteGuard.connect(drawRemote, onDraw)
+	RemoteGuard.connect(shootRemote, onShoot)
 
 	-- Restock anyone standing somewhere safe.
 	task.spawn(function()

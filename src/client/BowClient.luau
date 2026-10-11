@@ -13,7 +13,8 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
-local CombatConfig = require(ReplicatedStorage.Shared.CombatConfig)
+local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
+local Stamina = require(ReplicatedStorage.Shared.Stamina)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 
 local BOW = CombatConfig.Bow
@@ -33,7 +34,8 @@ local lastShot = 0
 
 local function makeAnimation(id: string): Animation
 	local animation = Instance.new("Animation")
-	animation.AnimationId = id
+	-- A bare number (e.g. pasted straight from the Creator Dashboard) still works.
+	animation.AnimationId = if string.match(id, "^%d+$") then `rbxassetid://{id}` else id
 	return animation
 end
 
@@ -296,6 +298,9 @@ local function onInputBegan(input: InputObject, gameProcessed: boolean)
 	local arrows = player:GetAttribute("Arrows")
 	-- Local checks only avoid pointless requests; the server enforces the real ones.
 	if not tool or typeof(arrows) ~= "number" or arrows <= 0 or os.clock() - lastShot < BOW.Cooldown then
+		return
+	end
+	if not Stamina.canAfford(player, BOW.ShotStamina) then
 		return
 	end
 	startDraw(tool)

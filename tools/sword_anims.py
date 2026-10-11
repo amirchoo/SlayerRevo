@@ -1,11 +1,11 @@
-"""Generates R15 KeyframeSequence .rbxmx files for the sword: the 3-hit combo and the
-looping guard (block) stance, all full body.
+"""Generates R15 KeyframeSequence .rbxmx files for the sword: the 3-hit combo, the
+looping guard (block) stance, and the looping heavy spin, all full body.
 
     python3 tools/sword_anims.py assets/animations
 
 Edit SWINGS below, re-run, then in Studio copy them onto the rig's AnimSaves, load them
 in the Clip Editor, and publish. Keep each swing's "hit" time in sync with HitDelay in
-src/shared/CombatConfig.luau.
+src/shared/Config/CombatConfig.luau.
 
 Joint frames (R15): X right, Y up, Z back (forward is -Z). A Pose's CFrame is the joint's
 Transform: the child part's rotation (and, for the hips/LowerTorso, offset) relative to
@@ -76,17 +76,21 @@ def aim_arm(direction, lean):
 STAND = (0, 0, 0)  # leg: (hip, knee, ankle) degrees
 
 
-def pose(arm=None, wrist=-60, chest=0, hips=0, lean=0, drop=0.0, larm=0, lelbow=20, lleg=STAND, rleg=STAND, blade_lean=None):
+def pose(arm=None, wrist=-60, chest=0, hips=0, lean=0, drop=0.0, larm=0, lelbow=20, lleg=STAND, rleg=STAND, blade_lean=None,
+         head_forward=True):
     """One full-body pose.
     arm: right-arm direction in chest space (None = hanging). wrist: wrist flex.
     chest / hips: twist in degrees (+ = turn left). lean: chest lean (+ = back).
     drop: how far the hips sink, in studs (negative = rise, e.g. a hop).
     larm / lelbow: left arm swing and elbow bend. lleg / rleg: (hip, knee, ankle).
     blade_lean: fixed direction for the blade's lean instead of following a swing plane
-    (with wrist=0 the blade points straight along it)."""
+    (with wrist=0 the blade points straight along it).
+    head_forward: counter-turn the head so it keeps facing forward through twists
+    (False for spins, where the head should turn with the body)."""
     return {
         "arm": arm, "wrist": wrist, "chest": chest, "hips": hips, "lean": lean, "drop": drop,
         "larm": larm, "lelbow": lelbow, "lleg": lleg, "rleg": rleg, "blade_lean": blade_lean,
+        "head_forward": head_forward,
     }
 
 
@@ -103,6 +107,19 @@ DEEP_LUNGE = {"drop": 0.95, "lleg": (70, -95, 25), "rleg": (-15, -110, 70)}  # b
 # Guard: sword held level across the chest, blade pointing left, left hand bracing it,
 # chest angled sideways. Upper body only, so the legs keep walking while blocking.
 # Breathes a little so a long block isn't frozen.
+# Spin (heavy attack): low wide stance, sword arm held out to the right with the blade
+# extending it and leaning into the spin. The hips turn a full circle per loop in 120°
+# steps (each step blends the short way, so the spin keeps going the same direction).
+SPIN_TIME = 0.5  # one full turn; matches Sword.Heavy.TickInterval (one hit per spin)
+SPIN_BODY = {"arm": (1, -0.05, -0.25), "wrist": -55, "blade_lean": (0, 0, -1), "chest": 10, "lean": -10,
+             "larm": 25, "lelbow": 60, "drop": 0.4, "lleg": (20, -40, 20), "rleg": (20, -40, 20),
+             "head_forward": False}
+
+# Mace ground pound: the swing plane runs from overhead (tipped back) down to the ground in front.
+MACE_PLANE = ((0.1, 0.95, 0.35), (0.05, 0, -1))
+MACE_RAISED_ARM = {"arm": (0.12, 0.95, 0.4), "wrist": -80, "larm": 70, "lelbow": 45}  # head tipped back over the head
+KNEEL = {"drop": 1.0, "lleg": (75, -100, 25), "rleg": (5, -120, 85)}  # right knee near the ground
+
 GUARD_ARM = {"arm": (0.25, -0.1, -1), "wrist": 0, "blade_lean": (-1, 0.15, 0), "chest": -25, "larm": 65, "lelbow": 70}
 
 # (time, pose). Each swing's "plane" is two arm directions it sweeps between; the blade
@@ -153,6 +170,156 @@ SWINGS = {
             (0.70, NEUTRAL),
         ],
     },
+    "SwordSpin": {  # heavy attack: loops while the player holds left-click
+        "hit": None,
+        "loop": True,
+        "plane": None,
+        "keys": [
+            (0.0, pose(hips=0, **SPIN_BODY)),
+            (SPIN_TIME / 3, pose(hips=120, **SPIN_BODY)),
+            (SPIN_TIME * 2 / 3, pose(hips=240, **SPIN_BODY)),
+            (SPIN_TIME, pose(hips=360, **SPIN_BODY)),
+        ],
+    },
+    # Mace heavy (ground pound). The wind-up raises the mace high overhead and is held on its
+    # last frame while charging; upper body only, so the legs can still shuffle.
+    "MaceWindUp": {
+        "hit": None,
+        "upper_body_only": True,
+        "plane": MACE_PLANE,
+        "keys": [
+            (0.00, pose(arm=(0.2, -0.5, -0.85), wrist=-40)),
+            (0.15, pose(arm=(0.2, 0.3, -0.95), wrist=-50, lean=5, chest=-8, larm=40, lelbow=40)),
+            (0.30, pose(**MACE_RAISED_ARM, lean=15, chest=-15)),
+            (1.00, pose(**MACE_RAISED_ARM, lean=22, chest=-20)),  # tension builds
+        ],
+    },
+    # Release: a small hop, then the mace crashes into the ground in front, dropping to one
+    # knee. Keep "hit" in sync with Mace.Heavy.HitDelay in src/shared/Config/CombatConfig.luau.
+    "MaceSlam": {
+        "hit": 0.18,
+        "plane": MACE_PLANE,
+        "keys": [
+            (0.00, pose(**MACE_RAISED_ARM, lean=22, chest=-20, **READY)),
+            (0.07, pose(arm=(0.1, 0.9, -0.3), wrist=-30, lean=10, larm=60, lelbow=40, drop=-0.4,
+                        lleg=(40, -60, 20), rleg=(30, -50, 20))),
+            (0.13, pose(arm=(0.05, 0.2, -1), wrist=-40, lean=-10, larm=20, drop=0.2,
+                        lleg=(45, -60, 15), rleg=(10, -50, 40))),
+            (0.18, pose(arm=(0.05, 0, -1), wrist=-70, lean=-35, larm=-20, **KNEEL)),  # head in the ground
+            (0.50, pose(arm=(0.05, 0, -1), wrist=-70, lean=-32, larm=-20, **KNEEL)),
+            (0.80, NEUTRAL),
+        ],
+    },
+    # Lesser Demon attack (no weapon: a claw swipe). Rears back with both arms up for a clear
+    # wind-up, then lunges in and rakes down across the body. "hit" matches
+    # LESSER_DEMON.AttackWindup in src/server/EnemyService.luau.
+    "DemonClaw": {
+        "hit": 0.4,
+        "plane": ((0.35, 0.85, 0.4), (-0.35, -0.45, -0.8)),
+        "keys": [
+            (0.00, pose(arm=(0.15, -0.9, -0.3), wrist=0, larm=10, **READY)),
+            (0.12, pose(arm=(0.35, 0.1, -0.95), wrist=-10, chest=-10, lean=5, larm=90, lelbow=30, **READY)),
+            (0.28, pose(arm=(0.35, 0.85, 0.4), wrist=-20, chest=-25, hips=-10, lean=15, larm=165, lelbow=35, **COIL_BACK)),
+            (0.36, pose(arm=(0.3, 0.6, -0.6), wrist=-30, chest=-5, lean=0, larm=130, lelbow=30, drop=0.3,
+                        lleg=(35, -50, 15), rleg=(10, -35, 25))),
+            (0.39, pose(arm=(0.0, 0.05, -1), wrist=-35, chest=10, hips=5, lean=-10, larm=95, lelbow=35, drop=0.4,
+                        lleg=(40, -52, 12), rleg=(-8, -28, 36))),
+            (0.42, pose(arm=(-0.35, -0.45, -0.8), wrist=-40, chest=25, hips=10, lean=-20, larm=60, lelbow=40, **LUNGE_LEFT)),
+            (0.65, pose(arm=(-0.4, -0.55, -0.7), wrist=-35, chest=22, hips=8, lean=-17, larm=50, lelbow=40, **LUNGE_LEFT)),
+            (1.00, NEUTRAL),
+        ],
+    },
+    # --- One-handed axe. Hit times match the Axe section of src/shared/Config/CombatConfig.luau.
+    # The axe's edge faces where the hand leads (the game turns the model so it does), so each
+    # chop leans along its swing like the sword's do.
+    "AxeIdle": {  # held low in front, head forward; upper body only so the legs walk
+        "hit": None,
+        "loop": True,
+        "upper_body_only": True,
+        "plane": None,
+        "keys": [
+            (0.0, pose(arm=(0.25, -0.85, -0.45), wrist=-70, blade_lean=(0, 0, -1), larm=8)),
+            (0.8, pose(arm=(0.25, -0.83, -0.48), wrist=-68, blade_lean=(0, 0, -1), larm=10, lean=-3)),
+            (1.6, pose(arm=(0.25, -0.85, -0.45), wrist=-70, blade_lean=(0, 0, -1), larm=8)),
+        ],
+    },
+    "AxeChop1": {  # diagonal chop from over the right shoulder down to the left hip
+        "hit": 0.2,
+        "plane": ((0.55, 0.8, 0.3), (0.1, 0.1, -1)),
+        "keys": [
+            (0.00, pose(arm=(0.3, -0.6, -0.75), wrist=-40, **READY)),
+            (0.07, pose(arm=(0.55, 0.15, -0.8), wrist=-45, chest=-18, hips=-8, lean=4, larm=20, **COIL_BACK)),
+            (0.13, pose(arm=(0.55, 0.8, 0.3), wrist=-50, chest=-35, hips=-15, lean=8, larm=40, **COIL_BACK)),
+            (0.20, pose(arm=(0.1, 0.1, -1), wrist=-60, chest=0, hips=10, lean=-12, larm=0, **LUNGE_LEFT)),
+            (0.26, pose(arm=(-0.45, -0.55, -0.75), wrist=-60, chest=28, hips=20, lean=-18, larm=-35, **LUNGE_LEFT)),
+            (0.50, NEUTRAL),
+        ],
+    },
+    "AxeChop2": {  # backhand hack, left to right, stepping with the right foot
+        "hit": 0.17,
+        "plane": ((-0.8, 0.05, -0.6), (0, 0.05, -1)),
+        "keys": [
+            (0.00, pose(arm=(0.2, -0.5, -0.85), wrist=-40, **READY)),
+            (0.10, pose(arm=(-0.8, 0.05, -0.6), wrist=-55, chest=38, hips=15, larm=-35, **COIL_BACK)),
+            (0.17, pose(arm=(0, 0.05, -1), wrist=-60, chest=0, hips=-10, lean=-10, larm=0, **LUNGE_RIGHT)),
+            (0.23, pose(arm=(0.85, 0.05, -0.5), wrist=-60, chest=-32, hips=-22, lean=-10, larm=35, **LUNGE_RIGHT)),
+            (0.48, NEUTRAL),
+        ],
+    },
+    "AxeChop3": {  # finisher: crouch, hop, and bring the axe straight down overhead
+        "hit": 0.31,
+        "plane": ((0.1, 0.95, 0.3), (0.05, -0.45, -0.9)),
+        "keys": [
+            (0.00, pose(arm=(0.2, -0.5, -0.85), wrist=-40, drop=0.45, lleg=(35, -70, 35), rleg=(35, -70, 35))),
+            (0.12, pose(arm=(0.3, 0.3, -0.9), wrist=-45, lean=8, larm=60, lelbow=40, drop=0.2, lleg=(20, -40, 20), rleg=(20, -40, 20))),
+            (0.20, pose(arm=(0.1, 0.95, 0.3), wrist=-60, lean=20, larm=70, lelbow=40, **TUCKED)),
+            (0.27, pose(arm=(0.05, 0.5, -0.85), wrist=-60, lean=0, larm=40, drop=-0.3, lleg=(40, -60, 20), rleg=(20, -40, 20))),
+            (0.31, pose(arm=(0.05, -0.45, -0.9), wrist=-65, lean=-30, larm=-25, **DEEP_LUNGE)),
+            (0.48, pose(arm=(0.05, -0.45, -0.9), wrist=-65, lean=-30, larm=-25, **DEEP_LUNGE)),
+            (0.75, NEUTRAL),
+        ],
+    },
+    # Heavy (leaping cleave). The wind-up raises the axe high behind the head with the free
+    # hand up for balance, held on its last frame while charging; upper body only.
+    "AxeWindUp": {
+        "hit": None,
+        "upper_body_only": True,
+        "plane": MACE_PLANE,
+        "keys": [
+            (0.00, pose(arm=(0.2, -0.5, -0.85), wrist=-40)),
+            (0.15, pose(arm=(0.25, 0.3, -0.95), wrist=-50, lean=5, chest=-10, larm=60, lelbow=40)),
+            (0.30, pose(arm=(0.15, 0.95, 0.35), wrist=-80, lean=18, chest=-20, larm=150, lelbow=50)),
+            (1.00, pose(arm=(0.12, 0.95, 0.4), wrist=-80, lean=24, chest=-24, larm=155, lelbow=45)),  # tension builds
+        ],
+    },
+    # Release: spring forward (the game lunges the player) and chop down into the ground,
+    # landing on one knee. "hit" matches Axe.Heavy.HitDelay.
+    "AxeCleave": {
+        "hit": 0.15,
+        "plane": MACE_PLANE,
+        "keys": [
+            (0.00, pose(arm=(0.12, 0.95, 0.4), wrist=-80, lean=24, chest=-24, larm=155, lelbow=45, **COIL_BACK)),
+            (0.07, pose(arm=(0.1, 0.9, -0.3), wrist=-40, lean=8, larm=120, lelbow=40, drop=-0.5,
+                        lleg=(45, -70, 25), rleg=(30, -55, 25))),
+            (0.15, pose(arm=(0.05, 0, -1), wrist=-70, lean=-35, larm=-10, **KNEEL)),
+            (0.45, pose(arm=(0.05, 0, -1), wrist=-70, lean=-32, larm=-10, **KNEEL)),
+            (0.75, NEUTRAL),
+        ],
+    },
+    # Enemies reacting to a hit: a quick jolt back (torso and head snap back, arms fly up a
+    # little, knees give), then recovering. Played by EnemyEffects.flinch.
+    "EnemyFlinch": {
+        "hit": None,
+        "plane": None,
+        "keys": [
+            (0.00, pose(arm=(0.1, -1, 0.05), wrist=0, blade_lean=(0, 0, -1), lelbow=0, head_forward=False)),
+            (0.06, pose(arm=(0.35, -0.75, 0.45), wrist=0, blade_lean=(0, 0, -1), lean=20, chest=-8, larm=-25, lelbow=45,
+                        drop=0.2, lleg=(-8, -18, 26), rleg=(12, -30, 18), head_forward=False)),
+            (0.14, pose(arm=(0.3, -0.8, 0.35), wrist=0, blade_lean=(0, 0, -1), lean=15, chest=-6, larm=-20, lelbow=40,
+                        drop=0.15, lleg=(-6, -14, 20), rleg=(10, -24, 14), head_forward=False)),
+            (0.35, pose(arm=(0.1, -1, 0.05), wrist=0, blade_lean=(0, 0, -1), lelbow=0, head_forward=False)),
+        ],
+    },
 }
 
 
@@ -189,8 +356,8 @@ def joint_rotations(p):
     return {
         "LowerTorso": ry(p["hips"]),
         "UpperTorso": matmul(ry(p["chest"]), rx(p["lean"])),
-        # Keep looking forward through the twist and lean.
-        "Head": matmul(rx(-p["lean"]), ry(-(p["chest"] + p["hips"]))),
+        # Keep looking forward through the twist and lean (or just level the head, for spins).
+        "Head": matmul(rx(-p["lean"]), ry(-(p["chest"] + p["hips"]))) if p["head_forward"] else rx(-p["lean"]),
         "RightUpperArm": aim_arm(*p["arm"]),
         "RightLowerArm": identity(),
         "RightHand": rx(p["wrist"]),

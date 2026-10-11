@@ -5,7 +5,7 @@
 Poses are described by where the hilt is and which way the blade points (in chest
 space); both arms are solved with two-bone IK so each hand lands on the handle (right hand
 near the guard, left hand below it). Reuses the math and .rbxmx writer from sword_anims.py.
-Keep the slam's "hit" time in sync with Greatsword.HitDelay in src/shared/CombatConfig.luau.
+Keep the slam's "hit" time in sync with Greatsword.HitDelay in src/shared/Config/CombatConfig.luau.
 
 Chest space: X right, Y up, Z back (forward is -Z), origin at the UpperTorso's center.
 """
@@ -89,10 +89,12 @@ def hand_rotation(forearm, blade):
 STAND = (0, 0, 0)
 
 
-def gpose(hilt, blade, chest=0, hips=0, lean=0, drop=0.0, lleg=STAND, rleg=STAND):
-    """hilt: right-hand grip point in chest space. blade: direction the blade points."""
+def gpose(hilt, blade, chest=0, hips=0, lean=0, drop=0.0, lleg=STAND, rleg=STAND, head_forward=True):
+    """hilt: right-hand grip point in chest space. blade: direction the blade points.
+    head_forward: counter-turn the head so it keeps facing forward through twists (off for
+    full spins, where the head should turn with the body)."""
     return {"hilt": hilt, "blade": norm(blade), "chest": chest, "hips": hips, "lean": lean,
-            "drop": drop, "lleg": lleg, "rleg": rleg}
+            "drop": drop, "lleg": lleg, "rleg": rleg, "head_forward": head_forward}
 
 
 def joint_rotations(p):
@@ -106,7 +108,7 @@ def joint_rotations(p):
     return {
         "LowerTorso": ry(p["hips"]),
         "UpperTorso": matmul(ry(p["chest"]), rx(p["lean"])),
-        "Head": matmul(rx(-p["lean"]), ry(-(p["chest"] + p["hips"]))),
+        "Head": matmul(rx(-p["lean"]), ry(-(p["chest"] + p["hips"]))) if p["head_forward"] else rx(-p["lean"]),
         "RightUpperArm": r_upper,
         "RightLowerArm": rx(r_bend),
         "RightHand": hand_rotation(r_forearm, blade),
@@ -134,6 +136,18 @@ LIFTING = {"hilt": (0.3, -0.45, -1.15), "blade": (0.1, 0.15, -1)}  # pulled out 
 LIFTING_UP = {"hilt": (0.33, -0.5, -1.05), "blade": (0.12, 0.6, -0.8)}
 # Upright in front of the face, like a shield.
 GUARD = {"hilt": (0.2, -0.1, -0.95), "blade": (-0.1, 1, 0.05)}
+
+# Horizontal sweeps (combo swings): the blade stays roughly level and points out from the
+# body while the hips and chest turn it through a wide arc in front.
+WOUND_RIGHT = {"hilt": (0.75, 0.05, -0.55), "blade": (1, 0.15, 0.35)}  # blade out to the right, tip back
+SWEEP_RIGHT = {"hilt": (0.5, -0.05, -0.95), "blade": (0.75, 0.05, -0.65)}
+SWEEP_FRONT = {"hilt": (0.15, -0.1, -1.2), "blade": (0, 0, -1)}
+SWEEP_LEFT = {"hilt": (-0.25, -0.05, -1.0), "blade": (-0.75, 0.05, -0.65)}
+WOUND_LEFT = {"hilt": (-0.45, 0.1, -0.65), "blade": (-1, 0.15, 0.3)}  # blade out to the left, tip back
+# Spin finisher: arms out front, blade trailing out to the right as the body turns left.
+SPIN_OUT = {"hilt": (0.35, -0.1, -1.1), "blade": (0.85, 0, -0.5)}
+
+SWEEP_STANCE = {"drop": 0.4, "lleg": (30, -50, 20), "rleg": (5, -45, 40)}
 
 COIL = {"drop": 0.35, "lleg": (25, -45, 20), "rleg": (10, -40, 30)}
 COIL_DEEP = {"drop": 0.5, "lleg": (32, -60, 28), "rleg": (14, -55, 41)}
@@ -180,6 +194,49 @@ ANIMATIONS = {
             (1.2, gpose(**GUARD, chest=-15)),
         ],
     },
+    # Combo swing 1: forehand sweep, right to left. Hit timings match Greatsword.Combo.
+    "GreatswordSwing1": {
+        "loop": False, "upper_body_only": False, "hit": 0.30,
+        "keys": [
+            (0.00, gpose(**HOLD, chest=-10)),
+            (0.20, gpose(**WOUND_RIGHT, chest=-45, hips=-25, lean=5, **COIL)),
+            (0.26, gpose(**SWEEP_RIGHT, chest=-20, hips=-10, **SWEEP_STANCE)),
+            (0.30, gpose(**SWEEP_FRONT, chest=5, hips=0, lean=-8, **SWEEP_STANCE)),
+            (0.35, gpose(**SWEEP_LEFT, chest=30, hips=20, lean=-6, **SWEEP_STANCE)),
+            (0.42, gpose(**WOUND_LEFT, chest=45, hips=30, lean=-4, **SWEEP_STANCE)),
+            (0.58, gpose(**WOUND_LEFT, chest=42, hips=28, lean=-2, **COIL)),
+            (0.85, gpose(**HOLD, chest=-10)),
+        ],
+    },
+    # Combo swing 2: backhand sweep, left to right.
+    "GreatswordSwing2": {
+        "loop": False, "upper_body_only": False, "hit": 0.29,
+        "keys": [
+            (0.00, gpose(**HOLD, chest=-10)),
+            (0.19, gpose(**WOUND_LEFT, chest=40, hips=25, lean=5, **COIL)),
+            (0.25, gpose(**SWEEP_LEFT, chest=20, hips=10, **SWEEP_STANCE)),
+            (0.29, gpose(**SWEEP_FRONT, chest=-5, hips=-5, lean=-8, **SWEEP_STANCE)),
+            (0.34, gpose(**SWEEP_RIGHT, chest=-30, hips=-20, lean=-6, **SWEEP_STANCE)),
+            (0.41, gpose(**WOUND_RIGHT, chest=-45, hips=-28, lean=-4, **SWEEP_STANCE)),
+            (0.58, gpose(**WOUND_RIGHT, chest=-42, hips=-25, lean=-2, **COIL)),
+            (0.85, gpose(**HOLD, chest=-10)),
+        ],
+    },
+    # Combo swing 3 (finisher): wind up right, then one full spin with the blade out,
+    # hitting all the way around.
+    "GreatswordSwing3": {
+        "loop": False, "upper_body_only": False, "hit": 0.42,
+        "keys": [
+            (0.00, gpose(**HOLD, chest=-10, head_forward=False)),
+            (0.22, gpose(**WOUND_RIGHT, chest=-50, hips=-40, lean=6, head_forward=False, **COIL_DEEP)),
+            (0.30, gpose(**SPIN_OUT, chest=-10, hips=20, lean=-6, head_forward=False, **SWEEP_STANCE)),
+            (0.38, gpose(**SPIN_OUT, chest=-10, hips=140, lean=-8, head_forward=False, **SWEEP_STANCE)),
+            (0.46, gpose(**SPIN_OUT, chest=-10, hips=260, lean=-8, head_forward=False, **SWEEP_STANCE)),
+            (0.54, gpose(**WOUND_LEFT, chest=30, hips=360, lean=-4, head_forward=False, **SWEEP_STANCE)),
+            (0.72, gpose(**WOUND_LEFT, chest=25, hips=360, lean=-2, head_forward=False, **COIL)),
+            (1.00, gpose(**HOLD, chest=-10, hips=360, head_forward=False)),
+        ],
+    },
 }
 
 
@@ -195,6 +252,7 @@ def lerp_pose(a, b, t):
         "chest": mix(a["chest"], b["chest"]), "hips": mix(a["hips"], b["hips"]),
         "lean": mix(a["lean"], b["lean"]), "drop": mix(a["drop"], b["drop"]),
         "lleg": mix3(a["lleg"], b["lleg"]), "rleg": mix3(a["rleg"], b["rleg"]),
+        "head_forward": a["head_forward"],
     }
 
 

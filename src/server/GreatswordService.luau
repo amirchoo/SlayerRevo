@@ -1,19 +1,26 @@
 --!strict
--- Gives players a two-handed greatsword and resolves its charged slams on the server.
--- The client reports when it starts charging (GreatswordCharge) and when it releases
--- (GreatswordRelease); the server times the charge itself, so clients can't fake a
--- full charge, picks the charge level, deals that level's damage with a big hitbox, and
--- knocks enemies back on strong slams. Guarding uses the shared block system (BlockService).
+-- Gives players a two-handed greatsword and resolves its attacks on the server.
+-- Tapping swings a 3-hit combo of wide sweeps (GreatswordSwing); the server tracks the
+-- combo step and timing itself and hits everything in each sweep's arc.
+-- Holding charges a slam: the client reports when it starts charging (GreatswordCharge)
+-- and when it releases (GreatswordRelease); the server times the charge itself, so clients
+-- can't fake a full charge, picks the charge level, deals that level's damage with a big
+-- hitbox, and knocks enemies back on strong slams. Guarding uses the shared block system
+-- (BlockService).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local CombatConfig = require(ReplicatedStorage.Shared.CombatConfig)
+local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local EnemyEffects = require(script.Parent.EnemyEffects)
+local RemoteGuard = require(script.Parent.RemoteGuard)
 local HealthService = require(script.Parent.HealthService)
+local InventoryService = require(script.Parent.InventoryService)
 local MeleeHitbox = require(script.Parent.MeleeHitbox)
+local WeaponModels = require(script.Parent.WeaponModels)
+local StaminaService = require(script.Parent.StaminaService)
 
 local GREATSWORD = CombatConfig.Greatsword
 local LEVELS = GREATSWORD.ChargeLevels
@@ -24,11 +31,13 @@ local TIMING_SLACK = 0.1
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local chargeRemote = remotes:WaitForChild("GreatswordCharge") :: RemoteEvent
 local releaseRemote = remotes:WaitForChild("GreatswordRelease") :: RemoteEvent
+local swingRemote = remotes:WaitForChild("GreatswordSwing") :: RemoteEvent
 
 local GreatswordService = {}
 
 local chargeStarted: { [Player]: number } = {}
 local lastSlam: { [Player]: number } = {}
+local comboStates: { [Player]: { step: number, time: number } } = {}
 
 local function addPart(grip: BasePart, name: string, size: Vector3, offset: CFrame, color: Color3, material: Enum.Material, shape: Enum.PartType?): Part
 	local part = Instance.new("Part")
@@ -116,6 +125,54 @@ local function holdingGreatsword(character: Model): boolean
 	return tool ~= nil and tool.Name == GREATSWORD.ToolName
 end
 
+local function midSwing(player: Player, now: number): boolean
+	local previous = comboStates[player]
+	return previous ~= nil and now - previous.time < GREATSWORD.Combo[previous.step].Cooldown - TIMING_SLACK
+end
+
+local function onSwing(player: Player)
+	local character = player.Character
+	if not character or not HealthService.isAlive(character) or not holdingGreatsword(character) then
+		return
+	end
+	if player:GetAttribute("Blocking") == true or chargeStarted[player] then
+		return
+	end
+	local now = os.clock()
+	if now - (lastSlam[player] or 0) < GREATSWORD.Recovery - TIMING_SLACK or midSwing(player, now) then
+		return -- still recovering from a slam or the last swing
+	end
+
+	-- Same rule as the client: the next step if clicked soon enough after the last swing,
+	-- otherwise back to the first.
+	local combo = GREATSWORD.Combo
+	local step = 1
+	local previous = comboStates[player]
+	if previous and previous.step < #combo then
+		local window = combo[previous.step].Cooldown + GREATSWORD.ComboWindow + TIMING_SLACK
+		if now - previous.time <= window then
+			step = previous.step + 1
+		end
+	end
+	if not StaminaService.spend(player, GREATSWORD.SwingStamina) then
+		return -- too tired
+	end
+	comboStates[player] = { step = step, time = now }
+
+	local move = combo[step]
+	task.delay(move.HitDelay, function()
+		local root = character:FindFirstChild("HumanoidRootPart")
+		if not root or not root:IsA("BasePart") or not HealthService.isAlive(character) or not holdingGreatsword(character) then
+			return
+		end
+		for _, hit in MeleeHitbox.strikeArc(player, character, root, move.Radius, move.Arc, move.Damage, GREATSWORD.ToolName) do
+			if move.Knockback and HealthService.isAlive(hit.model) then
+				EnemyEffects.knockBack(hit.model, root.Position, move.Knockback, GREATSWORD.KnockbackTime)
+			end
+		end
+	end)
+end
+
 local function onCharge(player: Player)
 	local character = player.Character
 	if not character or not HealthService.isAlive(character) or not holdingGreatsword(character) then
@@ -124,10 +181,15 @@ local function onCharge(player: Player)
 	if player:GetAttribute("Blocking") == true then
 		return
 	end
-	if os.clock() - (lastSlam[player] or 0) < GREATSWORD.Recovery - TIMING_SLACK then
-		return -- still recovering from the last slam
+	local now = os.clock()
+	if now - (lastSlam[player] or 0) < GREATSWORD.Recovery - TIMING_SLACK or midSwing(player, now) then
+		return -- still recovering from the last slam or swing
 	end
-	chargeStarted[player] = os.clock()
+	if not StaminaService.spend(player, GREATSWORD.SlamStamina) then
+		return -- too tired
+	end
+	chargeStarted[player] = now
+	comboStates[player] = nil -- a slam ends the combo
 end
 
 local function onRelease(player: Player)
@@ -175,11 +237,12 @@ local function giveGreatsword(player: Player, template: Tool)
 		HandGrip.detach(greatsword, "GreatswordGrip")
 		chargeStarted[player] = nil
 	end)
-	greatsword.Parent = player:WaitForChild("Backpack")
+	InventoryService.give(player, greatsword) -- the hotbar, or stored in the backpack
 end
 
 function GreatswordService.start()
 	local template = createGreatsword()
+	WeaponModels.apply(template, GREATSWORD.ModelFit) -- a real model, if one's been added (assets/weapons)
 
 	local function onPlayerAdded(player: Player)
 		-- The Backpack is reset on every respawn, so hand out a fresh one each time.
@@ -198,10 +261,12 @@ function GreatswordService.start()
 	Players.PlayerRemoving:Connect(function(player)
 		chargeStarted[player] = nil
 		lastSlam[player] = nil
+		comboStates[player] = nil
 	end)
 
-	chargeRemote.OnServerEvent:Connect(onCharge)
-	releaseRemote.OnServerEvent:Connect(onRelease)
+	RemoteGuard.connect(chargeRemote, onCharge)
+	RemoteGuard.connect(releaseRemote, onRelease)
+	RemoteGuard.connect(swingRemote, onSwing)
 end
 
 return GreatswordService

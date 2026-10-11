@@ -3,10 +3,14 @@
 -- on whatever was hit, the weapon's impact visual, and its impact sound. Each weapon has a
 -- style: "Slash" (bright streak across the target + sparks), "Blunt" (expanding shockwave
 -- ring + dust), or "Pierce" (thin streak along the blow + a narrow cone of sparks).
+-- Ground smashes (GroundShockwave) draw an expanding ring of dust along the ground and
+-- shake the camera of anyone close enough to feel it.
 -- Everything is built from plain parts and Roblox's bundled particle textures.
 
 local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
@@ -16,6 +20,9 @@ local DUST_TEXTURE = "rbxasset://textures/particles/smoke_main.dds"
 
 local FLASH_TIME = 0.12
 local REFERENCE_DAMAGE = 25 -- a hit this big draws the effect at its base size
+local SHOCKWAVE_TIME = 0.4
+local SHOCKWAVE_SHAKE = 0.5 -- studs of camera shake at the impact (less further away)
+local SHOCKWAVE_SHAKE_TIME = 0.3
 
 type Style = "Slash" | "Blunt" | "Pierce"
 type Look = { style: Style, color: Color3, size: number }
@@ -26,11 +33,15 @@ local LOOKS: { [string]: Look } = {
 	Greatsword = { style = "Slash", color = Color3.fromRGB(255, 200, 120), size = 1.6 },
 	Mace = { style = "Blunt", color = Color3.fromRGB(255, 215, 150), size = 1.1 },
 	Spear = { style = "Pierce", color = Color3.fromRGB(200, 230, 255), size = 1 },
+	Axe = { style = "Slash", color = Color3.fromRGB(255, 190, 150), size = 1.15 },
 	Bow = { style = "Pierce", color = Color3.fromRGB(230, 220, 200), size = 0.7 },
+	DemonClaw = { style = "Slash", color = Color3.fromRGB(255, 70, 60), size = 0.9 }, -- enemies hitting players
+	Parry = { style = "Blunt", color = Color3.fromRGB(255, 235, 150), size = 1.3 }, -- a parried enemy (see BlockService)
 }
 local DEFAULT_LOOK: Look = { style = "Slash", color = Color3.new(1, 1, 1), size = 1 }
 
 local hitEffectRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("HitEffect") :: RemoteEvent
+local shockwaveRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("GroundShockwave") :: RemoteEvent
 
 local HitEffectsClient = {}
 
@@ -178,8 +189,72 @@ local function onHit(model: Model?, position: Vector3, direction: Vector3, weapo
 	end
 end
 
+local function shakeCamera(strength: number)
+	local character = Players.LocalPlayer.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid or strength <= 0.02 then
+		return
+	end
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local remaining = 1 - (os.clock() - started) / SHOCKWAVE_SHAKE_TIME
+		if remaining <= 0 or not humanoid.Parent then
+			connection:Disconnect()
+			humanoid.CameraOffset = Vector3.zero
+			return
+		end
+		local s = strength * remaining
+		humanoid.CameraOffset = Vector3.new(random:NextNumber(-s, s), random:NextNumber(-s, s), 0)
+	end)
+end
+
+local function onShockwave(position: Vector3, radius: number, weapon: string)
+	local look = LOOKS[weapon] or DEFAULT_LOOK
+	local flat = CFrame.new(position + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+
+	-- A bright disc and a fainter wide ring racing out to the edge of the reach.
+	local core = effectPart(Vector3.new(0.2, 2, 2), flat, look.color, Enum.PartType.Cylinder)
+	core.Transparency = 0.2
+	fadeAndGrow(core, SHOCKWAVE_TIME * 0.6, Vector3.new(0.05, radius, radius))
+	local ring = effectPart(Vector3.new(0.1, 2, 2), flat, look.color, Enum.PartType.Cylinder)
+	ring.Transparency = 0.55
+	fadeAndGrow(ring, SHOCKWAVE_TIME, Vector3.new(0.05, radius * 2, radius * 2))
+
+	-- Dust kicked up around the impact and along the edge.
+	burst(emitterAt(position, Vector3.yAxis), {
+		Texture = DUST_TEXTURE,
+		Color = ColorSequence.new(Color3.fromRGB(160, 150, 135)),
+		Size = NumberSequence.new(2, 5),
+		Transparency = NumberSequence.new(0.35, 1),
+		Lifetime = NumberRange.new(0.5, 0.9),
+		Speed = NumberRange.new(radius * 0.8, radius * 1.6),
+		SpreadAngle = Vector2.new(85, 85),
+		Drag = 5,
+	}, math.round(radius * 1.5))
+	sparks(position, Vector3.yAxis, look.color, 1.2, 60, 14)
+
+	local soundSource = Instance.new("Attachment")
+	soundSource.Parent = workspace.Terrain
+	soundSource.WorldPosition = position
+	Debris:AddItem(soundSource, 3)
+	local ok = pcall(Sounds.play, `{weapon}Hit`, soundSource, 0.7)
+	if not ok then
+		Sounds.play("SwordHit", soundSource, 0.7)
+	end
+
+	-- Shake for anyone near it, fading out with distance.
+	local character = Players.LocalPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		local distance = (root.Position - position).Magnitude
+		shakeCamera(SHOCKWAVE_SHAKE * (1 - math.clamp(distance / (radius * 2), 0, 1)))
+	end
+end
+
 function HitEffectsClient.start()
 	hitEffectRemote.OnClientEvent:Connect(onHit)
+	shockwaveRemote.OnClientEvent:Connect(onShockwave)
 end
 
 return HitEffectsClient

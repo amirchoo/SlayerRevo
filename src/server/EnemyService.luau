@@ -1,43 +1,30 @@
 --!strict
 -- Spawns enemies and runs their simple AI: chase the nearest player, then attack
 -- after a short wind-up (so players can dodge). Dead enemies respawn after a delay.
+-- Looks: the enemy's Model from ServerStorage.EnemyModels (assets/enemies) if it's there,
+-- an R15 character (with a Humanoid and HumanoidRootPart, e.g. made with Avatar Auto Setup);
+-- otherwise a plain R15 body in the enemy's color.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
+local BlockService = require(script.Parent.BlockService)
 local EnemyEffects = require(script.Parent.EnemyEffects)
 local HealthService = require(script.Parent.HealthService)
+local HitEffects = require(script.Parent.HitEffects)
+
+local EnemyConfig = require(ReplicatedStorage.Shared.Config.EnemyConfig)
 local SafeZone = require(ReplicatedStorage.Shared.SafeZone)
 
-local LESSER_DEMON = {
-	DisplayName = "Lesser Demon",
-	MaxHealth = 200,
-	WalkSpeed = 10,
-	Color = Color3.fromRGB(120, 25, 30),
-	AggroRange = 60, -- studs
-	AttackRange = 5,
-	AttackDamage = 30,
-	AttackWindup = 0.4, -- seconds between starting the attack and the hit landing
-	AttackCooldown = 1.5,
-	RespawnDelay = 8,
-}
-
--- Only X/Z matter: enemies are dropped onto whatever ground (terrain or parts) is below.
--- These are in the hunting grounds just north of the hub's edge.
-local HUNTING_GROUNDS_Z = -SafeZone.HALF_SIZE - 55
-local SPAWN_POINTS = {
-	Vector2.new(0, HUNTING_GROUNDS_Z),
-	Vector2.new(22, HUNTING_GROUNDS_Z - 20),
-	Vector2.new(-22, HUNTING_GROUNDS_Z - 15),
-}
+local LESSER_DEMON = EnemyConfig.LesserDemon
 local SPAWN_RAY_HEIGHT = 500
 local SPAWN_HEIGHT_ABOVE_GROUND = 4
 
--- Default Roblox R15 animations.
-local WALK_ANIMATION = "rbxassetid://507777826"
-local ATTACK_ANIMATION = "rbxassetid://522635514"
-
-local AI_TICK = 0.2
+local IDLE_ANIMATION = EnemyConfig.IdleAnimation
+local WALK_ANIMATION = EnemyConfig.WalkAnimation
+local DEFAULT_ATTACK_ANIMATION = EnemyConfig.DefaultAttackAnimation
+local AI_TICK = EnemyConfig.AiTick
 
 local EnemyService = {}
 
@@ -62,7 +49,8 @@ end
 
 local function loadAnimation(animator: Animator, id: string): AnimationTrack
 	local animation = Instance.new("Animation")
-	animation.AnimationId = id
+	-- A bare number (e.g. pasted straight from the Creator Dashboard) still works.
+	animation.AnimationId = if string.match(id, "^%d+$") then `rbxassetid://{id}` else id
 	return animator:LoadAnimation(animation)
 end
 
@@ -91,8 +79,17 @@ end
 
 local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vector3)
 	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+	-- Idle always runs underneath, so the enemy never shows its rest pose (a T-pose for
+	-- models made with Avatar Auto Setup); walking and attacking play over it.
+	local idleTrack = loadAnimation(animator, IDLE_ANIMATION)
+	idleTrack.Priority = Enum.AnimationPriority.Idle
+	idleTrack.Looped = true
+	idleTrack:Play()
 	local walkTrack = loadAnimation(animator, WALK_ANIMATION)
-	local attackTrack = loadAnimation(animator, ATTACK_ANIMATION)
+	walkTrack.Priority = Enum.AnimationPriority.Movement
+	walkTrack.Looped = true
+	local attackTrack = loadAnimation(animator, if LESSER_DEMON.AttackAnimation ~= "" then LESSER_DEMON.AttackAnimation else DEFAULT_ATTACK_ANIMATION)
+	attackTrack.Priority = Enum.AnimationPriority.Action -- plays over the walk
 
 	humanoid.Running:Connect(function(speed)
 		if speed > 0.5 and not walkTrack.IsPlaying then
@@ -123,13 +120,23 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 
 				if os.clock() - lastAttack >= LESSER_DEMON.AttackCooldown then
 					lastAttack = os.clock()
-					attackTrack:Play()
+					attackTrack:Play(0.1)
+					enemy:SetAttribute("Attacking", true) -- no flinching mid-attack (EnemyEffects.flinch)
 					task.delay(LESSER_DEMON.AttackWindup, function()
+						enemy:SetAttribute("Attacking", false)
 						-- Re-check range after the wind-up so players can dodge out of it, and
 						-- a stun during the wind-up cancels the attack.
 						local stillInRange = (targetRoot.Position - root.Position).Magnitude <= LESSER_DEMON.AttackRange + 1
 						if HealthService.isAlive(enemy) and stillInRange and not EnemyEffects.isStunned(enemy) then
-							HealthService.damage(target, LESSER_DEMON.AttackDamage, nil, root.Position)
+							if BlockService.tryParry(target, enemy) then
+								attackTrack:Stop(0.05) -- parried: knocked out of the swing
+								return
+							end
+							local dealt = HealthService.damage(target, LESSER_DEMON.AttackDamage, nil, root.Position)
+							if dealt > 0 then
+								local impact, direction = HitEffects.meleeImpactPoint(target, root.Position)
+								HitEffects.broadcast(target, impact, direction, "DemonClaw", dealt)
+							end
 						end
 					end)
 				end
@@ -144,7 +151,33 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 	end
 end
 
-local function spawnEnemy(spawnPoint: Vector2)
+-- The enemy's own R15 model, ready to spawn, or nil if it hasn't been added (or is unusable).
+local function modelFromTemplate(): Model?
+	local folder = ServerStorage:FindFirstChild("EnemyModels")
+	local template = folder and folder:FindFirstChild(LESSER_DEMON.Model)
+	if not template or not template:IsA("Model") then
+		return nil
+	end
+	if not template:FindFirstChildOfClass("Humanoid") or not template:FindFirstChild("HumanoidRootPart") then
+		warn(`[EnemyService] EnemyModels.{LESSER_DEMON.Model} needs a Humanoid and a HumanoidRootPart (an R15 rig); using the plain body`)
+		return nil
+	end
+	local enemy = template:Clone()
+	for _, descendant in enemy:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = false -- models are often saved anchored
+		elseif descendant:IsA("Script") or descendant:IsA("LocalScript") then
+			descendant:Destroy() -- e.g. an "Animate" script; the AI plays its own animations
+		end
+	end
+	local enemyRoot = enemy:FindFirstChild("HumanoidRootPart") :: BasePart
+	enemy.PrimaryPart = enemyRoot
+	enemyRoot.Transparency = 1
+	return enemy
+end
+
+-- A plain R15 body in the enemy's color.
+local function plainBody(): Model?
 	local description = Instance.new("HumanoidDescription")
 	description.HeadColor = LESSER_DEMON.Color
 	description.TorsoColor = LESSER_DEMON.Color
@@ -156,16 +189,24 @@ local function spawnEnemy(spawnPoint: Vector2)
 	local ok, result = pcall(Players.CreateHumanoidModelFromDescription, Players, description, Enum.HumanoidRigType.R15)
 	if not ok then
 		warn("[EnemyService] Failed to build enemy model:", result)
+		return nil
+	end
+	return result :: Model
+end
+
+local function spawnEnemy(spawnPoint: Vector2)
+	local enemy = modelFromTemplate() or plainBody()
+	if not enemy then
 		return
 	end
-	local enemy = result :: Model
 	enemy.Name = LESSER_DEMON.DisplayName
 
 	local humanoid = enemy:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local root = enemy:FindFirstChild("HumanoidRootPart") :: BasePart
 	humanoid.DisplayName = LESSER_DEMON.DisplayName
 	humanoid.WalkSpeed = LESSER_DEMON.WalkSpeed
-	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOn
+	-- The name and health bar are drawn by the client (EnemyHealthBars), not the Humanoid.
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 
 	-- Only HealthService changes health; drop any default regen script.
 	local regen = enemy:FindFirstChild("Health")
@@ -204,7 +245,7 @@ function EnemyService.start()
 		end)
 	end)
 
-	for _, spawnPoint in SPAWN_POINTS do
+	for _, spawnPoint in LESSER_DEMON.SpawnPoints do
 		task.spawn(spawnEnemy, spawnPoint)
 	end
 end

@@ -1,20 +1,30 @@
 --!strict
--- Player health bar. Display only: reads the Health/MaxHealth attributes the server sets.
+-- Player health bar, bottom center: a chunky cartoon bar (see HudStyle).
+-- Display only: reads the Health/MaxHealth attributes the server sets. Green, turning red
+-- when low; damage leaves a pale chunk that drains away after a moment.
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 
-local HIGH_COLOR = Color3.fromRGB(90, 200, 90)
-local LOW_COLOR = Color3.fromRGB(220, 60, 60)
+local HudStyle = require(script.Parent.HudStyle)
+
+local WIDTH = 300
+local HEIGHT = 28
+local BOTTOM = -90 -- offset of the bar's bottom edge from the bottom of the screen (above the hotbar)
+local HIGH_COLOR = Color3.fromRGB(90, 220, 90)
+local LOW_COLOR = Color3.fromRGB(235, 65, 60)
+local TRAIL_COLOR = Color3.fromRGB(255, 240, 220)
 local LOW_THRESHOLD = 0.3
-local TWEEN_INFO = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local FILL_TWEEN = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TRAIL_DELAY = 0.4
+local TRAIL_TWEEN = TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
 local player = Players.LocalPlayer
 
 local HealthBar = {}
 
-local function createGui(): (Frame, TextLabel)
+local function createGui(): (Frame, Frame, TextLabel)
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "HealthBar"
 	gui.ResetOnSpawn = false
@@ -22,40 +32,47 @@ local function createGui(): (Frame, TextLabel)
 
 	local background = Instance.new("Frame")
 	background.Name = "Background"
-	-- Bottom center, just above the default hotbar.
 	background.AnchorPoint = Vector2.new(0.5, 1)
-	background.Position = UDim2.new(0.5, 0, 1, -90)
-	background.Size = UDim2.fromOffset(300, 22)
-	background.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	background.BorderSizePixel = 0
+	background.Position = UDim2.new(0.5, 0, 1, BOTTOM)
+	background.Size = UDim2.fromOffset(WIDTH, HEIGHT)
+	background.BackgroundColor3 = HudStyle.EMPTY
 	background.Parent = gui
-	Instance.new("UICorner").Parent = background
+	HudStyle.chunky(background, 10)
+
+	-- The pale chunk that lingers after damage, under the fill.
+	local trail = Instance.new("Frame")
+	trail.Name = "Trail"
+	trail.Size = UDim2.fromScale(1, 1)
+	trail.BackgroundColor3 = TRAIL_COLOR
+	trail.Parent = background
+	local trailCorner = Instance.new("UICorner")
+	trailCorner.CornerRadius = UDim.new(0, 8)
+	trailCorner.Parent = trail
 
 	local fill = Instance.new("Frame")
 	fill.Name = "Fill"
 	fill.Size = UDim2.fromScale(1, 1)
 	fill.BackgroundColor3 = HIGH_COLOR
-	fill.BorderSizePixel = 0
+	fill.ZIndex = 2
 	fill.Parent = background
-	Instance.new("UICorner").Parent = fill
+	local fillCorner = Instance.new("UICorner")
+	fillCorner.CornerRadius = UDim.new(0, 8)
+	fillCorner.Parent = fill
+	HudStyle.gloss(fill)
 
-	local label = Instance.new("TextLabel")
+	local label = HudStyle.caption(background, "", 18)
 	label.Name = "Label"
 	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 14
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.5
-	label.ZIndex = 2
-	label.Parent = background
+	label.ZIndex = 3
 
-	return fill, label
+	return fill, trail, label
 end
 
 function HealthBar.start()
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
-	local fill, label = createGui()
+	local fill, trail, label = createGui()
+	local lastRatio = 1
+	local trailToken = 0
 
 	local function update(character: Model)
 		local health = character:GetAttribute("Health")
@@ -65,12 +82,27 @@ function HealthBar.start()
 		end
 
 		local ratio = math.clamp(health / maxHealth, 0, 1)
-		TweenService:Create(fill, TWEEN_INFO, { Size = UDim2.fromScale(ratio, 1) }):Play()
+		TweenService:Create(fill, FILL_TWEEN, { Size = UDim2.fromScale(ratio, 1) }):Play()
 		fill.BackgroundColor3 = if ratio > LOW_THRESHOLD then HIGH_COLOR else LOW_COLOR
 		label.Text = string.format("%d / %d", math.ceil(health), math.ceil(maxHealth))
+
+		if ratio < lastRatio then
+			-- Took damage: the lost chunk lingers, then drains.
+			trailToken += 1
+			local token = trailToken
+			task.delay(TRAIL_DELAY, function()
+				if token == trailToken then
+					TweenService:Create(trail, TRAIL_TWEEN, { Size = UDim2.fromScale(ratio, 1) }):Play()
+				end
+			end)
+		else
+			trail.Size = UDim2.fromScale(ratio, 1) -- healing: no trail
+		end
+		lastRatio = ratio
 	end
 
 	local function onCharacterAdded(character: Model)
+		lastRatio = 1
 		-- The server may set the attributes after we see the character, so listen and also check now.
 		character:GetAttributeChangedSignal("Health"):Connect(function()
 			update(character)

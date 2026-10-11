@@ -5,7 +5,7 @@
 Built on the greatsword generator's two-hand IK: the right hand holds the shaft further
 back and the left hand further forward (toward the spearhead), with the head pointing
 along the "blade" direction. Keep each thrust's "hit" time in sync with HitDelay in the
-Spear section of src/shared/CombatConfig.luau.
+Spear section of src/shared/Config/CombatConfig.luau.
 """
 import sys
 from pathlib import Path
@@ -26,11 +26,15 @@ DRAWN_BACK_HIGH = {"hilt": (0.75, -0.2, 0.2), "blade": (0, 0.3, -1)}
 THRUST_HIGH = {"hilt": (0.15, 0.15, -0.75), "blade": (-0.12, 0.15, -1)}
 COILED = {"hilt": (0.85, -0.35, 0.5), "blade": (0.05, 0.25, -1)}
 LUNGE = {"hilt": (0.1, 0.0, -0.85), "blade": (-0.12, 0.02, -1)}
+# Heavy (charged lunge): drawn far back at shoulder height, then driven out at full stretch.
+DRAWN_FAR = {"hilt": (0.9, -0.15, 0.7), "blade": (0.05, 0.12, -1)}
+LUNGE_FULL = {"hilt": (0.15, 0.05, -0.75), "blade": (-0.1, 0.0, -1)}
 # Guard: shaft held diagonally across the body.
 GUARD = {"hilt": (0.55, -0.35, -0.6), "blade": (-0.65, 0.75, -0.15)}
 
 COIL_BACK = {"drop": 0.3, "lleg": (28, -45, 17), "rleg": (15, -40, 25)}
 LUNGE_LEGS = {"drop": 0.55, "lleg": (50, -60, 10), "rleg": (-25, -20, 45)}
+LUNGE_DEEP = {"drop": 0.8, "lleg": (65, -80, 15), "rleg": (-35, -15, 50)}
 
 ANIMATIONS = {
     "SpearIdle": {
@@ -75,6 +79,27 @@ ANIMATIONS = {
             (0.0, gpose(**GUARD, chest=-15)),
             (0.6, gpose(**GUARD, chest=-15, lean=-3)),
             (1.2, gpose(**GUARD, chest=-15)),
+        ],
+    },
+    # Heavy wind-up: drawn far back and held (the game freezes it on its last frame while
+    # charging). Upper body only, so the legs can still shuffle while aiming.
+    "SpearWindUp": {
+        "loop": False, "upper_body_only": True, "hit": None,
+        "keys": [
+            (0.00, gpose(**READY, chest=-20)),
+            (0.25, gpose(**DRAWN_FAR, chest=-50, lean=5)),
+            (1.00, gpose(**DRAWN_FAR, chest=-55, lean=8)),  # tension builds
+        ],
+    },
+    # Heavy release: driven forward at full stretch in a deep lunge (the client lunges the
+    # player forward at the same time). Keep "hit" in sync with Spear.Heavy.HitDelay.
+    "SpearLunge": {
+        "loop": False, "upper_body_only": False, "hit": 0.15,
+        "keys": [
+            (0.00, gpose(**DRAWN_FAR, chest=-55, lean=8, **COIL_BACK)),
+            (0.15, gpose(**LUNGE_FULL, chest=15, lean=-20, **LUNGE_DEEP)),
+            (0.45, gpose(**LUNGE_FULL, chest=15, lean=-18, **LUNGE_DEEP)),
+            (0.75, gpose(**READY, chest=-20)),
         ],
     },
 }

@@ -7,12 +7,18 @@
 -- tells the blocker's client (GuardHit) which way to be knocked back. The client applies
 -- the shove itself because it controls its own character's movement.
 -- State lives in player attributes (Blocking, BlockCharges, MaxBlockCharges) for the HUD.
+-- Parry: an enemy hit landing within the weapon's ParryWindow of raising the guard is
+-- negated outright (no charge used) and stuns the attacker. Enemies check this first with
+-- tryParry before dealing damage. The guard time is the server's own, so it can't be faked.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local CombatConfig = require(ReplicatedStorage.Shared.CombatConfig)
+local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
+local EnemyEffects = require(script.Parent.EnemyEffects)
+local RemoteGuard = require(script.Parent.RemoteGuard)
 local HealthService = require(script.Parent.HealthService)
+local HitEffects = require(script.Parent.HitEffects)
 
 local BLOCK = CombatConfig.Blocking -- charges, recharge, and knockback are shared by all blades
 
@@ -21,6 +27,7 @@ local BLOCK_AMOUNTS: { [string]: number } = {
 	[CombatConfig.Sword.ToolName] = CombatConfig.Sword.Block.BlockAmount,
 	[CombatConfig.Mace.ToolName] = CombatConfig.Mace.Block.BlockAmount,
 	[CombatConfig.Spear.ToolName] = CombatConfig.Spear.Block.BlockAmount,
+	[CombatConfig.Axe.ToolName] = CombatConfig.Axe.Block.BlockAmount,
 	[CombatConfig.Greatsword.ToolName] = CombatConfig.Greatsword.BlockAmount,
 }
 
@@ -36,13 +43,43 @@ local function blockAmountInHand(character: Model): number?
 	return if tool then BLOCK_AMOUNTS[tool.Name] else nil
 end
 
+-- Seconds after raising the guard that a hit is parried, per weapon (heavier = shorter).
+local PARRY_WINDOWS: { [string]: number } = {
+	[CombatConfig.Sword.ToolName] = CombatConfig.Sword.Block.ParryWindow,
+	[CombatConfig.Mace.ToolName] = CombatConfig.Mace.Block.ParryWindow,
+	[CombatConfig.Spear.ToolName] = CombatConfig.Spear.Block.ParryWindow,
+	[CombatConfig.Axe.ToolName] = CombatConfig.Axe.Block.ParryWindow,
+	[CombatConfig.Greatsword.ToolName] = CombatConfig.Greatsword.ParryWindow,
+}
+
+-- When each player's guard went up, if that raise can still parry (see ParryRecovery),
+-- and when they last raised it at all.
+local parryableSince: { [Player]: number } = {}
+local lastGuardRaise: { [Player]: number } = {}
+
 local function onBlockRequest(player: Player, wantsBlock: unknown)
 	if typeof(wantsBlock) ~= "boolean" then
 		return
 	end
 	local character = player.Character
-	local canBlock = character ~= nil and HealthService.isAlive(character) and blockAmountInHand(character) ~= nil
-	player:SetAttribute("Blocking", wantsBlock and canBlock)
+	local canBlock = character ~= nil
+		and HealthService.isAlive(character)
+		and blockAmountInHand(character) ~= nil
+		and player:GetAttribute("HeavyAttacking") ~= true -- can't guard mid-spin
+	local blocking = wantsBlock and canBlock
+	if blocking and player:GetAttribute("Blocking") ~= true then
+		-- Guard going up: it opens a parry window, unless it was raised too recently.
+		local now = os.clock()
+		if now - (lastGuardRaise[player] or 0) >= BLOCK.ParryRecovery then
+			parryableSince[player] = now
+		else
+			parryableSince[player] = nil
+		end
+		lastGuardRaise[player] = now
+	elseif not blocking then
+		parryableSince[player] = nil
+	end
+	player:SetAttribute("Blocking", blocking)
 end
 
 local function rechargeOne(player: Player)
@@ -89,6 +126,33 @@ local function tryBlock(target: Model, amount: number, _source: Player?, origin:
 	return math.max(amount - blockAmount, 0)
 end
 
+-- Called by an enemy as its hit lands on `target`: true if the player parried it (the hit
+-- should then deal no damage). Stuns `attacker` and shows the parry.
+function BlockService.tryParry(target: Model, attacker: Model): boolean
+	local player = Players:GetPlayerFromCharacter(target)
+	local raisedAt = player and parryableSince[player]
+	if not player or not raisedAt or player:GetAttribute("Blocking") ~= true then
+		return false
+	end
+	local tool = target:FindFirstChildOfClass("Tool")
+	local window = tool and PARRY_WINDOWS[tool.Name]
+	if not window or os.clock() - raisedAt > window then
+		return false
+	end
+
+	parryableSince[player] = nil -- one parry per raise
+	EnemyEffects.stun(attacker, BLOCK.ParryStun)
+	local attackerRoot = attacker:FindFirstChild("HumanoidRootPart")
+	local origin = if attackerRoot and attackerRoot:IsA("BasePart") then attackerRoot.Position else nil
+	guardHitRemote:FireClient(player, knockbackDirection(target, origin), true)
+	-- Everyone sees the clash: sparks between the two, and the attacker reeling.
+	if origin then
+		local impact, direction = HitEffects.meleeImpactPoint(target, origin)
+		HitEffects.broadcast(attacker, impact, direction, "Parry", BLOCK.ParryStun * 50)
+	end
+	return true
+end
+
 function BlockService.start()
 	local function onPlayerAdded(player: Player)
 		player:SetAttribute("MaxBlockCharges", BLOCK.MaxCharges)
@@ -105,7 +169,11 @@ function BlockService.start()
 		onPlayerAdded(player)
 	end
 
-	blockRemote.OnServerEvent:Connect(onBlockRequest)
+	Players.PlayerRemoving:Connect(function(player)
+		parryableSince[player] = nil
+		lastGuardRaise[player] = nil
+	end)
+	RemoteGuard.connect(blockRemote, onBlockRequest)
 	HealthService.addDamageFilter(tryBlock)
 end
 

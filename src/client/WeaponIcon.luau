@@ -1,0 +1,69 @@
+--!strict
+-- Weapon icons: a weapon's model shown in a ViewportFrame, turned so its length runs
+-- diagonally up and right (held by its grip, like an item icon) and framed to fill it.
+-- The models are the look-only copies the server publishes in ReplicatedStorage.WeaponPreviews
+-- (see InventoryService), so stored weapons can be shown too.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local WeaponIcon = {}
+
+local previews = ReplicatedStorage:WaitForChild("WeaponPreviews")
+WeaponIcon.Previews = previews
+
+local BOX_CORNERS = {
+	Vector3.new(1, 1, 1), Vector3.new(1, 1, -1), Vector3.new(1, -1, 1), Vector3.new(1, -1, -1),
+	Vector3.new(-1, 1, 1), Vector3.new(-1, 1, -1), Vector3.new(-1, -1, 1), Vector3.new(-1, -1, -1),
+}
+
+-- A ViewportFrame filling `parent`, ready for show().
+function WeaponIcon.viewport(parent: Instance): ViewportFrame
+	local viewport = Instance.new("ViewportFrame")
+	viewport.Size = UDim2.fromScale(1, 1)
+	viewport.BackgroundTransparency = 1
+	viewport.Ambient = Color3.fromRGB(190, 185, 200)
+	viewport.LightDirection = Vector3.new(-1, -1, -1)
+	viewport.Parent = parent
+	return viewport
+end
+
+-- Shows weapon `name` in `viewport` (clearing what was there); returns false if its look
+-- hasn't arrived yet (Previews.ChildAdded fires when it does).
+function WeaponIcon.show(viewport: ViewportFrame, name: string?): boolean
+	viewport:ClearAllChildren()
+	local source = name and previews:FindFirstChild(name)
+	if not source or not source:IsA("Model") then
+		return false
+	end
+	local model = source:Clone()
+	local grip = model:FindFirstChild("GripPart")
+	if grip and grip:IsA("BasePart") then
+		local relative = grip.CFrame:ToObjectSpace(model:GetPivot())
+		-- Grip +Z (toward the tip) up and right; its flat side toward the camera.
+		local diagonal = CFrame.fromMatrix(Vector3.zero, Vector3.zAxis, Vector3.new(0.707, -0.707, 0))
+		model:PivotTo(diagonal * relative)
+	end
+	local min, max = Vector3.one * math.huge, -Vector3.one * math.huge
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") and part.Transparency < 1 then
+			for _, corner in BOX_CORNERS do
+				local point = part.CFrame:PointToWorldSpace(part.Size / 2 * corner)
+				min, max = min:Min(point), max:Max(point)
+			end
+		end
+	end
+	model.Parent = viewport
+	local camera = Instance.new("Camera")
+	camera.FieldOfView = 30
+	camera.Parent = viewport
+	viewport.CurrentCamera = camera
+	if min.X < math.huge then
+		local center = (min + max) / 2
+		local extent = math.max(max.X - min.X, max.Y - min.Y)
+		local distance = extent / (2 * math.tan(math.rad(camera.FieldOfView / 2))) * 1.15 + (max.Z - min.Z) / 2
+		camera.CFrame = CFrame.lookAt(center + Vector3.new(0, 0, distance), center)
+	end
+	return true
+end
+
+return WeaponIcon
