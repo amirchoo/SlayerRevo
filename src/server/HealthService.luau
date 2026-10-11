@@ -16,6 +16,11 @@ local diedEvent = Instance.new("BindableEvent")
 -- Fires (model: Model, killer: Player?) once when a registered model reaches 0 health.
 HealthService.Died = diedEvent.Event
 
+-- Returns the (possibly reduced) damage to apply; see addDamageFilter.
+-- `origin` is where the hit came from (e.g. the attacker's position), when known.
+export type DamageFilter = (target: Model, amount: number, source: Player?, origin: Vector3?) -> number
+local damageFilters: { DamageFilter } = {}
+
 -- Weak keys so destroyed models don't leak.
 local regenRates: { [Model]: number } = setmetatable({}, { __mode = "k" }) :: any
 local lastDamaged: { [Model]: number } = setmetatable({}, { __mode = "k" }) :: any
@@ -43,17 +48,44 @@ function HealthService.getHealth(model: Model): (number?, number?)
 	return model:GetAttribute("Health") :: number?, model:GetAttribute("MaxHealth") :: number?
 end
 
+-- Walks up from a hit part to the registered model it belongs to, if any.
+function HealthService.findDamageable(part: Instance): Model?
+	local current = part.Parent
+	while current and current ~= workspace do
+		if current:IsA("Model") and current:GetAttribute("Health") ~= nil then
+			return current
+		end
+		current = current.Parent
+	end
+	return nil
+end
+
 function HealthService.isAlive(model: Model): boolean
 	local health = HealthService.getHealth(model)
 	return health ~= nil and health > 0
 end
 
 -- Returns the damage actually dealt (0 if the target is dead or unregistered).
-function HealthService.damage(target: Model, amount: number, source: Player?): number
+-- Lets other systems change incoming damage before it's applied (e.g. blocking).
+-- Filters run in the order they were added; returning 0 cancels the hit entirely
+-- (it doesn't count as being damaged, so it won't interrupt regen).
+function HealthService.addDamageFilter(filter: DamageFilter)
+	table.insert(damageFilters, filter)
+end
+
+-- `origin` (optional) is where the hit came from, for direction-aware effects like knockback.
+function HealthService.damage(target: Model, amount: number, source: Player?, origin: Vector3?): number
 	local health, maxHealth = HealthService.getHealth(target)
 	-- `not (amount > 0)` also rejects NaN
 	if health == nil or maxHealth == nil or health <= 0 or not (amount > 0) then
 		return 0
+	end
+
+	for _, filter in damageFilters do
+		amount = filter(target, amount, source, origin)
+		if not (amount > 0) then
+			return 0
+		end
 	end
 
 	local dealt = math.min(amount, health)

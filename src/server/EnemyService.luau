@@ -3,9 +3,11 @@
 -- after a short wind-up (so players can dodge). Dead enemies respawn after a delay.
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local EnemyEffects = require(script.Parent.EnemyEffects)
 local HealthService = require(script.Parent.HealthService)
-local TownBuilder = require(script.Parent.TownBuilder)
+local SafeZone = require(ReplicatedStorage.Shared.SafeZone)
 
 local LESSER_DEMON = {
 	DisplayName = "Lesser Demon",
@@ -14,18 +16,19 @@ local LESSER_DEMON = {
 	Color = Color3.fromRGB(120, 25, 30),
 	AggroRange = 60, -- studs
 	AttackRange = 5,
-	AttackDamage = 15,
+	AttackDamage = 30,
 	AttackWindup = 0.4, -- seconds between starting the attack and the hit landing
 	AttackCooldown = 1.5,
 	RespawnDelay = 8,
 }
 
 -- Only X/Z matter: enemies are dropped onto whatever ground (terrain or parts) is below.
--- These are in the hunting grounds north of the town gate.
+-- These are in the hunting grounds just north of the hub's edge.
+local HUNTING_GROUNDS_Z = -SafeZone.HALF_SIZE - 55
 local SPAWN_POINTS = {
-	Vector2.new(0, -120),
-	Vector2.new(22, -140),
-	Vector2.new(-22, -135),
+	Vector2.new(0, HUNTING_GROUNDS_Z),
+	Vector2.new(22, HUNTING_GROUNDS_Z - 20),
+	Vector2.new(-22, HUNTING_GROUNDS_Z - 15),
 }
 local SPAWN_RAY_HEIGHT = 500
 local SPAWN_HEIGHT_ABOVE_GROUND = 4
@@ -50,6 +53,9 @@ local function groundCFrame(spawnPoint: Vector2): CFrame
 
 	local origin = Vector3.new(spawnPoint.X, SPAWN_RAY_HEIGHT, spawnPoint.Y)
 	local result = workspace:Raycast(origin, Vector3.new(0, -SPAWN_RAY_HEIGHT * 2, 0), params)
+	if not result then
+		warn(`[EnemyService] No ground under spawn point {spawnPoint}; the enemy may fall`)
+	end
 	local groundY = if result then result.Position.Y else 0
 	return CFrame.new(spawnPoint.X, groundY + SPAWN_HEIGHT_ABOVE_GROUND, spawnPoint.Y)
 end
@@ -71,7 +77,7 @@ local function findNearestCharacter(position: Vector3, maxDistance: number): (Mo
 			character
 			and root
 			and root:IsA("BasePart")
-			and not TownBuilder.isInTown(root.Position)
+			and not SafeZone.contains(root.Position)
 			and HealthService.isAlive(character)
 		then
 			local distance = (root.Position - position).Magnitude
@@ -98,6 +104,13 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 
 	local lastAttack = 0
 	while enemy.Parent and HealthService.isAlive(enemy) do
+		if EnemyEffects.isStunned(enemy) then
+			humanoid:MoveTo(root.Position)
+			attackTrack:Stop(0.1)
+			task.wait(AI_TICK)
+			continue
+		end
+
 		local target, targetRoot, distance = findNearestCharacter(root.Position, LESSER_DEMON.AggroRange)
 
 		if target and targetRoot then
@@ -112,10 +125,11 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 					lastAttack = os.clock()
 					attackTrack:Play()
 					task.delay(LESSER_DEMON.AttackWindup, function()
-						-- Re-check range after the wind-up so players can dodge out of it.
+						-- Re-check range after the wind-up so players can dodge out of it, and
+						-- a stun during the wind-up cancels the attack.
 						local stillInRange = (targetRoot.Position - root.Position).Magnitude <= LESSER_DEMON.AttackRange + 1
-						if HealthService.isAlive(enemy) and stillInRange then
-							HealthService.damage(target, LESSER_DEMON.AttackDamage, nil)
+						if HealthService.isAlive(enemy) and stillInRange and not EnemyEffects.isStunned(enemy) then
+							HealthService.damage(target, LESSER_DEMON.AttackDamage, nil, root.Position)
 						end
 					end)
 				end
@@ -169,6 +183,10 @@ local function spawnEnemy(spawnPoint: Vector2)
 	HealthService.register(enemy, LESSER_DEMON.MaxHealth)
 	task.spawn(runAI, enemy, humanoid, root, spawnCFrame.Position)
 end
+
+-- Spawns one more enemy at X/Z (dropped onto the ground there); it respawns there too.
+-- Yields while the model loads, so call it with task.spawn.
+EnemyService.spawnAt = spawnEnemy
 
 function EnemyService.start()
 	enemiesFolder.Parent = workspace

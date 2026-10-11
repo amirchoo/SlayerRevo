@@ -8,7 +8,31 @@
       },
       "Remotes": {
         "$className": "Folder",
-        "SwordSwing": {
+        "MeleeSwing": {
+          "$className": "RemoteEvent"
+        },
+        "DamageDealt": {
+          "$className": "RemoteEvent"
+        },
+        "BowShoot": {
+          "$className": "RemoteEvent"
+        },
+        "BowDraw": {
+          "$className": "RemoteEvent"
+        },
+        "SwordBlock": {
+          "$className": "RemoteEvent"
+        },
+        "GuardHit": {
+          "$className": "RemoteEvent"
+        },
+        "GreatswordCharge": {
+          "$className": "RemoteEvent"
+        },
+        "GreatswordRelease": {
+          "$className": "RemoteEvent"
+        },
+        "HitEffect": {
           "$className": "RemoteEvent"
         }
       }
@@ -19,6 +43,9 @@
       }
     },
     "StarterPlayer": {
+      "$properties": {
+        "EnableMouseLockOption": true
+      },
       "StarterPlayerScripts": {
         "Client": {
           "$path": "src/client"
@@ -73,6 +100,9 @@
     "ServerStorage": {
       "TownAssets": {
         "$path": "assets/town"
+      },
+      "AnimationDrafts": {
+        "$path": "assets/animations"
       }
     }
   }

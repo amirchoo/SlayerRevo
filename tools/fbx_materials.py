@@ -1,12 +1,16 @@
-"""Fix grey imports of color-only FBX models (e.g. Quaternius packs).
+"""Fix grey imports of color-only FBX/GLB models (e.g. Quaternius packs, Sketchfab downloads).
 
 Roblox's importer merges a mesh into one MeshPart and drops plain material colors.
 This tool works around that in two steps:
 
   split     FBX -> GLB with one node per material, so Studio imports one MeshPart per material.
             python3 tools/fbx_materials.py split assets/source/House_1.fbx
-  colorize  After importing the GLB and saving it as .rbxmx, color each MeshPart from the FBX.
+            (writes House_1.split.glb next to it; import that in Studio)
+  colorize  After importing and saving as .rbxmx, color each MeshPart from the source file.
+            FBX sources match parts by material name; GLB sources match parts by size,
+            since Studio names GLB parts with numbers.
             python3 tools/fbx_materials.py colorize assets/source/House_1.fbx assets/town/House_1.rbxmx
+            python3 tools/fbx_materials.py colorize assets/source/Fountain.glb assets/town/Fountain.rbxmx
 """
 import json
 import math
@@ -228,7 +232,7 @@ def split(fbx_path):
     json_chunk = json.dumps(document, separators=(",", ":")).encode()
     json_chunk += b" " * (-len(json_chunk) % 4)
     total = 12 + 8 + len(json_chunk) + 8 + len(binary)
-    out = Path(fbx_path).with_suffix(".glb")
+    out = Path(fbx_path).with_suffix(".split.glb")
     out.write_bytes(
         struct.pack("<4sII", b"glTF", 2, total)
         + struct.pack("<I4s", len(json_chunk), b"JSON") + json_chunk
@@ -237,26 +241,64 @@ def split(fbx_path):
     print(f"wrote {out}")
 
 
-def colorize(fbx_path, rbxmx_path):
-    materials, _, _ = load(fbx_path)
-    colors = dict(materials)
+def load_glb_parts(path):
+    """Returns [(material name, size, (r, g, b))] for every mesh primitive in a GLB."""
+    data = Path(path).read_bytes()
+    length = struct.unpack_from("<I", data, 12)[0]
+    doc = json.loads(data[20:20 + length])
+    parts = []
+    for mesh in doc["meshes"]:
+        for primitive in mesh["primitives"]:
+            accessor = doc["accessors"][primitive["attributes"]["POSITION"]]
+            size = [high - low for low, high in zip(accessor["min"], accessor["max"])]
+            material = doc["materials"][primitive["material"]] if "material" in primitive else {}
+            color = material.get("pbrMetallicRoughness", {}).get("baseColorFactor", [0.8, 0.8, 0.8, 1])
+            parts.append((material.get("name", "?"), size, tuple(linear_to_srgb(c) for c in color[:3])))
+    return parts
+
+
+def part_size(props):
+    match = re.search(r'<Vector3 name="InitialSize">\s*<X>([^<]*)</X>\s*<Y>([^<]*)</Y>\s*<Z>([^<]*)</Z>', props)
+    return [float(v) for v in match.groups()] if match else None
+
+
+def colorize(source_path, rbxmx_path):
     text = Path(rbxmx_path).read_text()
+    if source_path.lower().endswith(".glb"):
+        glb_parts = load_glb_parts(source_path)
+
+        def lookup(name, props):
+            # Studio keeps each primitive's size as InitialSize; pick the closest match.
+            size = part_size(props)
+            if size is None:
+                return None
+            error, label, color = min(
+                (sum(abs(a - b) for a, b in zip(size, part[1])), part[0], part[2]) for part in glb_parts
+            )
+            return (label, color) if error < 0.01 * max(sum(size), 1e-6) + 1e-3 else None
+    else:
+        colors = dict(load(source_path)[0])
+
+        def lookup(name, props):
+            # Exact name first; otherwise the longest material name contained in the part name.
+            key = name if name in colors else max((k for k in colors if k in name), key=len, default=None)
+            return (key, colors[key]) if key else None
+
     item_pattern = re.compile(r'(<Item class="MeshPart"[^>]*>\s*<Properties>)(.*?)(</Properties>)', re.S)
     colored = []
 
     def recolor(match):
         props = match.group(2)
         name = re.search(r'<string name="Name">([^<]*)</string>', props).group(1)
-        # Exact name first; otherwise the longest material name contained in the part name.
-        key = name if name in colors else max((k for k in colors if k in name), key=len, default=None)
-        if key is None:
+        found = lookup(name, props)
+        if found is None:
             print(f"  ! no material matches part {name!r}; left unchanged")
             return match.group(0)
-        r, g, b = colors[key]
+        key, (r, g, b) = found
         packed = 0xFF000000 | (r << 16) | (g << 8) | b
-        props = re.sub(r'<Color3uint8 name="Color3uint8">\d+</Color3uint8>', "", props)
+        props = re.sub(r'\s*<Color3uint8 name="Color3uint8">\d+</Color3uint8>', "", props)
         props = f'\n\t\t\t<Color3uint8 name="Color3uint8">{packed}</Color3uint8>' + props
-        colored.append(f"{name} -> {key} {colors[key]}")
+        colored.append(f"{name} -> {key} {(r, g, b)}")
         return match.group(1) + props + match.group(3)
 
     text = item_pattern.sub(recolor, text)

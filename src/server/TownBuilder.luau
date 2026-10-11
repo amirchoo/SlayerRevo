@@ -1,20 +1,25 @@
 --!strict
 -- Builds the starter town at server start: a plaza with a fountain, roads, houses,
 -- a guild hall, market stalls with NPCs, lamps, a wall with a north gate, and trees.
--- The town is a safe zone: enemies ignore players inside it (see isInTown).
+-- The town sits inside the hub safe zone (shared/SafeZone), whose edge is marked with pillars.
 -- Layout is centered on the world origin; the north gate (-Z) leads to the hunting grounds.
 -- Houses and stalls use imported models from ServerStorage.TownAssets (synced from
 -- assets/town) when present, and fall back to simple part-built versions otherwise.
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
+
+local SafeZone = require(ReplicatedStorage.Shared.SafeZone)
 
 local TOWN_HALF_SIZE = 70 -- the wall is a square this far from the center on each side
 local PLAZA_SIZE = 50
+local FOUNTAIN_SIZE = 16 -- footprint of the plaza fountain, in studs
 local ROAD_WIDTH = 12
 local GATE_WIDTH = 16
 local WALL_HEIGHT = 10
 local WALL_SEGMENT = 14
+local BORDER_PILLAR_SPACING = 35
 
 local COLORS = {
 	Stone = Color3.fromRGB(150, 145, 135),
@@ -38,6 +43,7 @@ local ASSET_YAW: { [string]: number } = {
 	House_1 = 0,
 	Houses_SecondAge_1_Level2 = 0,
 	Blacksmith = 0,
+	Fountain = 0,
 }
 local ASSET_SINK = 0.3 -- push models slightly into the ground so they don't float on uneven terrain
 
@@ -86,10 +92,6 @@ townFolder.Name = "Town"
 
 local groundParams = RaycastParams.new()
 groundParams.FilterType = Enum.RaycastFilterType.Include
-
-function TownBuilder.isInTown(position: Vector3): boolean
-	return math.abs(position.X) <= TOWN_HALF_SIZE and math.abs(position.Z) <= TOWN_HALF_SIZE
-end
 
 -- Creates an anchored part. `props` may include ClassName (defaults to "Part") and Parent
 -- (defaults to the town folder); every other key is set as a property.
@@ -202,11 +204,9 @@ local function clearGrass(baseY: number)
 	workspace.Terrain:ReplaceMaterial(region, 4, Enum.Material.Grass, Enum.Material.LeafyGrass)
 end
 
-local function buildPlaza(baseY: number)
-	local plazaTop = baseY + 0.4
-	part({ Name = "Plaza", Size = Vector3.new(PLAZA_SIZE, 2, PLAZA_SIZE), CFrame = CFrame.new(0, plazaTop - 1, 0), Color = COLORS.Stone, Material = Enum.Material.Cobblestone })
-
-	-- Fountain. Cylinders run along X, so rotate them upright.
+-- Simple stone fountain, used when the Fountain model isn't in TownAssets.
+local function buildFallbackFountain(plazaTop: number)
+	-- Cylinders run along X, so rotate them upright.
 	local upright = CFrame.Angles(0, 0, math.rad(90))
 	local function cylinder(name: string, height: number, diameter: number, y: number, color: Color3, material: Enum.Material): BasePart
 		return part({
@@ -223,6 +223,16 @@ local function buildPlaza(baseY: number)
 	cylinder("FountainPillar", 6, 2, 5.5, COLORS.Stone, Enum.Material.Slate)
 	cylinder("FountainBowl", 0.8, 6, 8.9, COLORS.Stone, Enum.Material.Slate)
 	cylinder("FountainBowlWater", 0.2, 5, 9.35, COLORS.Water, Enum.Material.Glass).Transparency = 0.2
+end
+
+local function buildPlaza(baseY: number)
+	local plazaTop = baseY + 0.4
+	part({ Name = "Plaza", Size = Vector3.new(PLAZA_SIZE, 2, PLAZA_SIZE), CFrame = CFrame.new(0, plazaTop - 1, 0), Color = COLORS.Stone, Material = Enum.Material.Cobblestone })
+
+	local fountain = placeAsset("Fountain", CFrame.new(0, plazaTop, 0), Vector2.new(FOUNTAIN_SIZE, FOUNTAIN_SIZE))
+	if not fountain then
+		buildFallbackFountain(plazaTop)
+	end
 
 	part({
 		ClassName = "SpawnLocation",
@@ -504,6 +514,37 @@ local function buildTrees()
 	end
 end
 
+-- Lantern pillars along the safe zone edge, so players can see where the hub ends.
+-- Built every time (even with a pasted town) so they always match SafeZone.HALF_SIZE.
+local function buildSafeZoneBorder()
+	local folder = Instance.new("Folder")
+	folder.Name = "SafeZoneBorder"
+
+	local half = SafeZone.HALF_SIZE
+	local count = math.max(1, math.round(half * 2 / BORDER_PILLAR_SPACING))
+	local corners = {
+		Vector3.new(-half, 0, -half),
+		Vector3.new(half, 0, -half),
+		Vector3.new(half, 0, half),
+		Vector3.new(-half, 0, half),
+	}
+	for side = 1, 4 do
+		local from, to = corners[side], corners[side % 4 + 1]
+		for i = 0, count - 1 do
+			local point = SafeZone.CENTER + from:Lerp(to, i / count)
+			local y = groundAt(point.X, point.Z)
+			part({ Name = "BorderPillar", Size = Vector3.new(2, 8, 2), CFrame = CFrame.new(point.X, y + 3, point.Z), Color = COLORS.Stone, Material = Enum.Material.Slate, Parent = folder })
+			local flame = part({ Name = "BorderFlame", Size = Vector3.new(1.2, 1.2, 1.2), CFrame = CFrame.new(point.X, y + 7.6, point.Z), Color = COLORS.LampGlow, Material = Enum.Material.Neon, CanCollide = false, Parent = folder })
+			local light = Instance.new("PointLight")
+			light.Color = COLORS.LampGlow
+			light.Range = 14
+			light.Parent = flame
+		end
+	end
+
+	folder.Parent = workspace
+end
+
 function TownBuilder.build()
 	local include: { Instance } = { workspace.Terrain }
 	local baseplate = workspace:FindFirstChild("Baseplate")
@@ -513,6 +554,8 @@ function TownBuilder.build()
 	groundParams.FilterDescendantsInstances = include
 
 	local baseY = groundAt(0, 0)
+
+	buildSafeZoneBorder()
 
 	-- Once the town has been pasted into the place and edited in Studio, keep it as-is.
 	if workspace:FindFirstChild("Town") then
