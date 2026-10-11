@@ -15,6 +15,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local Stamina = require(ReplicatedStorage.Shared.Stamina)
+local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 
 local BOW = CombatConfig.Bow
@@ -149,6 +150,8 @@ local function localPart(name: string, size: Vector3, color: Color3, material: E
 end
 
 local function startDraw(tool: Tool)
+	-- Quick Draw and the like shorten the full draw (matches BowService).
+	local drawTime = BOW.MaxDrawTime * math.max(1 - SkillMath.weapon(player, BOW.ToolName, "DrawSpeed"), 0.3)
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -206,7 +209,7 @@ local function startDraw(tool: Tool)
 	if tracks then
 		local length = tracks.draw.Length
 		tracks.release:Stop(0)
-		tracks.draw:Play(0.1, 1, if length > 0 then length / BOW.MaxDrawTime else 1)
+		tracks.draw:Play(0.1, 1, if length > 0 then length / drawTime else 1)
 	end
 
 	local function segment(part: Part, from: Vector3, to: Vector3)
@@ -215,7 +218,7 @@ local function startDraw(tool: Tool)
 	end
 
 	local connection = RunService.RenderStepped:Connect(function()
-		local power = math.clamp((os.clock() - startTime) / BOW.MaxDrawTime, 0, 1)
+		local power = math.clamp((os.clock() - startTime) / drawTime, 0, 1)
 
 		-- The string pulls straight back from the grip; "forward" is grip-from-string.
 		local top, bottom = upper.WorldPosition, lower.WorldPosition
@@ -300,7 +303,7 @@ local function onInputBegan(input: InputObject, gameProcessed: boolean)
 	if not tool or typeof(arrows) ~= "number" or arrows <= 0 or os.clock() - lastShot < BOW.Cooldown then
 		return
 	end
-	if not Stamina.canAfford(player, BOW.ShotStamina) then
+	if not Stamina.canAfford(player, SkillMath.staminaCost(player, BOW.ToolName, BOW.ShotStamina, "Light")) then
 		return
 	end
 	startDraw(tool)

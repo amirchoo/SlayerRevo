@@ -17,6 +17,7 @@ export type EnemyType = {
 	AttackAnimation: string, -- "" uses Roblox's default tool swing
 	AttackCooldown: number,
 	RespawnDelay: number,
+	XP: number, -- given to the player who defeats it (see ProgressionConfig for the level curve)
 	-- Only X/Z matter: each spawns dropped onto whatever ground is below, and respawns there.
 	SpawnPoints: { Vector2 },
 }
@@ -39,6 +40,7 @@ EnemyConfig.LesserDemon = {
 	AttackAnimation = "rbxassetid://135668765525905", -- DemonClaw
 	AttackCooldown = 1.5,
 	RespawnDelay = 8,
+	XP = 15,
 	SpawnPoints = {
 		Vector2.new(0, HUNTING_GROUNDS_Z),
 		Vector2.new(22, HUNTING_GROUNDS_Z - 20),

@@ -26,6 +26,7 @@ local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local Stamina = require(ReplicatedStorage.Shared.Stamina)
+local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local Push = require(script.Parent.Push)
 
 type ComboWeapon = CombatConfig.ComboWeapon
@@ -228,7 +229,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		end
 		local now = os.clock()
 		local step = nextStep(now)
-		if not step or not Stamina.canAfford(player, config.Stamina) then
+		if not step or not Stamina.canAfford(player, SkillMath.staminaCost(player, config.ToolName, config.Stamina, "Light")) then
 			return
 		end
 		comboStep, lastSwing = step, now
@@ -413,6 +414,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		local quake: QuakeHeavy? = if charged.Kind == "Quake" then charged :: QuakeHeavy else nil
 		local lunge: ThrustHeavy? = if charged.Kind == "Thrust" then charged :: ThrustHeavy else nil
 		local fullChargeTime = if quake then quake.FullChargeTime elseif lunge then lunge.FullChargeTime else 1
+		local lungeBonus = 1 + SkillMath.weapon(player, config.ToolName, "LungeDistance") -- matches the server (WeaponService)
 		local hitDelay = if quake then quake.HitDelay elseif lunge then lunge.HitDelay else 0
 
 		heavyRemote:FireServer(true)
@@ -469,11 +471,11 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			local hit = workspace:Raycast(root.Position, Vector3.new(0, -12, 0), groundParams)
 			local ground = (if hit then hit.Position else root.Position - Vector3.new(0, 3, 0)) + Vector3.new(0, 0.05, 0)
 			if quake then
-				local radius = quake.MinRadius + (quake.MaxRadius - quake.MinRadius) * charge
+				local radius = (quake.MinRadius + (quake.MaxRadius - quake.MinRadius) * charge) * (1 + SkillMath.weapon(player, config.ToolName, "QuakeRadius"))
 				indicator.Size = Vector3.new(0.1, radius * 2, radius * 2)
 				indicator.CFrame = CFrame.new(ground) * CFrame.Angles(0, 0, math.pi / 2)
 			elseif lunge then
-				local length = lunge.MinDistance + (lunge.MaxDistance - lunge.MinDistance) * charge + lunge.Reach
+				local length = (lunge.MinDistance + (lunge.MaxDistance - lunge.MinDistance) * charge) * lungeBonus + lunge.Reach
 				local facing = CFrame.lookAt(ground, ground + root.CFrame.LookVector * Vector3.new(1, 0, 1))
 				indicator.Size = Vector3.new(lunge.Width, 0.1, length)
 				indicator.CFrame = facing * CFrame.new(0, 0, -length / 2)
@@ -533,7 +535,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 				release:Play(0.05)
 			end
 			if lunge then
-				local distance = lunge.MinDistance + (lunge.MaxDistance - lunge.MinDistance) * releasePower
+				local distance = (lunge.MinDistance + (lunge.MaxDistance - lunge.MinDistance) * releasePower) * lungeBonus
 				Push.apply(root, root.CFrame.LookVector, distance / lunge.LungeTime, lunge.LungeTime)
 			end
 			local sound = tool:FindFirstChild("SlashSound", true)
@@ -589,7 +591,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			pressToken += 1
 			local token = pressToken
 			task.delay(heavy.HoldTime, function()
-				if token == pressToken and pressedAt and not stopBlock and not stopHeavy and equippedTool() == tool and heavy and Stamina.canAfford(player, heavy.Stamina) then
+				if token == pressToken and pressedAt and not stopBlock and not stopHeavy and equippedTool() == tool and heavy and Stamina.canAfford(player, SkillMath.staminaCost(player, config.ToolName, heavy.Stamina, "Heavy")) then
 					startHeavy(tool)
 				end
 			end)

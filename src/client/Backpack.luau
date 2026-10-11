@@ -20,14 +20,14 @@ local UserInputService = game:GetService("UserInputService")
 
 local ArmorConfig = require(ReplicatedStorage.Shared.Config.ArmorConfig)
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
-local Hotbar = require(script.Parent.Hotbar)
+local Panels = require(script.Parent.Panels)
 local HudStyle = require(script.Parent.HudStyle)
 local WeaponIcon = require(script.Parent.WeaponIcon)
 
 local PANEL_SIZE = Vector2.new(1000, 620)
 local PANEL_COLOR = Color3.fromRGB(30, 28, 42)
 local TILE_COLOR = Color3.fromRGB(58, 54, 74)
-local LOCKED_COLOR = Color3.fromRGB(42, 40, 54)
+local EMPTY_COLOR = Color3.fromRGB(42, 40, 54)
 local HOTBAR_BORDER = Color3.fromRGB(110, 230, 140)
 local WORN_BORDER = Color3.fromRGB(110, 175, 255)
 local SOFT_TEXT = Color3.fromRGB(190, 185, 205)
@@ -36,7 +36,7 @@ local PROTECTION_COLOR = Color3.fromRGB(150, 205, 255)
 local ICON_SIZE = 60
 
 local GRID_COLUMNS = 5
-local GRID_SLOTS = 20 -- the rest of the grid shows locked slots
+local GRID_SLOTS = 20 -- the rest of the grid shows empty slots, filled as you get more
 local TILE = 84
 local TILE_GAP = 12
 local GRID_ORIGIN = Vector2.new(40, 196)
@@ -315,7 +315,7 @@ function Backpack.start()
 	underlineCorner.Parent = underline
 
 	-- The weapon grid.
-	type Tile = { frame: Frame, stroke: UIStroke, viewport: ViewportFrame, name: TextLabel, badge: TextLabel, lock: TextLabel, weapon: string? }
+	type Tile = { frame: Frame, stroke: UIStroke, viewport: ViewportFrame, name: TextLabel, badge: TextLabel, weapon: string? }
 	local tiles: { Tile } = {}
 	local hovered: string? = nil
 	local updateWeapons: () -> ()
@@ -342,10 +342,6 @@ function Backpack.start()
 		badge.Size = UDim2.fromOffset(16, 16)
 		badge.TextColor3 = HOTBAR_BORDER
 		badge.ZIndex = 2
-		local lock = text(frame, "🔒", 30, SOFT_TEXT)
-		lock.Size = UDim2.fromScale(1, 1)
-		lock.TextXAlignment = Enum.TextXAlignment.Center
-		lock.TextTransparency = 0.55
 		local button = Instance.new("TextButton")
 		button.Size = UDim2.fromScale(1, 1)
 		button.BackgroundTransparency = 1
@@ -358,7 +354,6 @@ function Backpack.start()
 			viewport = viewport,
 			name = name,
 			badge = badge,
-			lock = lock,
 			weapon = nil,
 		}
 		tiles[index] = tile
@@ -499,8 +494,7 @@ function Backpack.start()
 		for index, tile in tiles do
 			local weapon = shown[index]
 			tile.weapon = weapon
-			tile.lock.Visible = weapon == nil
-			tile.frame.BackgroundColor3 = if weapon then TILE_COLOR else LOCKED_COLOR
+			tile.frame.BackgroundColor3 = if weapon then TILE_COLOR else EMPTY_COLOR
 			if shownPreview[tile] ~= weapon then
 				shownPreview[tile] = if WeaponIcon.show(tile.viewport, weapon) then weapon else nil
 			end
@@ -535,7 +529,7 @@ function Backpack.start()
 				owned = owned or (ownedSet.Pieces[tile.slot] ~= nil and player:GetAttribute(`OwnsArmor{setId}`) == true)
 			end
 			tile.stroke.Color = if set then WORN_BORDER else HudStyle.OUTLINE
-			tile.frame.BackgroundColor3 = if set then Color3.fromRGB(52, 66, 110) elseif owned then TILE_COLOR else LOCKED_COLOR
+			tile.frame.BackgroundColor3 = if set then Color3.fromRGB(52, 66, 110) elseif owned then TILE_COLOR else EMPTY_COLOR
 			tile.icon.TextTransparency = if set then 0 else 0.6
 			tile.name.Text = if set then set.Name elseif owned then "Wear" else tile.slot
 			local filled = math.clamp(math.round(amount / PROTECTION_PER_SEGMENT), if amount > 0 then 1 else 0, PROTECTION_SEGMENTS)
@@ -567,7 +561,11 @@ function Backpack.start()
 			return
 		end
 		panel.Visible = open
-		Hotbar.setHidden(open) -- out of the way while the backpack is open
+		if open then
+			Panels.opened("Backpack") -- closes the skills screen, hides the hotbar
+		else
+			Panels.closed("Backpack")
+		end
 		if open then
 			updateTabs()
 			updateWeapons()
@@ -607,6 +605,9 @@ function Backpack.start()
 		end
 	end)
 
+	Panels.register("Backpack", function()
+		setOpen(false)
+	end)
 	iconButton.Activated:Connect(toggle)
 	back.Activated:Connect(function()
 		setOpen(false)

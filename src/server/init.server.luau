@@ -3,6 +3,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local HealthService = require(script.HealthService)
+local DataService = require(script.DataService)
+local SkillService = require(script.SkillService)
+local ProgressionService = require(script.ProgressionService)
 local StaminaService = require(script.StaminaService)
 local InventoryService = require(script.InventoryService)
 local DashService = require(script.DashService)
@@ -16,6 +19,7 @@ local TrainingGround = require(script.TrainingGround)
 local ArmorService = require(script.ArmorService)
 
 HealthService.start()
+DataService.start() -- first: the services below apply each player's save once it loads
 StaminaService.start()
 InventoryService.start()
 DashService.start() -- before BlockService: a dodged hit isn't a blocked one
@@ -31,3 +35,5 @@ WeaponService.give(CombatConfig.Axe)
 EnemyService.start()
 TrainingGround.build()
 ArmorService.start() -- after BlockService (armor reduces what gets through a block) and the town (the stand stands on it)
+SkillService.start()
+ProgressionService.start()

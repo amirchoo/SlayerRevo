@@ -15,6 +15,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
+local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local EnemyEffects = require(script.Parent.EnemyEffects)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 local HealthService = require(script.Parent.HealthService)
@@ -82,11 +83,29 @@ local function onBlockRequest(player: Player, wantsBlock: unknown)
 	player:SetAttribute("Blocking", blocking)
 end
 
+-- Block charges, with the player's skill bonus (see SkillTrees).
+local function maxChargesOf(player: Player): number
+	return BLOCK.MaxCharges + SkillMath.general(player, "BlockCharges")
+end
+
+-- Re-applies max block charges after the player's skills change.
+function BlockService.refreshCharges(player: Player)
+	local max = maxChargesOf(player)
+	local old = player:GetAttribute("MaxBlockCharges")
+	player:SetAttribute("MaxBlockCharges", max)
+	local charges = player:GetAttribute("BlockCharges")
+	if typeof(charges) == "number" then
+		-- A new charge is ready right away; a removed one is taken away.
+		local gained = if typeof(old) == "number" then max - old else 0
+		player:SetAttribute("BlockCharges", math.clamp(charges + gained, 0, max))
+	end
+end
+
 local function rechargeOne(player: Player)
 	task.delay(BLOCK.RechargeTime, function()
 		local charges = player:GetAttribute("BlockCharges")
 		if player.Parent and typeof(charges) == "number" then
-			player:SetAttribute("BlockCharges", math.min(charges + 1, BLOCK.MaxCharges))
+			player:SetAttribute("BlockCharges", math.min(charges + 1, maxChargesOf(player)))
 		end
 	end)
 end
@@ -123,7 +142,9 @@ local function tryBlock(target: Model, amount: number, _source: Player?, origin:
 	player:SetAttribute("BlockCharges", charges - 1)
 	rechargeOne(player)
 	guardHitRemote:FireClient(player, knockbackDirection(target, origin))
-	return math.max(amount - blockAmount, 0)
+	local tool = target:FindFirstChildOfClass("Tool")
+	local bonus = SkillMath.general(player, "BlockAmount") + (if tool then SkillMath.weapon(player, tool.Name, "BlockAmount") else 0)
+	return math.max(amount - (blockAmount + bonus), 0)
 end
 
 -- Called by an enemy as its hit lands on `target`: true if the player parried it (the hit
@@ -136,6 +157,9 @@ function BlockService.tryParry(target: Model, attacker: Model): boolean
 	end
 	local tool = target:FindFirstChildOfClass("Tool")
 	local window = tool and PARRY_WINDOWS[tool.Name]
+	if tool and window then
+		window += SkillMath.general(player, "ParryWindow") + SkillMath.weapon(player, tool.Name, "ParryWindow")
+	end
 	if not window or os.clock() - raisedAt > window then
 		return false
 	end
@@ -155,12 +179,13 @@ end
 
 function BlockService.start()
 	local function onPlayerAdded(player: Player)
-		player:SetAttribute("MaxBlockCharges", BLOCK.MaxCharges)
-		player:SetAttribute("BlockCharges", BLOCK.MaxCharges)
+		player:SetAttribute("MaxBlockCharges", maxChargesOf(player))
+		player:SetAttribute("BlockCharges", maxChargesOf(player))
 		player:SetAttribute("Blocking", false)
 		player.CharacterAdded:Connect(function()
 			player:SetAttribute("Blocking", false)
-			player:SetAttribute("BlockCharges", BLOCK.MaxCharges)
+			player:SetAttribute("MaxBlockCharges", maxChargesOf(player))
+			player:SetAttribute("BlockCharges", maxChargesOf(player))
 		end)
 	end
 

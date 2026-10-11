@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayerConfig = require(ReplicatedStorage.Shared.Config.PlayerConfig)
+local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 
 local PLAYER_MAX_HEALTH = PlayerConfig.MaxHealth
 local PLAYER_REGEN_PER_SECOND = PlayerConfig.RegenPerSecond
@@ -117,9 +118,35 @@ function HealthService.heal(target: Model, amount: number): number
 	return healed
 end
 
+-- A player's max health and regen, with their skill bonuses (see SkillTrees).
+local function playerStats(player: Player): (number, number)
+	return PLAYER_MAX_HEALTH + SkillMath.general(player, "MaxHealth"), PLAYER_REGEN_PER_SECOND + SkillMath.general(player, "HealthRegen")
+end
+
+-- Re-applies the player's max health and regen after their skills change, keeping the same
+-- fraction of health (so a new max health point doesn't leave them "hurt").
+function HealthService.refreshPlayer(player: Player)
+	local character = player.Character
+	local health, maxHealth = if character then HealthService.getHealth(character) else nil, nil
+	if not character or not health or not maxHealth or health <= 0 then
+		return
+	end
+	local newMax, regen = playerStats(player)
+	local newHealth = math.clamp(health / maxHealth * newMax, 1, newMax)
+	regenRates[character] = regen
+	character:SetAttribute("MaxHealth", newMax)
+	character:SetAttribute("Health", newHealth)
+	syncHumanoid(character, newHealth, newMax)
+end
+
 local function onCharacterAdded(character: Model)
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-	HealthService.register(character, PLAYER_MAX_HEALTH, PLAYER_REGEN_PER_SECOND)
+	local player = Players:GetPlayerFromCharacter(character)
+	local maxHealth, regen = PLAYER_MAX_HEALTH, PLAYER_REGEN_PER_SECOND
+	if player then
+		maxHealth, regen = playerStats(player)
+	end
+	HealthService.register(character, maxHealth, regen)
 
 	-- Deaths we didn't cause (e.g. falling into the void) still need to be recorded.
 	humanoid.Died:Connect(function()

@@ -17,6 +17,7 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local ArmorConfig = require(ReplicatedStorage.Shared.Config.ArmorConfig)
 local HealthService = require(script.Parent.HealthService)
+local DataService = require(script.Parent.DataService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 
 type ArmorSet = ArmorConfig.ArmorSet
@@ -244,6 +245,10 @@ end
 
 local function publish(player: Player)
 	local loadout = loadoutOf(player)
+	local data = DataService.data(player)
+	if data then
+		data.Armor = { Owned = table.clone(loadout.owned), Worn = table.clone(loadout.worn) } -- saved
+	end
 	player:SetAttribute("Protection", protectionOf(loadout))
 	for _, slot in ArmorConfig.Slots do
 		player:SetAttribute(`Armor{slot}`, loadout.worn[slot])
@@ -435,6 +440,33 @@ local function buildStand()
 end
 
 function ArmorService.start()
+	-- Restores saved armor: owned sets that still exist, and worn pieces of those sets.
+	DataService.onLoaded(function(player, data)
+		local saved = data.Armor
+		if typeof(saved) ~= "table" then
+			publish(player)
+			return
+		end
+		local loadout = loadoutOf(player)
+		if typeof(saved.Owned) == "table" then
+			for setId, owned in saved.Owned do
+				if owned == true and ArmorConfig.Sets[setId] then
+					loadout.owned[setId] = true
+				end
+			end
+		end
+		if typeof(saved.Worn) == "table" then
+			for slot, setId in saved.Worn do
+				local set = ArmorConfig.Sets[setId]
+				if table.find(ArmorConfig.Slots, slot) and set and set.Pieces[slot] and loadout.owned[setId] then
+					loadout.worn[slot] = setId
+				end
+			end
+		end
+		dressCharacter(player)
+		publish(player)
+	end)
+
 	local function onPlayerAdded(player: Player)
 		publish(player)
 		-- Worn armor stays on through respawns. Dress again once the avatar has loaded, since

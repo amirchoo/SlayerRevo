@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
+local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local SafeZone = require(ReplicatedStorage.Shared.SafeZone)
 local TrainingArea = require(ReplicatedStorage.Shared.TrainingArea)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
@@ -113,6 +114,32 @@ local function createArrowTemplate(): Part
 	arrow.CanQuery = false
 	arrow.CanTouch = false
 	arrow.Massless = true
+
+	-- A glowing streak behind the arrow in flight: a thin ribbon from the tail (the arrow
+	-- points along -Z, so the tail is at +Z) that fades and narrows as it trails off.
+	local top = Instance.new("Attachment")
+	top.Name = "TrailTop"
+	top.Position = Vector3.new(0, 0.12, arrow.Size.Z / 2 - 0.2)
+	top.Parent = arrow
+	local bottom = Instance.new("Attachment")
+	bottom.Name = "TrailBottom"
+	bottom.Position = Vector3.new(0, -0.12, arrow.Size.Z / 2 - 0.2)
+	bottom.Parent = arrow
+	local trail = Instance.new("Trail")
+	trail.Name = "ArrowTrail"
+	trail.Attachment0 = top
+	trail.Attachment1 = bottom
+	trail.FaceCamera = true
+	trail.Lifetime = BOW.TrailLifetime
+	trail.LightEmission = 1
+	trail.Color = ColorSequence.new(Color3.fromRGB(255, 245, 220), Color3.fromRGB(255, 190, 110))
+	trail.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.15),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	trail.WidthScale = NumberSequence.new(1, 0.2)
+	trail.MinLength = 0.05
+	trail.Parent = arrow
 	return arrow
 end
 
@@ -133,7 +160,12 @@ local function arrowRaycastParams(): RaycastParams
 end
 
 local function onArrowHit(player: Player, arrow: Part, result: RaycastResult, direction: Vector3, damage: number)
-	-- Leave the arrow stuck in what it hit, tip slightly buried.
+	-- Stop the streak (what's already drawn fades out), and leave the arrow stuck in what it
+	-- hit, tip slightly buried.
+	local trail = arrow:FindFirstChild("ArrowTrail")
+	if trail and trail:IsA("Trail") then
+		trail.Enabled = false
+	end
 	arrow.CFrame = CFrame.lookAt(result.Position - direction * (arrow.Size.Z / 2 - 0.4), result.Position + direction)
 
 	local model = HealthService.findDamageable(result.Instance)
@@ -239,14 +271,16 @@ local function onShoot(player: Player, aimPoint: unknown)
 		return
 	end
 	local direction = toAim.Unit
-	if not StaminaService.spend(player, BOW.ShotStamina) then
+	if not StaminaService.spend(player, SkillMath.staminaCost(player, BOW.ToolName, BOW.ShotStamina, "Light")) then
 		return -- too tired
 	end
 
 	-- Power comes from the server's own timing of the draw, so clients can't fake a full draw.
-	local power = math.clamp((now - started) / BOW.MaxDrawTime, 0, 1)
+	-- Quick Draw and the like shorten the full draw (see SkillTrees).
+	local drawTime = BOW.MaxDrawTime * math.max(1 - SkillMath.weapon(player, BOW.ToolName, "DrawSpeed"), 0.3)
+	local power = math.clamp((now - started) / drawTime, 0, 1)
 	local speed = BOW.MinArrowSpeed + (BOW.MaxArrowSpeed - BOW.MinArrowSpeed) * power
-	local damage = BOW.MinDamage + (BOW.MaxDamage - BOW.MinDamage) * power
+	local damage = SkillMath.damage(player, BOW.ToolName, BOW.MinDamage + (BOW.MaxDamage - BOW.MinDamage) * power, "Light")
 
 	lastShot[player] = now
 	player:SetAttribute("Arrows", arrows - 1)

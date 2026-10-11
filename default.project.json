@@ -55,6 +55,18 @@
         },
         "Dodged": {
           "$className": "RemoteEvent"
+        },
+        "SkillSpend": {
+          "$className": "RemoteEvent"
+        },
+        "SkillRespec": {
+          "$className": "RemoteEvent"
+        },
+        "LevelUp": {
+          "$className": "RemoteEvent"
+        },
+        "XPGained": {
+          "$className": "RemoteEvent"
         }
       }
     },

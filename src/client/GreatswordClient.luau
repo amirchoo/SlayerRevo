@@ -19,6 +19,7 @@ local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local Stamina = require(ReplicatedStorage.Shared.Stamina)
+local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 
 local GREATSWORD = CombatConfig.Greatsword
 local LEVELS = GREATSWORD.ChargeLevels
@@ -169,7 +170,7 @@ local function swing(state: Equipped)
 	if now < swingUntil or now < busyUntil then
 		return -- still mid-swing or recovering from a slam
 	end
-	if not Stamina.canAfford(player, GREATSWORD.SwingStamina) then
+	if not Stamina.canAfford(player, SkillMath.staminaCost(player, GREATSWORD.ToolName, GREATSWORD.SwingStamina, "Light")) then
 		return
 	end
 	-- Same rule as the server: the next step if clicked soon enough after the last swing,
@@ -220,6 +221,7 @@ local function startCharge(state: Equipped)
 	chargeRemote:FireServer()
 	comboStep = 0 -- a slam ends the combo
 	local startTime = os.clock()
+	local chargeSpeed = 1 + SkillMath.weapon(player, GREATSWORD.ToolName, "ChargeSpeed") -- matches the server (GreatswordService)
 	local bladePart = blade(state.tool)
 	local originalColor = bladePart and bladePart.Color
 	local originalMaterial = bladePart and bladePart.Material
@@ -235,7 +237,7 @@ local function startCharge(state: Equipped)
 	end
 
 	local connection = RunService.RenderStepped:Connect(function()
-		local held = os.clock() - startTime
+		local held = (os.clock() - startTime) * chargeSpeed
 
 		-- Turn with the camera (feet stay planted).
 		local look = workspace.CurrentCamera.CFrame.LookVector
@@ -392,7 +394,7 @@ local function onInputBegan(input: InputObject, gameProcessed: boolean)
 			end
 			if pressedAt == pressed and equipped == state and not stopCharge and not stopGuard then
 				pressedAt = nil
-				if Stamina.canAfford(player, GREATSWORD.SlamStamina) then
+				if Stamina.canAfford(player, SkillMath.staminaCost(player, GREATSWORD.ToolName, GREATSWORD.SlamStamina, "Heavy")) then
 					startCharge(state)
 				end
 			end

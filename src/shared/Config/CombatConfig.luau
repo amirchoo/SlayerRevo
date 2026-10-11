@@ -400,6 +400,7 @@ return {
 		ZoomOutTime = 0.25, -- seconds to zoom back out after releasing
 		DrawPull = 1.6, -- studs the string pulls back at full draw (visual)
 		Cooldown = 0.3, -- seconds between shots
+		TrailLifetime = 0.35, -- seconds an arrow's glowing streak takes to fade behind it
 		-- A real model (assets/weapons/Bow.rbxm); see Sword.ModelFit. Shift moves the hand onto
 		-- the model's grip; FlipEdge turns it so the string faces the player. StringTips: where
 		-- the string meets the limbs, relative to the hand, as fractions of Length: (0, back, up)
@@ -414,6 +415,20 @@ return {
 	},
 	-- Press Key to dash. Up to MaxCharges stored; spent charges refill one at a time,
 	-- each taking RechargeTime.
+	-- Getting hurt, on your own screen (see DamageFeedback): a red flash and camera shake per
+	-- hit, scaled by the share of max health lost; below LowHealth, a pulsing red vignette,
+	-- drained colours, and a heartbeat.
+	DamageFeedback = {
+		FlashMin = 0.35, -- red flash strength (0..1) for the smallest hit...
+		FlashPerHealth = 2, -- ...plus this x the share of max health lost
+		FlashTime = 0.45, -- seconds for a full flash to fade
+		ShakeMin = 0.15, -- studs of camera shake for the smallest hit...
+		ShakePerHealth = 1.5, -- ...plus this x the share of max health lost
+		ShakeMax = 0.6,
+		ShakeTime = 0.3, -- seconds the shake takes to settle
+		LowHealth = 0.3, -- below this share of max health, the low-health effects start
+		LowHealthDesaturate = 0.45, -- how much colour drains at zero health
+	},
 	-- Hitstop: when your hit lands, you and the target freeze for Base + damage x PerDamage
 	-- seconds (kept between Min and Max), so a sword poke stops for ~0.05 s, a big slam ~0.1 s.
 	Hitstop = {

@@ -85,7 +85,10 @@ Each weapon has: base stats, light combo, heavy attack, stamina costs, block/par
 - Skill points earned per level.
 - **General branch**: stats (HP, stamina, damage, defense, stamina regen).
 - **Weapon branches**: one per weapon type — unlock new moves, combo extensions, weapon-specific bonuses.
-- Respec allowed (cost **[TBD]**) so experimenting with builds isn't punished.
+- Respec allowed so experimenting with builds isn't punished: **free for now** (a cost can come once there's currency).
+- **Rival branches**: General branches come in rival pairs (Mobility ↔ Guard, Vitality ↔ Might); any point in one **hard-locks** its rival until respec. Endurance has no rival.
+- Skill points are **one pool shared by every tree** (General + every weapon), so no one can max everything.
+- Each weapon tree ends in a **mastery fork**: two options, taking one locks the other.
 
 ### Gear
 - **Armor slots**: Helmet, Chestplate, Armwear, Leggings, Boots *(as built)*.
@@ -191,10 +194,10 @@ docs/
 | Phase | Goal | Contents |
 |---|---|---|
 | **1. Combat core** | Fighting feels good | ✅ dash (+ i-frames), light/heavy, 6 weapons, stamina, block, parry, hit feedback polish — **built, awaiting playtest** |
-| **2. First enemy** | Something worth fighting | Enemy AI state machine, 1 monster, 1 boss, test arena |
-| **3. Progression core** | Reason to keep fighting | XP/levels, drops, inventory, equip weapons/armor, DataStore saving |
-| **4. Area 1 vertical slice** | One complete area | Full area build, 3–5 monsters, 2–3 bosses, unique drops, area unlock |
-| **5. Skill tree** | Build identity | General + weapon branches, respec |
+| **2. Skill tree** | Build identity | General tree with rival branches + one tree per weapon, free respec; brings forward XP/levels and DataStore saving — **built, awaiting playtest** |
+| **3. First enemy** | Something worth fighting | Enemy AI state machine, 1 monster, 1 boss, test arena |
+| **4. Progression core** | Reason to keep fighting | Drops, loot, equip from drops (XP/levels, inventory, saving already built) |
+| **5. Area 1 vertical slice** | One complete area | Full area build, 3–5 monsters, 2–3 bosses, unique drops, area unlock |
 | **6. Social** | Hunting together | Parties, then guilds |
 | **7. Expansion** | Content | More areas, weapons, bosses, armor sets |
 
@@ -242,4 +245,5 @@ Everything in the doc that isn't built yet still applies.
 | Axe | Bleed [TBD] | Bleed on the leaping-cleave heavy |
 | Armor slots | Head, Chest, Arms, Legs | Helmet, Chestplate, Armwear, Leggings, Boots |
 | Armor defense | Defense stat | Each piece negates a % of damage, summed, capped at 80% |
-| Inventory | Phase 3 | Backpack with a 5-weapon hotbar is built (not saved yet) |
+| Inventory | Phase 3 | Backpack with a 5-weapon hotbar is built and saved |
+| Roadmap order | Skill tree was Phase 5 | Skill tree is Phase 2 (XP/levels and saving built with it) |

@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
+local DataService = require(script.Parent.DataService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 
 local moveRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("InventoryMove") :: RemoteEvent
@@ -75,6 +76,10 @@ local function hotbarOf(player: Player): { string }
 end
 
 local function publish(player: Player)
+	local data = DataService.data(player)
+	if data then
+		data.Hotbar = table.clone(hotbarOf(player)) -- saved
+	end
 	player:SetAttribute("Hotbar", table.concat(hotbarOf(player), ","))
 	player:SetAttribute("HotbarSlots", InventoryConfig.HotbarSlots)
 end
@@ -135,10 +140,37 @@ local function onMove(player: Player, name: unknown, toHotbar: unknown)
 	publish(player)
 end
 
+-- Restores a saved hotbar (known weapons only, up to the slot limit) and moves the
+-- player's weapons to match.
+local function applySaved(player: Player, saved: { string }?)
+	if typeof(saved) ~= "table" then
+		publish(player) -- nothing saved yet: save the default
+		return
+	end
+	local hotbar: { string } = {}
+	for _, name in saved do
+		if typeof(name) == "string" and InventoryConfig.weapon(name) and not table.find(hotbar, name) and #hotbar < InventoryConfig.HotbarSlots then
+			table.insert(hotbar, name)
+		end
+	end
+	hotbars[player] = hotbar
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	for _, info in InventoryConfig.Weapons do
+		local tool = findTool(player, info.Name)
+		if tool and tool.Parent ~= player.Character then
+			tool.Parent = if table.find(hotbar, info.Name) then backpack else storageOf(player)
+		end
+	end
+	publish(player)
+end
+
 function InventoryService.start()
 	local function onPlayerAdded(player: Player)
 		publish(player)
 	end
+	DataService.onLoaded(function(player, data)
+		applySaved(player, data.Hotbar)
+	end)
 	Players.PlayerAdded:Connect(onPlayerAdded)
 	for _, player in Players:GetPlayers() do
 		onPlayerAdded(player)

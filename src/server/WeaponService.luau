@@ -25,6 +25,7 @@ local InventoryService = require(script.Parent.InventoryService)
 local MeleeHitbox = require(script.Parent.MeleeHitbox)
 local WeaponModels = require(script.Parent.WeaponModels)
 local StaminaService = require(script.Parent.StaminaService)
+local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 
 type ComboWeapon = CombatConfig.ComboWeapon
 type QuakeHeavy = CombatConfig.QuakeHeavy
@@ -259,7 +260,7 @@ local function onSwing(player: Player)
 			step = previous.step + 1
 		end
 	end
-	if not StaminaService.spend(player, config.Stamina) then
+	if not StaminaService.spend(player, SkillMath.staminaCost(player, config.ToolName, config.Stamina, "Light")) then
 		return -- too tired
 	end
 	comboStates[player] = { step = step, time = now }
@@ -271,7 +272,8 @@ local function onSwing(player: Player)
 			return
 		end
 		local size = Vector3.new(config.Width, config.Height, config.Range)
-		for _, hit in MeleeHitbox.strike(player, character, root, size, move.Damage, config.ToolName) do
+		local damage = SkillMath.damage(player, config.ToolName, move.Damage, "Light")
+		for _, hit in MeleeHitbox.strike(player, character, root, size, damage, config.ToolName) do
 			if HealthService.isAlive(hit.model) then
 				if move.Knockback then
 					EnemyEffects.knockBack(hit.model, root.Position, move.Knockback, KNOCKBACK_TIME)
@@ -340,7 +342,8 @@ local function smash(player: Player, character: Model, tool: Tool, config: Combo
 	local function lerp(min: number, max: number): number
 		return min + (max - min) * power
 	end
-	local radius, damage = lerp(quake.MinRadius, quake.MaxRadius), math.round(lerp(quake.MinDamage, quake.MaxDamage))
+	local radius = lerp(quake.MinRadius, quake.MaxRadius) * (1 + SkillMath.weapon(player, config.ToolName, "QuakeRadius"))
+	local damage = SkillMath.damage(player, config.ToolName, lerp(quake.MinDamage, quake.MaxDamage), "Heavy")
 
 	task.delay(quake.HitDelay, function()
 		local root = character:FindFirstChild("HumanoidRootPart")
@@ -368,8 +371,8 @@ local function thrust(player: Player, character: Model, tool: Tool, config: Comb
 		return
 	end
 	local origin = CFrame.lookAt(root.Position, root.Position + look)
-	local distance = lunge.MinDistance + (lunge.MaxDistance - lunge.MinDistance) * power
-	local damage = math.round(lunge.MinDamage + (lunge.MaxDamage - lunge.MinDamage) * power)
+	local distance = (lunge.MinDistance + (lunge.MaxDistance - lunge.MinDistance) * power) * (1 + SkillMath.weapon(player, config.ToolName, "LungeDistance"))
+	local damage = SkillMath.damage(player, config.ToolName, lunge.MinDamage + (lunge.MaxDamage - lunge.MinDamage) * power, "Heavy")
 	local size = Vector3.new(lunge.Width, lunge.Height, distance + lunge.Reach)
 
 	task.delay(lunge.HitDelay, function()
@@ -381,7 +384,8 @@ local function thrust(player: Player, character: Model, tool: Tool, config: Comb
 				EnemyEffects.knockBack(hit.model, root.Position, lunge.Knockback, KNOCKBACK_TIME)
 				local bleed = lunge.Bleed
 				if bleed then
-					EnemyEffects.bleed(hit.model, player, bleed.Damage, bleed.Interval, bleed.Duration)
+					local bleedDamage = bleed.Damage + SkillMath.weapon(player, config.ToolName, "BleedDamage")
+					EnemyEffects.bleed(hit.model, player, bleedDamage, bleed.Interval, bleed.Duration)
 				end
 			end
 		end
@@ -431,7 +435,7 @@ local function startHeavy(player: Player)
 		return -- still recovering from the last heavy
 	end
 	-- A charge pays up front; a spin pays per hit, starting with the first.
-	if not StaminaService.spend(player, heavy.Stamina) then
+	if not StaminaService.spend(player, SkillMath.staminaCost(player, config.ToolName, heavy.Stamina, "Heavy")) then
 		return -- too tired
 	end
 
@@ -455,6 +459,10 @@ local function startHeavy(player: Player)
 	end
 
 	local spin = heavy :: CombatConfig.SpinHeavy
+	-- Skill bonuses for this spin (see SkillTrees).
+	local maxDuration = spin.MaxDuration + SkillMath.weapon(player, config.ToolName, "SpinDuration")
+	local tickDamage = SkillMath.damage(player, config.ToolName, spin.Damage, "Heavy")
+	local tickCost = SkillMath.staminaCost(player, config.ToolName, spin.Stamina, "Heavy")
 	task.spawn(function()
 		local started = os.clock()
 		local paid = true -- the first hit was paid for when the spin started
@@ -462,15 +470,15 @@ local function startHeavy(player: Player)
 		while heavyTokens[player] == token do
 			local root = character:FindFirstChild("HumanoidRootPart")
 			local stillHolding = character:FindFirstChildOfClass("Tool") == tool
-			if os.clock() - started > spin.MaxDuration or not HealthService.isAlive(character) or not stillHolding then
+			if os.clock() - started > maxDuration or not HealthService.isAlive(character) or not stillHolding then
 				break
 			end
-			if not paid and not StaminaService.spend(player, spin.Stamina) then
+			if not paid and not StaminaService.spend(player, tickCost) then
 				break -- out of stamina
 			end
 			paid = false
 			if root and root:IsA("BasePart") then
-				MeleeHitbox.strikeAround(player, character, root, spin.Radius, spin.Damage, config.ToolName)
+				MeleeHitbox.strikeAround(player, character, root, spin.Radius, tickDamage, config.ToolName)
 			end
 			task.wait(spin.TickInterval)
 		end

@@ -38,12 +38,12 @@ local function createRow(): (Frame, Frame)
 	gui.ResetOnSpawn = false
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	-- Above the right half of the health bar (the bar is 300 wide at bottom center, see
+	-- Above the right half of the health bar (the bar is 420 wide at bottom center, see
 	-- HealthBar); the dash meter takes the left half.
 	local row = Instance.new("Frame")
 	row.Name = "Pips"
 	row.AnchorPoint = Vector2.new(1, 1)
-	row.Position = UDim2.new(0.5, 150, 1, -148)
+	row.Position = UDim2.new(0.5, 210, 1, -144)
 	row.Size = UDim2.fromOffset(150, BADGE_SIZE)
 	row.BackgroundTransparency = 1
 	row.Parent = gui

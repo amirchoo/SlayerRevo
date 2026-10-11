@@ -222,6 +222,7 @@ local function spawnEnemy(spawnPoint: Vector2)
 
 	spawnPointOf[enemy] = spawnPoint
 	HealthService.register(enemy, LESSER_DEMON.MaxHealth)
+	enemy:SetAttribute("XPReward", LESSER_DEMON.XP) -- ProgressionService gives it to whoever defeats it
 	task.spawn(runAI, enemy, humanoid, root, spawnCFrame.Position)
 end
 

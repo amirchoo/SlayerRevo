@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
+local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 
 local STAMINA = CombatConfig.Stamina
 local REGEN_INTERVAL = 0.1 -- seconds between regen updates (the bar tweens between them)
@@ -29,9 +30,24 @@ function StaminaService.spend(player: Player, cost: number): boolean
 	return true
 end
 
+-- Max stamina and regen, with the player's skill bonuses (see SkillTrees).
+local function maxOf(player: Player): number
+	return STAMINA.Max + SkillMath.general(player, "MaxStamina")
+end
+
 local function refill(player: Player)
-	player:SetAttribute("MaxStamina", STAMINA.Max)
-	player:SetAttribute("Stamina", STAMINA.Max)
+	player:SetAttribute("MaxStamina", maxOf(player))
+	player:SetAttribute("Stamina", maxOf(player))
+end
+
+-- Re-applies max stamina after the player's skills change.
+function StaminaService.refreshMax(player: Player)
+	local max = maxOf(player)
+	player:SetAttribute("MaxStamina", max)
+	local current = player:GetAttribute("Stamina")
+	if typeof(current) == "number" and current > max then
+		player:SetAttribute("Stamina", max)
+	end
 end
 
 function StaminaService.start()
@@ -55,8 +71,10 @@ function StaminaService.start()
 			for _, player in Players:GetPlayers() do
 				local current = player:GetAttribute("Stamina")
 				local resting = now - (lastSpent[player] or 0) >= STAMINA.RegenDelay
-				if typeof(current) == "number" and current < STAMINA.Max and resting and player:GetAttribute("HeavyAttacking") ~= true then
-					player:SetAttribute("Stamina", math.min(current + STAMINA.RegenPerSecond * REGEN_INTERVAL, STAMINA.Max))
+				local max = maxOf(player)
+				if typeof(current) == "number" and current < max and resting and player:GetAttribute("HeavyAttacking") ~= true then
+					local regen = STAMINA.RegenPerSecond + SkillMath.general(player, "StaminaRegen")
+					player:SetAttribute("Stamina", math.min(current + regen * REGEN_INTERVAL, max))
 				end
 			end
 			task.wait(REGEN_INTERVAL)

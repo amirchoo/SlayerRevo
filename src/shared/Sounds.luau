@@ -38,6 +38,7 @@ local SPECS: { [string]: SoundSpec } = {
 	Block = { Id = THUD, Pitch = 1.8, Volume = 0.8 }, -- a blocked hit
 	ParryHit = { Id = BOOM, Pitch = 2.2, Volume = 0.6 }, -- a parried hit (heard by everyone nearby)
 	ChargeLevel = { Id = TICK, Pitch = 1, Volume = 0.8 }, -- greatsword charge level reached (pitch rises per level)
+	Heartbeat = { Id = THUD, Pitch = 0.5, Volume = 0.6 }, -- thumps while your health is low
 }
 
 local Sounds = {}

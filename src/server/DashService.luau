@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
+local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local HealthService = require(script.Parent.HealthService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 
@@ -24,8 +25,17 @@ local DashService = {}
 type DashState = { charges: number, updated: number, lastDash: number, invulnerableUntil: number }
 local states: { [Player]: DashState } = {}
 
-local function freshState(): DashState
-	return { charges = DASH.MaxCharges, updated = os.clock(), lastDash = 0, invulnerableUntil = 0 }
+-- The player's dash charges, recharge time, and i-frames, with their skill bonuses
+-- (see SkillTrees); the client's dash meter works these out the same way.
+local function dashStats(player: Player): (number, number, number)
+	local charges = DASH.MaxCharges + SkillMath.general(player, "DashCharges")
+	local recharge = DASH.RechargeTime * (1 - SkillMath.general(player, "DashRecharge"))
+	local iframes = DASH.IFrameTime + SkillMath.general(player, "DashIFrames")
+	return charges, recharge, iframes
+end
+
+local function freshState(player: Player): DashState
+	return { charges = (dashStats(player)), updated = os.clock(), lastDash = 0, invulnerableUntil = 0 }
 end
 
 local function onDash(player: Player)
@@ -33,18 +43,19 @@ local function onDash(player: Player)
 	if not character or not HealthService.isAlive(character) then
 		return
 	end
-	local state = states[player] or freshState()
+	local state = states[player] or freshState(player)
 	states[player] = state
 	local now = os.clock()
-	-- Refill like the client: one charge per RechargeTime.
-	state.charges = math.min(DASH.MaxCharges, state.charges + (now - state.updated) / DASH.RechargeTime)
+	local maxCharges, recharge, iframes = dashStats(player)
+	-- Refill like the client: one charge per recharge time.
+	state.charges = math.min(maxCharges, state.charges + (now - state.updated) / recharge)
 	state.updated = now
-	if state.charges < 1 - TIMING_SLACK / DASH.RechargeTime or now - state.lastDash < DASH.MinInterval - TIMING_SLACK then
+	if state.charges < 1 - TIMING_SLACK / recharge or now - state.lastDash < DASH.MinInterval - TIMING_SLACK then
 		return -- no charge ready: no i-frames
 	end
 	state.charges = math.max(state.charges - 1, 0)
 	state.lastDash = now
-	state.invulnerableUntil = now + DASH.IFrameTime
+	state.invulnerableUntil = now + iframes
 end
 
 -- Damage filter: a hit during a dash's i-frames is dodged.
@@ -60,9 +71,9 @@ end
 
 function DashService.start()
 	local function onPlayerAdded(player: Player)
-		states[player] = freshState()
+		states[player] = freshState(player)
 		player.CharacterAdded:Connect(function()
-			states[player] = freshState() -- the client refills its charges on respawn too
+			states[player] = freshState(player) -- the client refills its charges on respawn too
 		end)
 	end
 	Players.PlayerAdded:Connect(onPlayerAdded)

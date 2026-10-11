@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
+local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local EnemyEffects = require(script.Parent.EnemyEffects)
@@ -154,7 +155,7 @@ local function onSwing(player: Player)
 			step = previous.step + 1
 		end
 	end
-	if not StaminaService.spend(player, GREATSWORD.SwingStamina) then
+	if not StaminaService.spend(player, SkillMath.staminaCost(player, GREATSWORD.ToolName, GREATSWORD.SwingStamina, "Light")) then
 		return -- too tired
 	end
 	comboStates[player] = { step = step, time = now }
@@ -165,7 +166,8 @@ local function onSwing(player: Player)
 		if not root or not root:IsA("BasePart") or not HealthService.isAlive(character) or not holdingGreatsword(character) then
 			return
 		end
-		for _, hit in MeleeHitbox.strikeArc(player, character, root, move.Radius, move.Arc, move.Damage, GREATSWORD.ToolName) do
+		local damage = SkillMath.damage(player, GREATSWORD.ToolName, move.Damage, "Light")
+		for _, hit in MeleeHitbox.strikeArc(player, character, root, move.Radius, move.Arc, damage, GREATSWORD.ToolName) do
 			if move.Knockback and HealthService.isAlive(hit.model) then
 				EnemyEffects.knockBack(hit.model, root.Position, move.Knockback, GREATSWORD.KnockbackTime)
 			end
@@ -185,7 +187,7 @@ local function onCharge(player: Player)
 	if now - (lastSlam[player] or 0) < GREATSWORD.Recovery - TIMING_SLACK or midSwing(player, now) then
 		return -- still recovering from the last slam or swing
 	end
-	if not StaminaService.spend(player, GREATSWORD.SlamStamina) then
+	if not StaminaService.spend(player, SkillMath.staminaCost(player, GREATSWORD.ToolName, GREATSWORD.SlamStamina, "Heavy")) then
 		return -- too tired
 	end
 	chargeStarted[player] = now
@@ -202,7 +204,8 @@ local function onRelease(player: Player)
 
 	-- The highest level reached, from the server's own timing of the charge.
 	local now = os.clock()
-	local held = now - started
+	-- Swift Charge and the like make each level come sooner (see SkillTrees).
+	local held = (now - started) * (1 + SkillMath.weapon(player, GREATSWORD.ToolName, "ChargeSpeed"))
 	local level = LEVELS[1]
 	for _, candidate in LEVELS do
 		if held >= candidate.Time then
@@ -217,7 +220,8 @@ local function onRelease(player: Player)
 			return
 		end
 		local size = Vector3.new(GREATSWORD.Width, GREATSWORD.Height, GREATSWORD.Range)
-		for _, hit in MeleeHitbox.strike(player, character, root, size, level.Damage, GREATSWORD.ToolName) do
+		local damage = SkillMath.damage(player, GREATSWORD.ToolName, level.Damage, "Heavy")
+		for _, hit in MeleeHitbox.strike(player, character, root, size, damage, GREATSWORD.ToolName) do
 			if level.Knockback > 0 and HealthService.isAlive(hit.model) then
 				EnemyEffects.knockBack(hit.model, root.Position, level.Knockback, GREATSWORD.KnockbackTime)
 			end

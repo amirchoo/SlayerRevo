@@ -1,7 +1,7 @@
 --!strict
 -- Dash: press DASH.Key (V) for a quick burst of speed in the direction you're moving (or
--- facing, if standing still). Up to DASH.MaxCharges are stored; spent charges refill one
--- at a time, each taking DASH.RechargeTime. A meter above the left of the health bar (a
+-- facing, if standing still). Up to DASH.MaxCharges are stored (more with skills); spent
+-- charges refill one at a time, each taking DASH.RechargeTime (less with skills). A meter above the left of the health bar (a
 -- lightning badge and one bar per charge) shows each charge, with the one refilling filling
 -- up as it charges; bars pop when they refill and squish when spent.
 -- Each client simulates its own character's movement, so the dash runs here and
@@ -15,13 +15,15 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
+local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local HudStyle = require(script.Parent.HudStyle)
 local DamageNumbers = require(script.Parent.DamageNumbers)
 local Push = require(script.Parent.Push)
 
 local DASH = CombatConfig.Dash
 
-local SEGMENT_SIZE = Vector2.new(46, 22)
+local METER_WIDTH = 150 -- the badge plus the charge bars fit in this
+local SEGMENT_HEIGHT = 22
 local SEGMENT_GAP = 6
 local BADGE_SIZE = 40
 local BADGE_COLOR = Color3.fromRGB(255, 200, 60)
@@ -36,7 +38,16 @@ local dodgedRemote = remotes:WaitForChild("Dodged") :: RemoteEvent
 
 local Dash = {}
 
+-- Dash charges and recharge time, with the player's skill bonuses (matches DashService).
+local function maxCharges(): number
+	return DASH.MaxCharges + SkillMath.general(player, "DashCharges")
+end
+local function rechargeTime(): number
+	return DASH.RechargeTime * (1 - SkillMath.general(player, "DashRecharge"))
+end
+
 local charges = DASH.MaxCharges
+local meterRow: Frame? = nil
 local rechargeProgress = 0 -- 0..1 progress of the charge currently refilling
 local lastDash = 0
 local segments: { Frame } = {}
@@ -49,13 +60,13 @@ local function createMeter()
 	gui.ResetOnSpawn = false
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	-- Above the left half of the health bar (the bar is 300 wide at bottom center, see
+	-- Above the left half of the health bar (the bar is 420 wide at bottom center, see
 	-- HealthBar); the block meter takes the right half.
 	local row = Instance.new("Frame")
 	row.Name = "Meter"
 	row.AnchorPoint = Vector2.new(0, 1)
-	row.Position = UDim2.new(0.5, -150, 1, -148)
-	row.Size = UDim2.fromOffset(150, BADGE_SIZE)
+	row.Position = UDim2.new(0.5, -210, 1, -144)
+	row.Size = UDim2.fromOffset(METER_WIDTH, BADGE_SIZE)
 	row.BackgroundTransparency = 1
 	row.Parent = gui
 
@@ -74,11 +85,24 @@ local function createMeter()
 	key.Size = UDim2.fromOffset(20, 14)
 	key.ZIndex = 2
 
-	for index = 1, DASH.MaxCharges do
+	meterRow = row
+end
+
+-- Makes the meter show `count` charge bars (more with the Extra Dash skill), sized to fit.
+local function setSegmentCount(count: number)
+	local row = meterRow
+	if not row then
+		return
+	end
+	while #segments > count do
+		(table.remove(segments) :: Frame):Destroy()
+		table.remove(fills)
+	end
+	while #segments < count do
+		local index = #segments + 1
 		local segment = Instance.new("Frame")
 		segment.Name = `Dash{index}`
 		segment.LayoutOrder = index
-		segment.Size = UDim2.fromOffset(SEGMENT_SIZE.X, SEGMENT_SIZE.Y)
 		segment.BackgroundColor3 = HudStyle.EMPTY
 		segment.Parent = row
 		HudStyle.chunky(segment, 8)
@@ -95,6 +119,10 @@ local function createMeter()
 		HudStyle.gloss(fill)
 		table.insert(segments, segment)
 		table.insert(fills, fill)
+	end
+	local width = math.floor((METER_WIDTH - BADGE_SIZE - SEGMENT_GAP * count) / count)
+	for _, segment in segments do
+		segment.Size = UDim2.fromOffset(width, SEGMENT_HEIGHT)
 	end
 end
 
@@ -142,7 +170,20 @@ end
 
 function Dash.start()
 	createMeter()
+	setSegmentCount(maxCharges())
+	charges = maxCharges()
 	updateMeter()
+	-- Skills can add a charge: rebuild the meter (a new charge comes ready).
+	local shownMax = maxCharges()
+	player:GetAttributeChangedSignal("Skills"):Connect(function()
+		local max = maxCharges()
+		if max ~= shownMax then
+			charges = math.clamp(charges + (max - shownMax), 0, max)
+			shownMax = max
+			setSegmentCount(max)
+			updateMeter()
+		end
+	end)
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		-- gameProcessed is true while typing in chat, so typing V there doesn't dash.
@@ -153,11 +194,11 @@ function Dash.start()
 
 	-- Refill spent charges one at a time.
 	RunService.Heartbeat:Connect(function(dt)
-		if charges >= DASH.MaxCharges then
+		if charges >= maxCharges() then
 			rechargeProgress = 0
 			return
 		end
-		rechargeProgress += dt / DASH.RechargeTime
+		rechargeProgress += dt / rechargeTime()
 		if rechargeProgress >= 1 then
 			charges += 1
 			rechargeProgress = 0
@@ -179,7 +220,7 @@ function Dash.start()
 	end)
 
 	player.CharacterAdded:Connect(function()
-		charges = DASH.MaxCharges
+		charges = maxCharges()
 		rechargeProgress = 0
 		updateMeter()
 	end)
