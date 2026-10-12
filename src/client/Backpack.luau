@@ -22,6 +22,7 @@ local ArmorConfig = require(ReplicatedStorage.Shared.Config.ArmorConfig)
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 local Panels = require(script.Parent.Panels)
 local HudStyle = require(script.Parent.HudStyle)
+local Icons = require(ReplicatedStorage.Shared.Icons)
 local WeaponIcon = require(script.Parent.WeaponIcon)
 
 local PANEL_SIZE = Vector2.new(1000, 620)
@@ -53,11 +54,11 @@ local BLUR_TWEEN = TweenInfo.new(0.2)
 -- character view the line runs to (as a fraction of the view: 0,0 top left, 1,1 bottom right).
 local CHARACTER_VIEW = { position = Vector2.new(640, 70), size = Vector2.new(250, 520) }
 local ARMOR_LAYOUT: { [string]: { tile: Vector2, body: Vector2, icon: string } } = {
-	Helmet = { tile = Vector2.new(890, 90), body = Vector2.new(0.5, 0.1), icon = "🪖" },
-	Chestplate = { tile = Vector2.new(545, 150), body = Vector2.new(0.45, 0.3), icon = "🛡️" },
-	Armwear = { tile = Vector2.new(900, 280), body = Vector2.new(0.75, 0.42), icon = "🧤" },
-	Leggings = { tile = Vector2.new(545, 380), body = Vector2.new(0.42, 0.66), icon = "👖" },
-	Boots = { tile = Vector2.new(900, 460), body = Vector2.new(0.6, 0.84), icon = "🥾" },
+	Helmet = { tile = Vector2.new(890, 90), body = Vector2.new(0.5, 0.1), icon = "Helmet" },
+	Chestplate = { tile = Vector2.new(545, 150), body = Vector2.new(0.45, 0.3), icon = "Chestplate" },
+	Armwear = { tile = Vector2.new(900, 280), body = Vector2.new(0.75, 0.42), icon = "Armwear" },
+	Leggings = { tile = Vector2.new(545, 380), body = Vector2.new(0.42, 0.66), icon = "Leggings" },
+	Boots = { tile = Vector2.new(900, 460), body = Vector2.new(0.6, 0.84), icon = "Boots" },
 }
 local PROTECTION_SEGMENTS = 6
 local PROTECTION_PER_SEGMENT = 0.025 -- a 12% chestplate fills 5 of 6
@@ -186,7 +187,7 @@ function Backpack.start()
 	gui.Parent = player:WaitForChild("PlayerGui")
 
 	-- The always-on icon, left side of the screen.
-	local icon = HudStyle.badge(HudStyle.holder(gui, Vector2.new(0, 0.5)), ICON_SIZE, Color3.fromRGB(190, 120, 60), "🎒")
+	local icon = HudStyle.badge(HudStyle.holder(gui, Vector2.new(0, 0.5)), ICON_SIZE, Color3.fromRGB(190, 120, 60), "Backpack")
 	icon.AnchorPoint = Vector2.new(0, 0.5)
 	icon.Position = UDim2.new(0, 16, 0.5, 0)
 	local keyHint = HudStyle.caption(icon, InventoryConfig.OpenKey.Name, 16)
@@ -384,7 +385,7 @@ function Backpack.start()
 
 	-- The character, and the armor slots around it.
 	local refreshCharacter = buildCharacterView(panel)
-	type ArmorTile = { slot: string, frame: Frame, stroke: UIStroke, icon: TextLabel, segments: { Frame }, name: TextLabel }
+	type ArmorTile = { slot: string, frame: Frame, stroke: UIStroke, icon: ImageLabel, segments: { Frame }, name: TextLabel }
 	local armorTiles: { ArmorTile } = {}
 	for _, slot in ArmorConfig.Slots do
 		local layout = ARMOR_LAYOUT[slot]
@@ -402,9 +403,8 @@ function Backpack.start()
 		frame.Parent = panel
 		HudStyle.chunky(frame, 14, 3)
 		Instance.new("UIScale").Parent = frame
-		local iconLabel = text(frame, layout.icon, 36)
-		iconLabel.Size = UDim2.fromScale(1, 1)
-		iconLabel.TextXAlignment = Enum.TextXAlignment.Center
+		local iconLabel = Icons.image(frame, layout.icon, 20)
+		iconLabel.Position = UDim2.new(0.5, 0, 0.5, -6) -- above the name
 		iconLabel.ZIndex = 5
 		local name = text(frame, "", 11)
 		name.AnchorPoint = Vector2.new(0.5, 1)
@@ -438,17 +438,16 @@ function Backpack.start()
 		button.Parent = frame
 		button.Activated:Connect(function()
 			HudStyle.pop(frame, 0.88)
+			-- Cycles through the owned sets with a piece for this slot, then takes it off.
 			local worn = player:GetAttribute(`Armor{slot}`)
-			if typeof(worn) == "string" then
-				armorRemote:FireServer(slot, nil)
-			else
-				for setId, set in ArmorConfig.Sets do
-					if set.Pieces[slot] and player:GetAttribute(`OwnsArmor{setId}`) == true then
-						armorRemote:FireServer(slot, setId)
-						break
-					end
+			local options: { string } = {}
+			for _, setId in ArmorConfig.SetOrder do
+				if ArmorConfig.Sets[setId].Pieces[slot] and player:GetAttribute(`OwnsArmor{setId}`) == true then
+					table.insert(options, setId)
 				end
 			end
+			local index = if typeof(worn) == "string" then table.find(options, worn) else nil
+			armorRemote:FireServer(slot, options[if index then index + 1 else 1]) -- nil past the last one
 		end)
 		table.insert(armorTiles, {
 			slot = slot,
@@ -464,6 +463,7 @@ function Backpack.start()
 	protectionLabel.Position = UDim2.fromOffset(CHARACTER_VIEW.position.X + CHARACTER_VIEW.size.X / 2, PANEL_SIZE.Y - 34)
 	protectionLabel.Size = UDim2.fromOffset(240, 20)
 	protectionLabel.TextXAlignment = Enum.TextXAlignment.Center
+	HudStyle.iconBeside(protectionLabel, "Shield", 18)
 
 	-- Updating ---------------------------------------------------------------------------
 
@@ -523,7 +523,7 @@ function Backpack.start()
 	local function updateArmor()
 		local protection = player:GetAttribute("Protection")
 		local total = if typeof(protection) == "number" then protection else 0
-		protectionLabel.Text = `🛡 {math.round(total * 100)}% protection`
+		protectionLabel.Text = `{math.round(total * 100)}% protection`
 		for _, tile in armorTiles do
 			local worn = player:GetAttribute(`Armor{tile.slot}`)
 			local set = if typeof(worn) == "string" then ArmorConfig.Sets[worn] else nil
@@ -534,8 +534,10 @@ function Backpack.start()
 			end
 			tile.stroke.Color = if set then WORN_BORDER else HudStyle.OUTLINE
 			tile.frame.BackgroundColor3 = if set then Color3.fromRGB(52, 66, 110) elseif owned then TILE_COLOR else EMPTY_COLOR
-			tile.icon.TextTransparency = if set then 0 else 0.6
+			tile.icon.ImageTransparency = if set then 0 else 0.6
 			tile.name.Text = if set then set.Name elseif owned then "Wear" else tile.slot
+			local rarity = if set then InventoryConfig.rarityById(set.Rarity) else nil
+			tile.name.TextColor3 = if rarity and rarity ~= InventoryConfig.Rarities[1] then rarity.Color else Color3.new(1, 1, 1)
 			local filled = math.clamp(math.round(amount / PROTECTION_PER_SEGMENT), if amount > 0 then 1 else 0, PROTECTION_SEGMENTS)
 			for index, segment in tile.segments do
 				segment.BackgroundColor3 = if index <= filled then PROTECTION_COLOR else HudStyle.EMPTY

@@ -2,7 +2,10 @@
 -- Shared look for the chunky, cartoonish HUD pieces (dash and block meters): thick dark
 -- outlines, rounded corners, a glossy top highlight, the FredokaOne font, and a bouncy pop.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+
+local Icons = require(ReplicatedStorage.Shared.Icons)
 
 local HudStyle = {}
 
@@ -36,7 +39,8 @@ function HudStyle.gloss(frame: GuiObject)
 	gradient.Parent = frame
 end
 
--- A round icon badge: a colored circle with an outlined emoji/text in it.
+-- A round icon badge: a colored circle with an icon in it (an Icons name; any other text is
+-- shown as text).
 function HudStyle.badge(parent: Instance, size: number, color: Color3, icon: string): Frame
 	local badge = Instance.new("Frame")
 	badge.Name = "Badge"
@@ -47,6 +51,10 @@ function HudStyle.badge(parent: Instance, size: number, color: Color3, icon: str
 	HudStyle.gloss(badge)
 	Instance.new("UIScale").Parent = badge
 
+	if Icons.has(icon) then
+		Icons.image(badge, icon, math.floor(size * 0.14))
+		return badge
+	end
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
@@ -76,6 +84,26 @@ function HudStyle.caption(parent: Instance, text: string, size: number): TextLab
 	stroke.Thickness = 2
 	stroke.Parent = label
 	return label
+end
+
+-- Keeps icon `name` just left of `label`'s text (wherever its alignment puts the text), as tall
+-- as `size` pixels. Returns the icon, e.g. to fade it with the label.
+function HudStyle.iconBeside(label: TextLabel, name: string, size: number): ImageLabel
+	local icon = Icons.image(label, name)
+	icon.AnchorPoint = Vector2.new(1, 0.5)
+	icon.Size = UDim2.fromOffset(size, size)
+	local function place()
+		local width, bounds = label.AbsoluteSize.X, label.TextBounds.X
+		local left = if label.TextXAlignment == Enum.TextXAlignment.Left
+			then 0
+			elseif label.TextXAlignment == Enum.TextXAlignment.Right then width - bounds
+			else (width - bounds) / 2
+		icon.Position = UDim2.new(if width > 0 then left / width else 0, -4, 0.5, 0)
+	end
+	label:GetPropertyChangedSignal("TextBounds"):Connect(place)
+	label:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
+	place()
+	return icon
 end
 
 -- A short name tag ("HP", "STA") just outside a bar's left end, so the bars read at a glance.

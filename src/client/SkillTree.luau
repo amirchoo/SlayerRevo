@@ -22,6 +22,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local SkillTrees = require(ReplicatedStorage.Shared.Config.SkillTrees)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
+local Icons = require(ReplicatedStorage.Shared.Icons)
 local HudStyle = require(script.Parent.HudStyle)
 local Panels = require(script.Parent.Panels)
 local WeaponIcon = require(script.Parent.WeaponIcon)
@@ -78,22 +79,15 @@ local BRANCH_BENDS = 3
 local BRANCH_WOBBLE = 0.09
 local TWIG_CHANCE = 0.5
 
--- An icon per skill (falls back to its branch's icon, or a star).
+-- Each skill's icon is the Icons entry named after it; these are named differently. Skills
+-- without one show their branch's icon.
 local NODE_ICONS: { [string]: string } = {
-	FleetFoot = "👟", ExtraDash = "💨", GhostStep = "👻",
-	Bulwark = "🧱", ExtraGuard = "🛡️", Riposte = "⚔️",
-	Toughness = "❤️", Recovery = "💚", Juggernaut = "🗿",
-	Power = "💪", Brutality = "🔥", Executioner = "💀",
-	StaminaPool = "🌬️", SecondBreath = "🔋",
-	Wellspring = "🔮", Flow = "🌊", Archmage = "🧙",
-	Mage = "🧙", FireUnlock = "🔥", WaterUnlock = "💧", EarthUnlock = "🪨", ElectricUnlock = "⚡", FaithUnlock = "✨",
-	Inferno = "🌋", Scorch = "♨️", Torrent = "🌊", Undertow = "🌪️", Bedrock = "⛰️", Tremor = "💥",
-	Storm = "⛈️", Overload = "🌩️", Devotion = "🙏", Sanctuary = "🕊️", Overcharge = "⏫", Spellweaver = "📜",
-	Sharpness = "🗡️", Efficiency = "🔋", HeavyTraining = "💥", Guardcraft = "🛡️", HuntersFocus = "🎯",
-	Whirlwind = "🌀", SwiftCharge = "⏩", Aftershock = "💢", LongLunge = "📏", DeepCuts = "🩸", QuickDraw = "🏹",
-	Blademaster = "⚔️", Cyclone = "🌪️", Sweeper = "🧹", Crusher = "🔨", Brawler = "👊",
-	Phalanx = "🧱", Skewer = "🔱", Butcher = "🩸", Berserker = "😡", Deadeye = "🎯", Rapidfire = "⚡",
+	FireUnlock = "Fire", WaterUnlock = "Water", EarthUnlock = "Earth", ElectricUnlock = "Electric", FaithUnlock = "Faith",
 }
+
+local function iconFor(nodeId: string, fallback: string): string
+	return NODE_ICONS[nodeId] or (if Icons.has(nodeId) then nodeId else fallback)
+end
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local spendRemote = remotes:WaitForChild("SkillSpend") :: RemoteEvent
@@ -121,7 +115,7 @@ type NodeView = {
 	node: SkillTrees.Node,
 	frame: Frame,
 	stroke: UIStroke,
-	icon: TextLabel,
+	icon: ImageLabel,
 	rank: TextLabel,
 	name: TextLabel,
 }
@@ -135,7 +129,7 @@ function SkillTree.start()
 	gui.Parent = player:WaitForChild("PlayerGui")
 
 	-- The always-on icon, under the backpack's, with a counter of unspent points.
-	local icon = HudStyle.badge(HudStyle.holder(gui, Vector2.new(0, 0.5)), ICON_SIZE, Color3.fromRGB(150, 110, 220), "🌟")
+	local icon = HudStyle.badge(HudStyle.holder(gui, Vector2.new(0, 0.5)), ICON_SIZE, Color3.fromRGB(150, 110, 220), "Skills")
 	icon.AnchorPoint = Vector2.new(0, 0.5)
 	icon.Position = UDim2.new(0, 20, 0.5, 76)
 	local keyHint = HudStyle.caption(icon, OPEN_KEY.Name, 16)
@@ -314,10 +308,10 @@ function SkillTree.start()
 	info.BackgroundTransparency = 0.25
 	info.Parent = panel
 	HudStyle.chunky(info, 16, 3)
-	local infoIcon = text(info, "", 44)
+	local infoIcon = Icons.image(info, nil)
+	infoIcon.AnchorPoint = Vector2.new(0, 0)
 	infoIcon.Position = UDim2.fromOffset(16, 14)
 	infoIcon.Size = UDim2.fromOffset(56, 56)
-	infoIcon.TextXAlignment = Enum.TextXAlignment.Center
 	local infoName = text(info, "", 22)
 	infoName.Position = UDim2.fromOffset(80, 16)
 	infoName.Size = UDim2.new(1, -92, 0, 26)
@@ -356,7 +350,7 @@ function SkillTree.start()
 	local pages: { [string]: Frame } = {}
 	local nodeViews: { NodeView } = {}
 	local lines: { Line } = {}
-	local branchLocks: { { branch: SkillTrees.Branch, label: TextLabel, views: { NodeView } } } = {}
+	local branchLocks: { { branch: SkillTrees.Branch, label: TextLabel, icon: ImageLabel, views: { NodeView } } } = {}
 	local selected: NodeView? = nil
 	local selectedTab = "General"
 	local dragMoved = 0 -- how far the current (or last) press has dragged the canvas
@@ -376,7 +370,7 @@ function SkillTree.start()
 	window.BackgroundTransparency = 1
 	window.ClipsDescendants = true
 	window.Parent = panel
-	local dragHint = HudStyle.caption(panel, "✋ drag to look around", 13)
+	local dragHint = HudStyle.caption(panel, "drag to look around", 13)
 	dragHint.AnchorPoint = Vector2.new(0, 1)
 	dragHint.Position = UDim2.fromOffset(CANVAS.position.X + 10, CANVAS.position.Y + CANVAS.size.Y - 6)
 	dragHint.Size = UDim2.fromOffset(170, 16)
@@ -494,9 +488,7 @@ function SkillTree.start()
 		frame.Parent = page
 		HudStyle.chunky(frame, NODE_SIZE // 2, 3)
 		Instance.new("UIScale").Parent = frame
-		local iconLabel = text(frame, NODE_ICONS[node.Id] or fallbackIcon, 26)
-		iconLabel.Size = UDim2.fromScale(1, 1)
-		iconLabel.TextXAlignment = Enum.TextXAlignment.Center
+		local iconLabel = Icons.image(frame, iconFor(node.Id, fallbackIcon), 9)
 		iconLabel.ZIndex = 3
 		local rank = HudStyle.caption(frame, "", 13)
 		rank.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -582,13 +574,14 @@ function SkillTree.start()
 			-- The branch's name past its tip.
 			local tipDirection = (last - GENERAL_ROOT).Unit
 			local labelPosition = last + tipDirection * 72
-			local label = HudStyle.caption(page, `{branch.Icon} {branch.Name:upper()}`, 15)
+			local label = HudStyle.caption(page, branch.Name:upper(), 15)
 			label.AnchorPoint = Vector2.new(0.5, 0.5)
 			label.Position = UDim2.fromOffset(math.clamp(labelPosition.X, 80, GENERAL_WORLD.X - 80), math.max(labelPosition.Y, 20))
 			label.Size = UDim2.fromOffset(150, 34)
 			label.TextColor3 = ACCENT
 			label.TextWrapped = true
-			table.insert(branchLocks, { branch = branch, label = label, views = views })
+			local icon = HudStyle.iconBeside(label, branch.Icon, 20)
+			table.insert(branchLocks, { branch = branch, label = label, icon = icon, views = views })
 		end
 	end
 
@@ -596,9 +589,7 @@ function SkillTree.start()
 	do
 		local page = makePage("General", GENERAL_WORLD, GENERAL_ROOT)
 		local root = makeRoot(page, GENERAL_ROOT, "YOU")
-		local star = text(root, "⭐", 32)
-		star.Size = UDim2.fromScale(1, 1)
-		star.TextXAlignment = Enum.TextXAlignment.Center
+		local star = Icons.image(root, "Star", 10)
 		star.ZIndex = 3
 		radialTree(page, "General", SkillTrees.General, BRANCH_ANGLES, nil)
 	end
@@ -606,7 +597,7 @@ function SkillTree.start()
 	-- Staff: the Mage class. The Mage node is the root; each element's branch grows from it.
 	do
 		local page = makePage("Staff", GENERAL_WORLD, GENERAL_ROOT)
-		makeNode(page, "Staff", SkillTrees.StaffClassNode, GENERAL_ROOT, "🧙")
+		makeNode(page, "Staff", SkillTrees.StaffClassNode, GENERAL_ROOT, "Mage")
 		radialTree(page, "Staff", SkillTrees.StaffBranches, STAFF_BRANCH_ANGLES, SkillTrees.StaffClass)
 	end
 
@@ -645,7 +636,7 @@ function SkillTree.start()
 				if #below == 2 and #nodes == 1 then
 					branchLine(page, below[2].center, center, weapon, below[2].id, WEAPON_BRANCH_WIDTH[tier] or 6)
 				end
-				makeNode(page, weapon, node, center, "✨")
+				makeNode(page, weapon, node, center, "Sparkles")
 				table.insert(here, { center = center, id = node.Id })
 			end
 			if tier == #WEAPON_TIER_Y and #nodes == 2 then
@@ -714,7 +705,7 @@ function SkillTree.start()
 			view.frame.BackgroundColor3 = color
 			view.stroke.Color = if view == selected then ACCENT else border
 			view.stroke.Thickness = if view == selected then 5 else 3
-			view.icon.TextTransparency = iconFade
+			view.icon.ImageTransparency = iconFade
 			view.name.TextColor3 = if rank > 0 then Color3.new(1, 1, 1) else SOFT_TEXT
 		end
 
@@ -731,7 +722,8 @@ function SkillTree.start()
 		for _, entry in branchLocks do
 			local rival = entry.branch.Rival
 			local lockedBy = rival and SkillMath.spentInBranch(alloc, rival) > 0
-			entry.label.Text = if lockedBy then `🔒 {entry.branch.Name:upper()}\nlocked by {rival}` else `{entry.branch.Icon} {entry.branch.Name:upper()}`
+			entry.label.Text = if lockedBy then `{entry.branch.Name:upper()}\nlocked by {rival}` else entry.branch.Name:upper()
+			Icons.set(entry.icon, if lockedBy then "Lock" else entry.branch.Icon)
 			entry.label.TextColor3 = if lockedBy then SOFT_TEXT else ACCENT
 			for _, view in entry.views do
 				view.frame.BackgroundTransparency = if lockedBy then 0.55 else 0
@@ -748,7 +740,9 @@ function SkillTree.start()
 			local rank = SkillMath.rank(alloc, view.treeId, node.Id)
 			local ok, reason = SkillMath.check(alloc, level, view.treeId, node.Id)
 			local branch = SkillMath.branchOf(node.Id)
-			infoIcon.Text = view.icon.Text
+			infoIcon.Image = view.icon.Image
+			infoIcon.ImageRectOffset = view.icon.ImageRectOffset
+			infoIcon.ImageRectSize = view.icon.ImageRectSize
 			infoName.Text = node.Name
 			infoTree.Text = if view.treeId == "General" and branch then `{branch.Name} · tier {node.Tier}` else `{view.treeId} · tier {node.Tier}`
 			infoRank.Text = `RANK {rank} / {node.MaxRank}`
@@ -769,14 +763,14 @@ function SkillTree.start()
 				learn.BackgroundColor3 = OWNED
 				learn.Active = true
 			else
-				infoStatus.Text = `🔒 {reason or "Locked"}`
+				infoStatus.Text = reason or "Locked"
 				learn.Text = "LOCKED"
 				learn.BackgroundColor3 = Color3.fromRGB(80, 78, 92)
 				learn.Active = false
 			end
 			learn.Visible = true
 		else
-			infoIcon.Text = if selectedTab == "General" then "⭐" elseif selectedTab == "Staff" then "🧙" else "🗡️"
+			Icons.set(infoIcon, if selectedTab == "General" then "Star" elseif selectedTab == "Staff" then "Mage" else "Swords")
 			infoName.Text = if selectedTab == "General" then "General" elseif selectedTab == "Staff" then "Mage" else selectedTab
 			infoTree.Text = `{SkillMath.spent(alloc, selectedTab)} points spent here`
 			infoRank.Text = ""

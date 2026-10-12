@@ -110,19 +110,21 @@ function InventoryService.give(player: Player, tool: Tool)
 	end
 end
 
-local function onMove(player: Player, name: unknown, toHotbar: unknown)
-	if typeof(name) ~= "string" or typeof(toHotbar) ~= "boolean" or not InventoryConfig.weapon(name) then
-		return
+-- Moves one of the player's weapons into their hotbar (if there's room) or into storage.
+-- Returns whether the weapon ends up where asked.
+function InventoryService.move(player: Player, name: string, toHotbar: boolean): boolean
+	if not InventoryConfig.weapon(name) then
+		return false
 	end
 	local tool = findTool(player, name)
 	if not tool then
-		return -- not theirs
+		return false -- not theirs
 	end
 	local hotbar = hotbarOf(player)
 	local index = table.find(hotbar, name)
 	if toHotbar and not index then
 		if #hotbar >= InventoryConfig.HotbarSlots then
-			return -- full
+			return false -- full
 		end
 		table.insert(hotbar, name)
 		tool.Parent = player:FindFirstChildOfClass("Backpack")
@@ -138,6 +140,13 @@ local function onMove(player: Player, name: unknown, toHotbar: unknown)
 		tool.Parent = storageOf(player)
 	end
 	publish(player)
+	return true
+end
+
+local function onMove(player: Player, name: unknown, toHotbar: unknown)
+	if typeof(name) == "string" and typeof(toHotbar) == "boolean" then
+		InventoryService.move(player, name, toHotbar)
+	end
 end
 
 -- Restores a saved hotbar (known weapons only, up to the slot limit) and moves the

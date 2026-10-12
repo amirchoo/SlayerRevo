@@ -142,6 +142,8 @@ What happens to a delivered `.glb`, so it can be repeated:
    `tools/decimate_glb.py` (headless Blender).
 3. Bake the colors and set the pose: `python3 -I tools/weapon_glb.py <file> <Name>.ready.glb`,
    plus `--turn-y 180` for characters (they're designed facing +Z; the rig wants -Z).
+   Armor sets use `python3 -I tools/armor_glb.py <file> <Name>.ready.glb` instead: it keeps one
+   mesh per piece and splits each arm into a shoulder and forearm part hanging straight down.
 4. The user imports `<Name>.ready.glb` in Studio (Import 3D). Characters then go through
    Avatar Setup > Auto Setup. Save as `.rbxmx` into `assets/weapons/`, `assets/enemies/`,
    etc. (see the README in each folder).

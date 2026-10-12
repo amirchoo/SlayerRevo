@@ -19,10 +19,10 @@ local HudStyle = require(script.Parent.HudStyle)
 -- Where each button's centre goes, from the bottom-right corner, on a phone (scaled up on
 -- bigger screens), and its size. Roblox's jump button is centred at about (-60, -55).
 local LAYOUT: { { action: CombatInput.Action, icon: string, color: Color3, center: Vector2, size: number } } = {
-	{ action = "Attack", icon = "⚔️", color = Color3.fromRGB(220, 90, 70), center = Vector2.new(-160, -55), size = 78 },
-	{ action = "Block", icon = "🛡️", color = Color3.fromRGB(80, 150, 255), center = Vector2.new(-158, -150), size = 58 },
-	{ action = "Dash", icon = "💨", color = Color3.fromRGB(255, 200, 60), center = Vector2.new(-60, -145), size = 58 },
-	{ action = "Lock", icon = "🎯", color = Color3.fromRGB(150, 110, 220), center = Vector2.new(-240, -125), size = 48 },
+	{ action = "Attack", icon = "Attack", color = Color3.fromRGB(220, 90, 70), center = Vector2.new(-160, -55), size = 78 },
+	{ action = "Block", icon = "Shield", color = Color3.fromRGB(80, 150, 255), center = Vector2.new(-158, -150), size = 58 },
+	{ action = "Dash", icon = "Dash", color = Color3.fromRGB(255, 200, 60), center = Vector2.new(-60, -145), size = 58 },
+	{ action = "Lock", icon = "Target", color = Color3.fromRGB(150, 110, 220), center = Vector2.new(-240, -125), size = 48 },
 }
 local TABLET_SCALE = 1.6 -- Roblox's jump button grows on screens over 500 px on their short side
 local PRESSED_TRANSPARENCY = 0.35

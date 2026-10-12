@@ -50,6 +50,12 @@
         "InventoryMove": {
           "$className": "RemoteEvent"
         },
+        "TestChestOpen": {
+          "$className": "RemoteEvent"
+        },
+        "TestChestTake": {
+          "$className": "RemoteEvent"
+        },
         "DashStart": {
           "$className": "RemoteEvent"
         },
@@ -89,7 +95,8 @@
     },
     "StarterPlayer": {
       "$properties": {
-        "EnableMouseLockOption": true
+        "EnableMouseLockOption": true,
+        "LoadCharacterAppearance": false
       },
       "StarterPlayerScripts": {
         "Client": {

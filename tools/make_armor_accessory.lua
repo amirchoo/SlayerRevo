@@ -54,6 +54,8 @@ local handleAttachment = Instance.new("Attachment")
 handleAttachment.Name = attachmentName
 handleAttachment.CFrame = handle.CFrame:ToObjectSpace(body.CFrame) -- lines up with the body part, so the piece stays exactly where you placed it
 handleAttachment.Parent = handle
+-- The body part it was fitted on: the game stretches the piece by how each wearer's differs.
+handle:SetAttribute("FitSize", body.Size)
 
 local accessory = Instance.new("Accessory")
 accessory.Name = NAME

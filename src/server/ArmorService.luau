@@ -5,9 +5,10 @@
 -- The server checks ownership; worn armor stays on through respawns.
 -- State the HUD reads, as player attributes: "Protection" (0..1), "Armor<Slot>" (the worn
 -- set's id, or nil), and "OwnsArmor<SetId>".
+-- A worn helmet hides the avatar's own hats, hair, and face accessories.
 -- Looks: if ServerStorage.ArmorModels (assets/armor) has a file for a set's slot, that's
 -- worn: one Accessory, or a Model holding several, e.g. a pair of boots (see
--- assets/armor/README.md). Otherwise a
+-- assets/armor/README.md), stretched to the wearer's body parts. Otherwise a
 -- placeholder built from plain parts is welded over the R15 body parts, sized to each part
 -- so it fits any avatar. The stand shows the set on a wooden R15 mannequin.
 
@@ -18,6 +19,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local ArmorConfig = require(ReplicatedStorage.Shared.Config.ArmorConfig)
 local HealthService = require(script.Parent.HealthService)
 local DataService = require(script.Parent.DataService)
+local AvatarService = require(script.Parent.AvatarService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 
 type ArmorSet = ArmorConfig.ArmorSet
@@ -179,9 +181,114 @@ local function accessoriesFor(setId: string, slot: string): { Accessory }?
 	return if #list > 0 then list else nil
 end
 
+-- Stretches a cloned armor Accessory to fit `model`'s body. Its Handle's "FitSize" attribute is
+-- the size of the body part it was fitted on (tools/make_armor_accessory.lua sets it); every
+-- part of the piece is scaled, and moved, by how much bigger or smaller the wearer's body part
+-- is along each of its axes. Pieces without FitSize are worn as they are.
+local function fitToBody(accessory: Accessory, model: Model)
+	local handle = accessory:FindFirstChild("Handle")
+	if not (handle and handle:IsA("BasePart")) then
+		return
+	end
+	local fitSize = handle:GetAttribute("FitSize")
+	local handleAttachment: Attachment? = nil
+	for _, child in handle:GetChildren() do
+		if child:IsA("Attachment") and string.sub(child.Name, 1, 5) == "Armor" then
+			handleAttachment = child
+		end
+	end
+	if typeof(fitSize) ~= "Vector3" or not handleAttachment then
+		return
+	end
+	local body = model:FindFirstChild(string.sub(handleAttachment.Name, 6))
+	if not (body and body:IsA("BasePart")) then
+		return
+	end
+	local ratio = body.Size / fitSize
+	if (ratio - Vector3.one).Magnitude < 0.01 then
+		return
+	end
+
+	-- Work in the body part's space: the handle attachment lines the handle up with its center.
+	local handleInBody = handleAttachment.CFrame:Inverse()
+	local function scaled(cframe: CFrame): CFrame
+		return CFrame.new(cframe.Position * ratio) * cframe.Rotation
+	end
+	-- How much a part stretches along each of its own axes, from the body's per-axis ratio.
+	local function sizeFor(size: Vector3, rotation: CFrame): Vector3
+		local function along(axis: Vector3): number
+			local d = rotation:VectorToWorldSpace(axis)
+			return math.abs(d.X) * ratio.X + math.abs(d.Y) * ratio.Y + math.abs(d.Z) * ratio.Z
+		end
+		return size * Vector3.new(along(Vector3.xAxis), along(Vector3.yAxis), along(Vector3.zAxis))
+	end
+
+	local newHandleInBody = scaled(handleInBody)
+	for _, part in accessory:GetDescendants() do
+		if part:IsA("BasePart") and part ~= handle then
+			local inBody = handleInBody * handle.CFrame:ToObjectSpace(part.CFrame)
+			for _, weld in part:GetChildren() do
+				if weld:IsA("WeldConstraint") then
+					weld.Enabled = false -- re-enabled below, keeping the new offset
+				end
+			end
+			part.Size = sizeFor(part.Size, inBody.Rotation)
+			part.CFrame = handle.CFrame * newHandleInBody:Inverse() * scaled(inBody)
+		end
+	end
+	handle.Size = sizeFor(handle.Size, handleInBody.Rotation)
+	handleAttachment.CFrame = newHandleInBody:Inverse()
+	for _, weld in accessory:GetDescendants() do
+		if weld:IsA("WeldConstraint") then
+			weld.Enabled = true
+		end
+	end
+end
+
+-- Hides the avatar's own hats, hair, and face accessories like glasses (they'd poke through a
+-- helmet), or shows them again. Each hidden part remembers its transparency in an attribute,
+-- to restore it.
+local HEADWEAR_TYPES = { Enum.AccessoryType.Hat, Enum.AccessoryType.Hair, Enum.AccessoryType.Face }
+local HEADWEAR_ATTACHMENTS = { "HatAttachment", "HairAttachment", "FaceFrontAttachment", "FaceCenterAttachment" }
+
+local function isHeadwear(accessory: Accessory): boolean
+	if accessory:GetAttribute("ArmorSlot") then
+		return false -- our own armor
+	end
+	if table.find(HEADWEAR_TYPES, accessory.AccessoryType) then
+		return true
+	end
+	local handle = accessory:FindFirstChild("Handle")
+	for _, name in HEADWEAR_ATTACHMENTS do
+		if handle and handle:FindFirstChild(name) then
+			return true -- older hats that don't say their type
+		end
+	end
+	return false
+end
+
+local function setHeadwearHidden(model: Model, hidden: boolean)
+	for _, accessory in model:GetChildren() do
+		if accessory:IsA("Accessory") and isHeadwear(accessory) then
+			for _, part in accessory:GetDescendants() do
+				if part:IsA("BasePart") then
+					local saved = part:GetAttribute("ArmorHiddenTransparency")
+					if hidden and saved == nil then
+						part:SetAttribute("ArmorHiddenTransparency", part.Transparency)
+						part.Transparency = 1
+					elseif not hidden and typeof(saved) == "number" then
+						part.Transparency = saved
+						part:SetAttribute("ArmorHiddenTransparency", nil)
+					end
+				end
+			end
+		end
+	end
+end
+
 -- Puts the look of `setId`'s `slot` piece on `model` (replacing whatever was there), or
 -- just removes it when `setId` is nil. `model` needs a Humanoid to wear accessories.
-local function dressSlot(model: Model, slot: string, setId: string?)
+local function dressSlotLook(model: Model, slot: string, setId: string?)
 	-- Take off what's in the slot now: the placeholder, and any accessories we put on.
 	for _, child in model:GetChildren() do
 		if child.Name == `Armor{slot}` or child:GetAttribute("ArmorSlot") == slot then
@@ -211,6 +318,7 @@ local function dressSlot(model: Model, slot: string, setId: string?)
 					descendant.Massless = true
 				end
 			end
+			fitToBody(accessory, model)
 			humanoid:AddAccessory(accessory)
 		end
 		return
@@ -221,6 +329,14 @@ local function dressSlot(model: Model, slot: string, setId: string?)
 	piece.Name = `Armor{slot}`
 	BUILDERS[slot](piece, bodyOf(model), set)
 	piece.Parent = model
+end
+
+local function dressSlot(model: Model, slot: string, setId: string?)
+	dressSlotLook(model, slot, setId)
+	if slot == "Helmet" then
+		local set = setId and ArmorConfig.Sets[setId]
+		setHeadwearHidden(model, set ~= nil and set.Pieces.Helmet ~= nil)
+	end
 end
 
 -- Player state -----------------------------------------------------------------------------
@@ -469,16 +585,17 @@ function ArmorService.start()
 
 	local function onPlayerAdded(player: Player)
 		publish(player)
-		-- Worn armor stays on through respawns. Dress again once the avatar has loaded, since
-		-- loading it can swap out the body parts the armor is welded to.
+		-- Worn armor stays on through respawns.
 		player.CharacterAdded:Connect(function()
-			dressCharacter(player)
-		end)
-		player.CharacterAppearanceLoaded:Connect(function()
 			dressCharacter(player)
 		end)
 		dressCharacter(player)
 	end
+	-- Dress again once the character has its look: applying it replaces accessories (and its
+	-- hats and hair arrive then, for the helmet to hide).
+	AvatarService.onApplied(function(player)
+		dressCharacter(player)
+	end)
 	Players.PlayerAdded:Connect(onPlayerAdded)
 	for _, player in Players:GetPlayers() do
 		onPlayerAdded(player)

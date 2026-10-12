@@ -57,7 +57,7 @@ local function createRow(): (Frame, Frame)
 	layout.Parent = row
 
 	-- A shield badge on the far right.
-	local badge = HudStyle.badge(row, BADGE_SIZE, BADGE_COLOR, "🛡️")
+	local badge = HudStyle.badge(row, BADGE_SIZE, BADGE_COLOR, "Shield")
 	badge.LayoutOrder = 1000
 	return row, badge
 end

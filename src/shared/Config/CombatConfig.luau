@@ -430,27 +430,27 @@ local Staff = {
 	ModelFit = { Length = 6, GripFrom = 0.38 },
 	Elements = {
 		{
-			Name = "Fire", Icon = "🔥", Color = Color3.fromRGB(255, 120, 40),
+			Name = "Fire", Icon = "Fire", Color = Color3.fromRGB(255, 120, 40),
 			Light = { Damage = 14, Speed = 110, Size = 1 },
 			Heavy = { Kind = "FireWave", MinDamage = 25, MaxDamage = 55, Range = 28, Width = 9, Speed = 38, Burn = { Damage = 4, Interval = 0.5, Duration = 3 } },
 		},
 		{
-			Name = "Water", Icon = "💧", Color = Color3.fromRGB(70, 160, 255),
+			Name = "Water", Icon = "Water", Color = Color3.fromRGB(70, 160, 255),
 			Light = { Damage = 12, Speed = 110, Size = 1, Slow = { Factor = 0.6, Duration = 2 } },
 			Heavy = { Kind = "WaterBlast", MinDamage = 25, MaxDamage = 55, Range = 26, Width = 7, Knockback = 40 },
 		},
 		{
-			Name = "Earth", Icon = "🪨", Color = Color3.fromRGB(170, 125, 70),
+			Name = "Earth", Icon = "Earth", Color = Color3.fromRGB(170, 125, 70),
 			Light = { Damage = 18, Speed = 70, Size = 1.3, Knockback = 15 },
 			Heavy = { Kind = "Boulder", MinDamage = 40, MaxDamage = 90, Radius = 8, Speed = 75, Size = 4, Gravity = 45, Knockback = 25, Stun = 0.6 },
 		},
 		{
-			Name = "Electric", Icon = "⚡", Color = Color3.fromRGB(255, 235, 90),
+			Name = "Electric", Icon = "Electric", Color = Color3.fromRGB(255, 235, 90),
 			Light = { Damage = 10, Speed = 170, Size = 0.8, Chain = { Count = 2, Range = 12, DamageScale = 0.6 } },
 			Heavy = { Kind = "Thunder", MinDamage = 30, MaxDamage = 65, Range = 70, Radius = 10, Delay = 0.35, Slow = { Factor = 0.5, Duration = 3 } },
 		},
 		{
-			Name = "Faith", Icon = "✨", Color = Color3.fromRGB(255, 245, 190),
+			Name = "Faith", Icon = "Faith", Color = Color3.fromRGB(255, 245, 190),
 			Light = { Damage = 6, Speed = 120, Size = 1, Heal = 12 },
 			Heavy = { Kind = "HealBurst", MinDamage = 0, MaxDamage = 0, Radius = 15, MinHeal = 10, MaxHeal = 30 },
 		},

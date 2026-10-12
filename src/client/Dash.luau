@@ -79,7 +79,7 @@ local function createMeter()
 	layout.Parent = row
 
 	-- A lightning badge, with the key under it.
-	badge = HudStyle.badge(row, BADGE_SIZE, BADGE_COLOR, "⚡")
+	badge = HudStyle.badge(row, BADGE_SIZE, BADGE_COLOR, "Dash")
 	local key = HudStyle.caption(badge :: Frame, DASH.Key.Name, 14)
 	key.AnchorPoint = Vector2.new(0.5, 0.5)
 	key.Position = UDim2.new(0.5, 0, 1, 0)

@@ -29,12 +29,12 @@ InventoryConfig.Rarities = {
 
 -- Weapon classes, in the order the backpack lists them.
 InventoryConfig.Classes = {
-	{ Id = "Swords", Icon = "⚔️" },
-	{ Id = "Axes", Icon = "🪓" },
-	{ Id = "Blunt", Icon = "🔨" },
-	{ Id = "Polearms", Icon = "🔱" },
-	{ Id = "Ranged", Icon = "🏹" },
-	{ Id = "Magic", Icon = "🪄" },
+	{ Id = "Swords", Icon = "Swords" },
+	{ Id = "Axes", Icon = "Axes" },
+	{ Id = "Blunt", Icon = "Blunt" },
+	{ Id = "Polearms", Icon = "Polearms" },
+	{ Id = "Ranged", Icon = "Ranged" },
+	{ Id = "Magic", Icon = "Magic" },
 }
 
 InventoryConfig.Weapons = {
@@ -60,16 +60,20 @@ function InventoryConfig.weapon(name: string): WeaponInfo?
 	return nil
 end
 
--- A weapon's rarity tier (Common if it has none, or isn't a known weapon).
-function InventoryConfig.rarity(name: string): Rarity
-	local info = InventoryConfig.weapon(name)
-	local id = if info and info.Rarity then info.Rarity else "Common"
+-- A rarity tier by its Id (Common if there's no such tier).
+function InventoryConfig.rarityById(id: string?): Rarity
 	for _, rarity in InventoryConfig.Rarities do
 		if rarity.Id == id then
 			return rarity
 		end
 	end
 	return InventoryConfig.Rarities[1]
+end
+
+-- A weapon's rarity tier (Common if it has none, or isn't a known weapon).
+function InventoryConfig.rarity(name: string): Rarity
+	local info = InventoryConfig.weapon(name)
+	return InventoryConfig.rarityById(info and info.Rarity)
 end
 
 return InventoryConfig

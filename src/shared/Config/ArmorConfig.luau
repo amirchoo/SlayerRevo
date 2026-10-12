@@ -8,6 +8,8 @@ export type ArmorSet = {
 	Color: Color3, -- the plates
 	TrimColor: Color3, -- straps, belt, crest
 	Material: Enum.Material,
+	Rarity: string?, -- one of InventoryConfig.Rarities' Id; nil = "Common"
+	StarterFor: string?, -- the weapon this is the starter set of (a label for now: not given out automatically)
 	-- Protection per slot (fraction of damage negated). A set without a slot has no piece for it.
 	Pieces: { [string]: number },
 }
@@ -35,7 +37,74 @@ ArmorConfig.Sets = {
 			Boots = 0.04,
 		}, -- 35% with the full set
 	},
+	Leather = {
+		Name = "Leather",
+		Color = Color3.fromRGB(110, 62, 34),
+		TrimColor = Color3.fromRGB(45, 25, 15),
+		Material = Enum.Material.Fabric,
+		Rarity = "Uncommon",
+		StarterFor = "Sword",
+		Pieces = {
+			Helmet = 0.04,
+			Chestplate = 0.07,
+			Armwear = 0.03,
+			Leggings = 0.04,
+			Boots = 0.02,
+		}, -- 20% with the full set (the lowest protection tier)
+	},
+	Warhide = {
+		Name = "Warhide",
+		Color = Color3.fromRGB(140, 115, 88),
+		TrimColor = Color3.fromRGB(60, 35, 20),
+		Material = Enum.Material.Fabric,
+		Rarity = "Uncommon",
+		StarterFor = "Greatsword",
+		Pieces = {
+			Helmet = 0.04,
+			Chestplate = 0.09,
+			Armwear = 0.03,
+			Leggings = 0.05,
+			Boots = 0.03,
+		}, -- 24% with the full set: heavier than Leather, for the slower Greatsword
+	},
+	Woodcutter = {
+		Name = "Woodcutter",
+		Color = Color3.fromRGB(120, 85, 60),
+		TrimColor = Color3.fromRGB(130, 45, 35),
+		Material = Enum.Material.Fabric,
+		Rarity = "Uncommon",
+		StarterFor = "Axe",
+		Pieces = { -- placeholder numbers, to tune
+			Helmet = 0.04,
+			Chestplate = 0.08,
+			Armwear = 0.03,
+			Leggings = 0.04,
+			Boots = 0.03,
+		}, -- 22% with the full set
+	},
+	Warden = {
+		Name = "Warden",
+		Color = Color3.fromRGB(190, 175, 145),
+		TrimColor = Color3.fromRGB(70, 80, 95),
+		Material = Enum.Material.Fabric,
+		Rarity = "Uncommon",
+		StarterFor = "Mace",
+		Pieces = { -- placeholder numbers, to tune
+			Helmet = 0.05,
+			Chestplate = 0.09,
+			Armwear = 0.03,
+			Leggings = 0.05,
+			Boots = 0.03,
+		}, -- 25% with the full set
+	},
 } :: { [string]: ArmorSet }
+
+-- Set ids in a fixed order (by name), e.g. for cycling through owned sets in the backpack.
+ArmorConfig.SetOrder = {} :: { string }
+for setId in ArmorConfig.Sets do
+	table.insert(ArmorConfig.SetOrder, setId)
+end
+table.sort(ArmorConfig.SetOrder)
 
 -- The armor stand in the hub: which set it hands out, and where it stands (X/Z; it faces
 -- the town center).

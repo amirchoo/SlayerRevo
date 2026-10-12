@@ -23,11 +23,12 @@ function ArmorReadout.start()
 	shield.Position = UDim2.new(0.5, -218, 1, -88)
 	shield.Size = UDim2.fromOffset(70, 28)
 	shield.TextXAlignment = Enum.TextXAlignment.Right
+	HudStyle.iconBeside(shield, "Shield", 22)
 
 	local function update()
 		local protection = player:GetAttribute("Protection")
 		local total = if typeof(protection) == "number" then protection else 0
-		shield.Text = `🛡 {math.round(total * 100)}%`
+		shield.Text = `{math.round(total * 100)}%`
 		shield.Visible = total > 0
 	end
 	player:GetAttributeChangedSignal("Protection"):Connect(update)

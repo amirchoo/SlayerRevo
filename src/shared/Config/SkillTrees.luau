@@ -49,7 +49,7 @@ SkillTrees.General = {
 	{
 		Id = "Mobility",
 		Name = "Mobility",
-		Icon = "💨",
+		Icon = "Mobility",
 		Rival = "Guard",
 		Nodes = {
 			{ Id = "FleetFoot", Name = "Fleet Foot", Description = "Dashes recharge 8% faster.", Tier = 1, MaxRank = 3, Effects = { DashRecharge = 0.08 } },
@@ -60,7 +60,7 @@ SkillTrees.General = {
 	{
 		Id = "Guard",
 		Name = "Guard",
-		Icon = "🛡️",
+		Icon = "Shield",
 		Rival = "Mobility",
 		Nodes = {
 			{ Id = "Bulwark", Name = "Bulwark", Description = "Blocks absorb 5 more damage.", Tier = 1, MaxRank = 3, Effects = { BlockAmount = 5 } },
@@ -71,7 +71,7 @@ SkillTrees.General = {
 	{
 		Id = "Vitality",
 		Name = "Vitality",
-		Icon = "❤️",
+		Icon = "Vitality",
 		Rival = "Might",
 		Nodes = {
 			{ Id = "Toughness", Name = "Toughness", Description = "+15 max health.", Tier = 1, MaxRank = 5, Effects = { MaxHealth = 15 } },
@@ -82,7 +82,7 @@ SkillTrees.General = {
 	{
 		Id = "Might",
 		Name = "Might",
-		Icon = "💪",
+		Icon = "Might",
 		Rival = "Vitality",
 		Nodes = {
 			{ Id = "Power", Name = "Power", Description = "+4% damage with every weapon.", Tier = 1, MaxRank = 5, Effects = { Damage = 0.04 } },
@@ -93,7 +93,7 @@ SkillTrees.General = {
 	{
 		Id = "Endurance",
 		Name = "Endurance",
-		Icon = "🔋",
+		Icon = "Endurance",
 		Rival = "Arcana",
 		Nodes = {
 			{ Id = "StaminaPool", Name = "Deep Lungs", Description = "+10 max stamina.", Tier = 1, MaxRank = 5, Effects = { MaxStamina = 10 } },
@@ -103,7 +103,7 @@ SkillTrees.General = {
 	{
 		Id = "Arcana",
 		Name = "Arcana",
-		Icon = "🔮",
+		Icon = "Arcana",
 		Rival = "Endurance",
 		Nodes = {
 			{ Id = "Wellspring", Name = "Wellspring", Description = "+15 max mana.", Tier = 1, MaxRank = 5, Effects = { MaxMana = 15 } },
@@ -217,25 +217,25 @@ local function elementBranch(id: string, name: string, icon: string, unlockText:
 end
 
 SkillTrees.StaffBranches = {
-	elementBranch("Fire", "Pyromancy", "🔥", "Unlocks Fire: missiles, and a slam that sends a burning wall of flame.",
+	elementBranch("Fire", "Pyromancy", "Fire", "Unlocks Fire: missiles, and a slam that sends a burning wall of flame.",
 		{ Id = "Inferno", Name = "Inferno", Description = "+10% Fire damage.", Tier = 1, MaxRank = 3, Effects = { FireDamage = 0.1 } },
 		{ Id = "Scorch", Name = "Scorch", Description = "Burns deal 1 more damage per tick.", Tier = 1, MaxRank = 2, Effects = { BurnDamage = 1 } }),
-	elementBranch("Water", "Hydromancy", "💧", "Unlocks Water: slowing missiles, and a torrent that knocks back.",
+	elementBranch("Water", "Hydromancy", "Water", "Unlocks Water: slowing missiles, and a torrent that knocks back.",
 		{ Id = "Torrent", Name = "Torrent", Description = "+10% Water damage.", Tier = 1, MaxRank = 3, Effects = { WaterDamage = 0.1 } },
 		{ Id = "Undertow", Name = "Undertow", Description = "Water knocks back 25% harder.", Tier = 1, MaxRank = 2, Effects = { WaterKnockback = 0.25 } }),
-	elementBranch("Earth", "Geomancy", "🪨", "Unlocks Earth: heavy rocks, and a thrown boulder that stuns.",
+	elementBranch("Earth", "Geomancy", "Earth", "Unlocks Earth: heavy rocks, and a thrown boulder that stuns.",
 		{ Id = "Bedrock", Name = "Bedrock", Description = "+10% Earth damage.", Tier = 1, MaxRank = 3, Effects = { EarthDamage = 0.1 } },
 		{ Id = "Tremor", Name = "Tremor", Description = "The boulder stuns 0.2 s longer.", Tier = 1, MaxRank = 2, Effects = { EarthStun = 0.2 } }),
-	elementBranch("Electric", "Electromancy", "⚡", "Unlocks Lightning: chaining bolts, and thunder that slows.",
+	elementBranch("Electric", "Electromancy", "Electric", "Unlocks Lightning: chaining bolts, and thunder that slows.",
 		{ Id = "Storm", Name = "Storm", Description = "+10% Lightning damage.", Tier = 1, MaxRank = 3, Effects = { ElectricDamage = 0.1 } },
 		{ Id = "Overload", Name = "Overload", Description = "Thunder strikes 15% wider.", Tier = 1, MaxRank = 2, Effects = { ElectricRadius = 0.15 } }),
-	elementBranch("Faith", "Faith", "✨", "Unlocks Faith: missiles that heal allies, and a healing burst.",
+	elementBranch("Faith", "Faith", "Faith", "Unlocks Faith: missiles that heal allies, and a healing burst.",
 		{ Id = "Devotion", Name = "Devotion", Description = "Faith heals 10% more.", Tier = 1, MaxRank = 3, Effects = { HealPower = 0.1 } },
 		{ Id = "Sanctuary", Name = "Sanctuary", Description = "The healing burst reaches 15% further.", Tier = 1, MaxRank = 2, Effects = { FaithRadius = 0.15 } }),
 	{
 		Id = "Arcane",
 		Name = "Arcane",
-		Icon = "🌀",
+		Icon = "Arcane",
 		Nodes = {
 			{ Id = "Efficiency", Name = "Efficiency", Description = "Spells cost 6% less mana.", Tier = 1, MaxRank = 3, Effects = { StaminaCost = -0.06 }, Requires = "Mage" },
 			{ Id = "Overcharge", Name = "Overcharge", Description = "Heavy spells charge 12% faster.", Tier = 1, MaxRank = 3, Effects = { ChargeSpeed = 0.12 }, Requires = "Efficiency" },
