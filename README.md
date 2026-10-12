@@ -15,3 +15,6 @@ rojo serve
 ```
 
 For more help, check out [the Rojo documentation](https://rojo.space/docs).
+## Working together
+New to the project? Start with [docs/collaborating.md](docs/collaborating.md): setup, the daily
+workflow, and how we share code without overwriting each other.
