@@ -10,6 +10,7 @@
 
 local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
+local StarterPlayer = game:GetService("StarterPlayer")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -443,7 +444,7 @@ local function onEquipped(tool: Tool, character: Model)
 		humanoid = humanoid,
 		root = root,
 		tracks = getTracks(humanoid),
-		baseWalkSpeed = humanoid.WalkSpeed,
+		baseWalkSpeed = StarterPlayer.CharacterWalkSpeed, -- never a mid-move speed (e.g. still planted from another weapon)
 	}
 	equipped = state
 	if state.tracks.idle then

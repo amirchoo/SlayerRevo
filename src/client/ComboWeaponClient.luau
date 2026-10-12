@@ -21,6 +21,7 @@ local ContentProvider = game:GetService("ContentProvider")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local StarterPlayer = game:GetService("StarterPlayer")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
@@ -172,6 +173,11 @@ function ComboWeaponClient.new(config: ComboWeapon)
 
 	-- Set while blocking; call it to lower the guard.
 	local stopBlock: (() -> ())? = nil
+	-- Moves always end at the character's normal speed (never a speed saved mid-move: a heavy
+	-- started while the last one still had us planted would save 0 and leave us stuck).
+	local function normalSpeed(): number
+		return StarterPlayer.CharacterWalkSpeed
+	end
 	-- Set during a heavy; call it to end it (see StopHow).
 	local stopHeavy: ((how: StopHow) -> ())? = nil
 	-- When the left button went down (nil when it's up), and a token to tell presses apart.
@@ -297,7 +303,6 @@ function ComboWeaponClient.new(config: ComboWeapon)
 				TweenService:Create(weld, GUARD_TWEEN, { C1 = tool.Grip * GUARD_GRIP }):Play()
 			end
 		end
-		local walkSpeed = humanoid.WalkSpeed
 		humanoid.WalkSpeed = BLOCKING.WalkSpeed
 
 		stopBlock = function()
@@ -311,7 +316,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 					TweenService:Create(currentWeld, GUARD_TWEEN, { C1 = tool.Grip }):Play()
 				end
 			end
-			humanoid.WalkSpeed = walkSpeed
+			humanoid.WalkSpeed = normalSpeed()
 		end
 	end
 
@@ -359,7 +364,6 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		if trail and trail:IsA("Trail") then
 			trail.Enabled = true
 		end
-		local walkSpeed = humanoid.WalkSpeed
 		humanoid.WalkSpeed = spin.WalkSpeed
 		setGripFlipped(tool, spin.FlipGrip == true)
 
@@ -385,7 +389,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			if trail and trail:IsA("Trail") then
 				trail.Enabled = false
 			end
-			humanoid.WalkSpeed = walkSpeed
+			humanoid.WalkSpeed = normalSpeed()
 		end
 		stopHeavy = stop
 		-- The server ends the spin on its own at the time limit (or a weapon switch/death).
@@ -427,7 +431,6 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		if windUp then
 			windUp:Play(0.1)
 		end
-		local walkSpeed = humanoid.WalkSpeed
 		humanoid.WalkSpeed = charged.WalkSpeed
 		local flipped = charged.FlipGrip == true
 		setGripFlipped(tool, flipped)
@@ -514,7 +517,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			end
 			if how == "cancel" then
 				-- Called off: no attack. (A weapon switch also cancels it on the server.)
-				humanoid.WalkSpeed = walkSpeed
+				humanoid.WalkSpeed = normalSpeed()
 				setGripFlipped(tool, false)
 				return
 			end
@@ -553,7 +556,10 @@ function ComboWeaponClient.new(config: ComboWeapon)
 				end
 			end)
 			task.delay(hitDelay + PLANTED_AFTER_HIT, function()
-				humanoid.WalkSpeed = walkSpeed
+				-- A heavy or block started since sets its own speed (and restores it after).
+				if not stopHeavy and not stopBlock then
+					humanoid.WalkSpeed = normalSpeed()
+				end
 			end)
 		end
 		stopHeavy = stop

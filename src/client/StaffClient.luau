@@ -12,6 +12,7 @@
 
 local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
+local StarterPlayer = game:GetService("StarterPlayer")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -447,7 +448,7 @@ local function onEquipped(tool: Tool, character: Model)
 		return
 	end
 	HandGrip.attachLocal(tool, character, STAFF.Hand :: HandGrip.Hand, "StaffGrip")
-	local state: Equipped = { tool = tool, humanoid = humanoid, tracks = getTracks(humanoid), baseWalkSpeed = humanoid.WalkSpeed }
+	local state: Equipped = { tool = tool, humanoid = humanoid, tracks = getTracks(humanoid), baseWalkSpeed = StarterPlayer.CharacterWalkSpeed } -- never a mid-move speed
 	equipped = state
 	if state.tracks.idle then
 		state.tracks.idle:Play(0.2)

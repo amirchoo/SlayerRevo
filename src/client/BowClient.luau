@@ -8,6 +8,7 @@
 
 local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
+local StarterPlayer = game:GetService("StarterPlayer")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -166,7 +167,7 @@ local function startDraw(tool: Tool)
 	local startTime = os.clock()
 
 	-- Slow down and face the aim while drawing.
-	local walkSpeed, autoRotate = hum.WalkSpeed, hum.AutoRotate
+	local walkSpeed, autoRotate = StarterPlayer.CharacterWalkSpeed, true -- back to normal after, never a mid-move state
 	hum.WalkSpeed = BOW.DrawWalkSpeed
 	hum.AutoRotate = false
 

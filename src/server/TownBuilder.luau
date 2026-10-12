@@ -712,10 +712,13 @@ function TownBuilder.build()
 	end
 	groundParams.FilterDescendantsInstances = include
 
-	-- The town is built from TownConfig; an old copy saved into the place is replaced.
-	local saved = workspace:FindFirstChild("Town")
-	if saved then
-		saved:Destroy()
+	-- The town is built from TownConfig; a copy saved into the place (an edit-mode preview, see
+	-- tools/preview_town.lua) is replaced, so play always matches the code.
+	for _, name in { "Town", "SafeZoneBorder" } do
+		local saved = workspace:FindFirstChild(name)
+		if saved then
+			saved:Destroy()
+		end
 	end
 
 	local baseY = groundAt(0, 0)
