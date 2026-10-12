@@ -6,6 +6,9 @@
       "Shared": {
         "$path": "src/shared"
       },
+      "Animations": {
+        "$path": "assets/animations"
+      },
       "Remotes": {
         "$className": "Folder",
         "MeleeSwing": {
@@ -75,6 +78,9 @@
           "$className": "RemoteEvent"
         },
         "XPGained": {
+          "$className": "RemoteEvent"
+        },
+        "CoinGained": {
           "$className": "RemoteEvent"
         },
         "StaffElement": {

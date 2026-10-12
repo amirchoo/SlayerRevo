@@ -32,6 +32,7 @@ local CARD_HEIGHT = 96
 local CLOSE_DISTANCE = 18 -- studs from the chest before the panel closes itself
 
 local ARMOR_CATEGORY = { Id = "Armor", Icon = "Shield" }
+local CURRENCY_CATEGORY = { Id = "Coins", Icon = "Sparkles" }
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local openRemote = remotes:WaitForChild("TestChestOpen") :: RemoteEvent
@@ -66,6 +67,7 @@ local function categories(): { Category }
 		table.insert(list, { Id = class.Id, Icon = class.Icon })
 	end
 	table.insert(list, ARMOR_CATEGORY)
+	table.insert(list, CURRENCY_CATEGORY)
 	return list
 end
 
@@ -310,6 +312,33 @@ function TestChestPanel.start()
 					Icons.image(iconFrame, "Chestplate", 10)
 				end)
 			end
+		elseif selected == CURRENCY_CATEGORY.Id then
+			card(1, "100 Coins", InventoryConfig.Rarities[5], "Add 100 coins for testing.", "TAKE", true, function()
+				takeRemote:FireServer("Coins", "100")
+			end, function(iconFrame)
+				iconFrame.BackgroundColor3 = Color3.fromRGB(220, 170, 50)
+				local dot = Instance.new("TextLabel")
+				dot.Size = UDim2.fromScale(1, 1)
+				dot.BackgroundTransparency = 1
+				dot.Font = HudStyle.FONT
+				dot.TextSize = 28
+				dot.TextColor3 = Color3.fromRGB(255, 235, 140)
+				dot.Text = "¢"
+				dot.Parent = iconFrame
+			end)
+			card(2, "500 Coins", InventoryConfig.Rarities[5], "Add 500 coins for testing.", "TAKE", true, function()
+				takeRemote:FireServer("Coins", "500")
+			end, function(iconFrame)
+				iconFrame.BackgroundColor3 = Color3.fromRGB(220, 170, 50)
+				local dot = Instance.new("TextLabel")
+				dot.Size = UDim2.fromScale(1, 1)
+				dot.BackgroundTransparency = 1
+				dot.Font = HudStyle.FONT
+				dot.TextSize = 28
+				dot.TextColor3 = Color3.fromRGB(255, 235, 140)
+				dot.Text = "¢"
+				dot.Parent = iconFrame
+			end)
 		else
 			local order = 0
 			for _, info in InventoryConfig.Weapons do

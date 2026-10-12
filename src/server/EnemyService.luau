@@ -231,6 +231,7 @@ local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType)
 	typeOf[enemy] = kind
 	HealthService.register(enemy, kind.MaxHealth)
 	enemy:SetAttribute("XPReward", kind.XP) -- ProgressionService gives it to whoever defeats it
+	enemy:SetAttribute("CoinReward", kind.Coins or 0) -- CurrencyService gives it to whoever defeats it
 	enemy:SetAttribute("Level", kind.Level) -- shown over its head (EnemyHealthBars)
 	task.spawn(runAI, enemy, humanoid, root, spawnCFrame.Position, kind)
 end

@@ -21,7 +21,9 @@ local POPUP_TIME = 2.2
 
 local levelUpRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("LevelUp") :: RemoteEvent
 local xpRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("XPGained") :: RemoteEvent
+local coinRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CoinGained") :: RemoteEvent
 local XP_TEXT_COLOR = Color3.fromRGB(200, 160, 255)
+local COIN_TEXT_COLOR = Color3.fromRGB(255, 215, 65)
 local player = Players.LocalPlayer
 
 local ProgressionHud = {}
@@ -112,6 +114,10 @@ function ProgressionHud.start()
 				end
 			end
 		end)
+	end)
+
+	coinRemote.OnClientEvent:Connect(function(position: Vector3, amount: number)
+		DamageNumbers.popup(position, `+{amount} Coins`, COIN_TEXT_COLOR)
 	end)
 
 	-- The popup.

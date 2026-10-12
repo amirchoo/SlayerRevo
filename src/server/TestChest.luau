@@ -13,6 +13,7 @@ local ArmorConfig = require(ReplicatedStorage.Shared.Config.ArmorConfig)
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 local TrainingArea = require(ReplicatedStorage.Shared.TrainingArea)
 local ArmorService = require(script.Parent.ArmorService)
+local CurrencyService = require(script.Parent.CurrencyService)
 local HealthService = require(script.Parent.HealthService)
 local InventoryService = require(script.Parent.InventoryService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
@@ -109,6 +110,11 @@ local function onTake(player: Player, kind: unknown, id: unknown)
 		end
 	elseif kind == "Armor" and ArmorConfig.Sets[id] then
 		ArmorService.giveSet(player, id)
+	elseif kind == "Coins" then
+		local amount = tonumber(id) or 100
+		if amount > 0 and amount <= 5000 then
+			CurrencyService.add(player, amount)
+		end
 	end
 end
 

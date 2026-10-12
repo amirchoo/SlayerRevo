@@ -23,6 +23,7 @@ local StaffService = require(script.StaffService)
 local TestChest = require(script.TestChest)
 local NpcService = require(script.NpcService)
 local StarterService = require(script.StarterService)
+local CurrencyService = require(script.CurrencyService)
 
 HealthService.start()
 AvatarService.start() -- everyone gets the blocky body armor is made for
@@ -48,5 +49,6 @@ ArmorService.start() -- after BlockService (armor reduces what gets through a bl
 TestChest.build() -- after the training ground (it stands in it)
 NpcService.start() -- after the town (they stand on it)
 StarterService.start()
+CurrencyService.start()
 SkillService.start()
 ProgressionService.start()

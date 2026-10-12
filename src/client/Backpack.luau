@@ -19,6 +19,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local ArmorConfig = require(ReplicatedStorage.Shared.Config.ArmorConfig)
+local CurrencyConfig = require(ReplicatedStorage.Shared.Config.CurrencyConfig)
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 local Panels = require(script.Parent.Panels)
 local HudStyle = require(script.Parent.HudStyle)
@@ -255,6 +256,56 @@ function Backpack.start()
 	back.TextXAlignment = Enum.TextXAlignment.Right
 	back.Text = "BACK  →"
 	back.Parent = panel
+
+	-- Currency widget: coin pill on the top right, to the left of BACK.
+	local coinPill = Instance.new("Frame")
+	coinPill.Name = "CoinPill"
+	coinPill.AnchorPoint = Vector2.new(1, 0)
+	coinPill.Position = UDim2.new(1, -165, 0, 30)
+	coinPill.Size = UDim2.fromOffset(130, 38)
+	coinPill.BackgroundColor3 = Color3.fromRGB(42, 40, 54)
+	coinPill.Parent = panel
+	HudStyle.chunky(coinPill, 19, 2.5)
+	local coinStroke = coinPill:FindFirstChildOfClass("UIStroke")
+	if coinStroke then
+		coinStroke.Color = Color3.fromRGB(230, 180, 60)
+	end
+	HudStyle.gloss(coinPill)
+	Instance.new("UIScale").Parent = coinPill
+
+	local coinDisc = Instance.new("Frame")
+	coinDisc.Name = "CoinDisc"
+	coinDisc.AnchorPoint = Vector2.new(0, 0.5)
+	coinDisc.Position = UDim2.new(0, 6, 0.5, 0)
+	coinDisc.Size = UDim2.fromOffset(26, 26)
+	coinDisc.BackgroundColor3 = Color3.fromRGB(245, 190, 45)
+	coinDisc.Parent = coinPill
+	HudStyle.chunky(coinDisc, 13, 1.5)
+	local discStroke = coinDisc:FindFirstChildOfClass("UIStroke")
+	if discStroke then
+		discStroke.Color = Color3.fromRGB(160, 110, 20)
+	end
+	HudStyle.gloss(coinDisc)
+
+	local coinSymbol = Instance.new("TextLabel")
+	coinSymbol.Size = UDim2.fromScale(1, 1)
+	coinSymbol.BackgroundTransparency = 1
+	coinSymbol.Font = HudStyle.FONT
+	coinSymbol.TextSize = 17
+	coinSymbol.TextColor3 = Color3.fromRGB(255, 245, 180)
+	coinSymbol.Text = "¢"
+	coinSymbol.Parent = coinDisc
+	local symbolStroke = Instance.new("UIStroke")
+	symbolStroke.Color = Color3.fromRGB(140, 95, 20)
+	symbolStroke.Thickness = 1.2
+	symbolStroke.Parent = coinSymbol
+
+	local coinLabel = text(coinPill, "0", 20, Color3.fromRGB(255, 230, 110))
+	coinLabel.AnchorPoint = Vector2.new(0, 0.5)
+	coinLabel.Position = UDim2.new(0, 38, 0.5, 0)
+	coinLabel.Size = UDim2.new(1, -44, 1, 0)
+	coinLabel.TextXAlignment = Enum.TextXAlignment.Center
+	outlined(coinLabel)
 
 	local healthLabel = text(panel, "HEALTH", 18)
 	healthLabel.Position = UDim2.fromOffset(40, 92)
@@ -557,6 +608,20 @@ function Backpack.start()
 		end
 	end
 
+	local lastCoins = -1
+	local function updateCoins(animate: boolean?)
+		local coins = player:GetAttribute("Coins")
+		local amount = if typeof(coins) == "number" then math.max(0, math.floor(coins)) else 0
+		local formatted = CurrencyConfig.format(amount)
+		coinLabel.Text = formatted
+		local textWidth = TextService:GetTextSize(formatted, 20, HudStyle.FONT, Vector2.new(500, 38)).X
+		coinPill.Size = UDim2.fromOffset(math.max(120, textWidth + 56), 38)
+		if animate and lastCoins >= 0 and amount > lastCoins then
+			HudStyle.pop(coinPill, 1.18)
+		end
+		lastCoins = amount
+	end
+
 	-- Opening, closing, and keeping it up to date.
 	local blur = Instance.new("BlurEffect")
 	blur.Name = "BackpackBlur"
@@ -579,6 +644,7 @@ function Backpack.start()
 			updateWeapons()
 			updateArmor()
 			updateHealth()
+			updateCoins(false)
 			refreshCharacter()
 			HudStyle.pop(panel, 0.92)
 			blur.Enabled = true
@@ -633,6 +699,8 @@ function Backpack.start()
 	player.AttributeChanged:Connect(function(attribute)
 		if attribute == "Hotbar" or attribute == "HotbarSlots" or attribute == "OwnedWeapons" then
 			updateWeapons()
+		elseif attribute == "Coins" then
+			updateCoins(true)
 		elseif attribute == "Protection" or string.sub(attribute, 1, 5) == "Armor" or string.sub(attribute, 1, 9) == "OwnsArmor" then
 			updateArmor()
 			-- Re-copy the character once the armor change has reached it.
@@ -661,6 +729,7 @@ function Backpack.start()
 	updateTabs()
 	updateWeapons()
 	updateArmor()
+	updateCoins(false)
 end
 
 return Backpack

@@ -15,6 +15,7 @@ local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local CurrencyConfig = require(ReplicatedStorage.Shared.Config.CurrencyConfig)
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 
 local STORE_NAME = "PlayerData_v1"
@@ -25,6 +26,7 @@ local LOAD_ATTEMPTS = 6
 export type Data = {
 	Level: number,
 	XP: number,
+	Coins: number,
 	Skills: { [string]: { [string]: number } },
 	Weapons: { [string]: boolean }, -- owned weapons (by tool name)
 	Starter: string?, -- the starter weapon picked (once per save)
@@ -40,7 +42,7 @@ local loadedCallbacks: { (Player, Data) -> () } = {}
 local store: DataStore? = nil
 
 local function defaults(): Data
-	return { Level = 1, XP = 0, Skills = {}, Weapons = {} }
+	return { Level = 1, XP = 0, Coins = CurrencyConfig.StartingCoins, Skills = {}, Weapons = {} }
 end
 
 -- Fills in anything missing (e.g. from an older save).
@@ -54,6 +56,9 @@ local function reconcile(raw: any): Data
 	end
 	if typeof(raw.XP) == "number" then
 		data.XP = math.max(0, raw.XP)
+	end
+	if typeof(raw.Coins) == "number" then
+		data.Coins = math.max(0, math.floor(raw.Coins))
 	end
 	if typeof(raw.Skills) == "table" then
 		data.Skills = raw.Skills

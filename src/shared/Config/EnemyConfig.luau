@@ -20,6 +20,7 @@ export type EnemyType = {
 	AttackCooldown: number,
 	RespawnDelay: number,
 	XP: number, -- given to the player who defeats it (see ProgressionConfig for the level curve)
+	Coins: number?, -- coins given to the killer (defaults to 0 if nil)
 	-- Only X/Z matter: each spawns dropped onto whatever ground is below, and respawns there.
 	SpawnPoints: { Vector2 },
 }
@@ -44,8 +45,7 @@ EnemyConfig.Orc = {
 	AttackAnimation = "rbxassetid://135668765525905", -- DemonClaw
 	AttackCooldown = 1.5,
 	RespawnDelay = 8,
-	XP = 15,
-	SpawnPoints = {
+	XP = 15,	Coins = 5,	SpawnPoints = {
 		Vector2.new(0, HUNTING_GROUNDS_Z),
 		Vector2.new(22, HUNTING_GROUNDS_Z - 20),
 		Vector2.new(-22, HUNTING_GROUNDS_Z - 15),
@@ -69,8 +69,7 @@ EnemyConfig.LesserDemon = {
 	AttackAnimation = "rbxassetid://135668765525905", -- DemonClaw
 	AttackCooldown = 1.8,
 	RespawnDelay = 20,
-	XP = 60,
-	SpawnPoints = {
+	XP = 60,	Coins = 25,	SpawnPoints = {
 		Vector2.new(0, HUNTING_GROUNDS_Z - 45),
 	},
 } :: EnemyType
