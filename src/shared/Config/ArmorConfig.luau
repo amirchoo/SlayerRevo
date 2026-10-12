@@ -97,6 +97,51 @@ ArmorConfig.Sets = {
 			Boots = 0.03,
 		}, -- 25% with the full set
 	},
+	Skirmisher = {
+		Name = "Skirmisher",
+		Color = Color3.fromRGB(85, 105, 65),
+		TrimColor = Color3.fromRGB(190, 160, 110),
+		Material = Enum.Material.Fabric,
+		Rarity = "Uncommon",
+		StarterFor = "Spear",
+		Pieces = { -- placeholder numbers, to tune
+			Helmet = 0.04,
+			Chestplate = 0.07,
+			Armwear = 0.03,
+			Leggings = 0.04,
+			Boots = 0.03,
+		}, -- 21% with the full set: light, for the mobile Spear
+	},
+	Apprentice = {
+		Name = "Apprentice",
+		Color = Color3.fromRGB(45, 65, 120),
+		TrimColor = Color3.fromRGB(200, 185, 150),
+		Material = Enum.Material.Fabric,
+		Rarity = "Uncommon",
+		StarterFor = "Staff",
+		Pieces = { -- placeholder numbers, to tune
+			Helmet = 0.03,
+			Chestplate = 0.06,
+			Armwear = 0.02,
+			Leggings = 0.03,
+			Boots = 0.02,
+		}, -- 16% with the full set: cloth robes, for the Staff (fights from range)
+	},
+	Duelist = {
+		Name = "Duelist",
+		Color = Color3.fromRGB(110, 35, 50),
+		TrimColor = Color3.fromRGB(70, 45, 30),
+		Material = Enum.Material.Fabric,
+		Rarity = "Uncommon",
+		StarterFor = "Rapier",
+		Pieces = { -- placeholder numbers, to tune
+			Helmet = 0.03,
+			Chestplate = 0.07,
+			Armwear = 0.03,
+			Leggings = 0.03,
+			Boots = 0.02,
+		}, -- 18% with the full set
+	},
 } :: { [string]: ArmorSet }
 
 -- Set ids in a fixed order (by name), e.g. for cycling through owned sets in the backpack.

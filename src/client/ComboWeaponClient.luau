@@ -12,7 +12,9 @@
 --   (growing with the charge); release smashes the ground.
 --   Thrust: draws back, turning with the camera, while a strip on the ground shows how far
 --   the lunge will carry; release lunges forward.
---   For both, the server times the charge and attacks by itself at MaxHold.
+--   Flurry: draws back like a thrust (aimed the same way); release plants you in a run of
+--   rapid stabs, more for a longer charge.
+--   For all three, the server times the charge and attacks by itself at MaxHold.
 -- The server's "HeavyAttacking" attribute going false ends the visuals here too.
 
 local Players = game:GetService("Players")
@@ -35,6 +37,7 @@ type ComboWeapon = CombatConfig.ComboWeapon
 type SpinHeavy = CombatConfig.SpinHeavy
 type QuakeHeavy = CombatConfig.QuakeHeavy
 type ThrustHeavy = CombatConfig.ThrustHeavy
+type FlurryHeavy = CombatConfig.FlurryHeavy
 -- How a heavy ends: we let go ("release"), the server ended it ("server"), or it was
 -- called off (weapon switch, or the server refused it) ("cancel").
 type StopHow = "release" | "server" | "cancel"
@@ -100,6 +103,10 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		local quake = heavy :: QuakeHeavy
 		heavyAnimation = makeAnimation(quake.WindUpAnimation)
 		heavySlamAnimation = makeAnimation(quake.SlamAnimation)
+	elseif heavy and heavy.Kind == "Flurry" then
+		local stabs = heavy :: FlurryHeavy
+		heavyAnimation = makeAnimation(stabs.WindUpAnimation)
+		heavySlamAnimation = makeAnimation(stabs.FlurryAnimation)
 	elseif heavy then
 		local lunge = heavy :: ThrustHeavy
 		heavyAnimation = makeAnimation(lunge.WindUpAnimation)
@@ -153,7 +160,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		if heavySlamAnimation then
 			local slam = animator:LoadAnimation(heavySlamAnimation)
 			slam.Priority = Enum.AnimationPriority.Action
-			slam.Looped = false
+			slam.Looped = heavy ~= nil and heavy.Kind == "Flurry" -- the flurry's stabs loop until it ends
 			tracks.heavySlam = slam
 		end
 		tracksByHumanoid[humanoid] = tracks
@@ -183,6 +190,8 @@ function ComboWeaponClient.new(config: ComboWeapon)
 	-- When the left button went down (nil when it's up), and a token to tell presses apart.
 	local pressedAt: number? = nil
 	local pressToken = 0
+	-- Until when a flurry is still stabbing (no swings or new heavies until then).
+	local busyUntil = 0
 
 	-- Which combo step a click right now would play, or nil if the last swing isn't done.
 	-- Matches the server's rule in WeaponService.
@@ -231,7 +240,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 
 	local function onActivated(tool: Tool)
 		-- Local checks only avoid pointless requests; the server enforces the real ones.
-		if stopBlock then
+		if stopBlock or os.clock() < busyUntil then
 			return
 		end
 		local now = os.clock()
@@ -409,7 +418,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 
 	-- Charge-and-release heavies (Quake, Thrust): wind up while held, with an indicator on
 	-- the ground showing the reach (growing with the charge), then attack on release.
-	local function startCharged(tool: Tool, charged: QuakeHeavy | ThrustHeavy)
+	local function startCharged(tool: Tool, charged: QuakeHeavy | ThrustHeavy | FlurryHeavy)
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -418,9 +427,11 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		end
 		local quake: QuakeHeavy? = if charged.Kind == "Quake" then charged :: QuakeHeavy else nil
 		local lunge: ThrustHeavy? = if charged.Kind == "Thrust" then charged :: ThrustHeavy else nil
-		local fullChargeTime = if quake then quake.FullChargeTime elseif lunge then lunge.FullChargeTime else 1
+		local stabs: FlurryHeavy? = if charged.Kind == "Flurry" then charged :: FlurryHeavy else nil
+		local fullChargeTime = if quake then quake.FullChargeTime elseif lunge then lunge.FullChargeTime elseif stabs then stabs.FullChargeTime else 1
 		local lungeBonus = 1 + SkillMath.weapon(player, config.ToolName, "LungeDistance") -- matches the server (WeaponService)
-		local hitDelay = if quake then quake.HitDelay elseif lunge then lunge.HitDelay else 0
+		local hitDelay = if quake then quake.HitDelay elseif lunge then lunge.HitDelay elseif stabs then stabs.HitDelay else 0
+		local aimed = lunge ~= nil or stabs ~= nil
 
 		heavyRemote:FireServer(true)
 		comboStep = 0
@@ -434,8 +445,8 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		humanoid.WalkSpeed = charged.WalkSpeed
 		local flipped = charged.FlipGrip == true
 		setGripFlipped(tool, flipped)
-		-- A thrust is aimed: face where the camera looks while drawing back.
-		if lunge then
+		-- A thrust (or flurry) is aimed: face where the camera looks while drawing back.
+		if aimed then
 			humanoid.AutoRotate = false
 		end
 
@@ -464,7 +475,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		end
 		local renderConnection = RunService.RenderStepped:Connect(function()
 			local charge = power()
-			if lunge then
+			if aimed then
 				local look = workspace.CurrentCamera.CFrame.LookVector
 				local flat = Vector3.new(look.X, 0, look.Z)
 				if flat.Magnitude > 0.01 then
@@ -483,6 +494,10 @@ function ComboWeaponClient.new(config: ComboWeapon)
 				local facing = CFrame.lookAt(ground, ground + root.CFrame.LookVector * Vector3.new(1, 0, 1))
 				indicator.Size = Vector3.new(lunge.Width, 0.1, length)
 				indicator.CFrame = facing * CFrame.new(0, 0, -length / 2)
+			elseif stabs then
+				local facing = CFrame.lookAt(ground, ground + root.CFrame.LookVector * Vector3.new(1, 0, 1))
+				indicator.Size = Vector3.new(stabs.Width, 0.1, stabs.Range)
+				indicator.CFrame = facing * CFrame.new(0, 0, -stabs.Range / 2)
 			end
 
 			-- Hold the wind-up on its last frame instead of letting it end.
@@ -535,6 +550,27 @@ function ComboWeaponClient.new(config: ComboWeapon)
 
 			-- The attack itself (a quake's shockwave is drawn for everyone; see HitEffectsClient).
 			humanoid.WalkSpeed = 0
+			-- How long the attack keeps us planted after release: a flurry until its last stab.
+			local attackTime = hitDelay
+			if stabs then
+				local hits = CombatConfig.flurryHits(stabs, releasePower, SkillMath.weapon(player, config.ToolName, "FlurryHits"))
+				attackTime = stabs.HitDelay + (hits - 1) * stabs.Interval
+				busyUntil = os.clock() + attackTime
+				Push.apply(root, root.CFrame.LookVector, stabs.Advance, attackTime)
+				local stabSound = tool:FindFirstChild("SlashSound", true)
+				for stab = 2, hits do
+					task.delay(stabs.HitDelay + (stab - 1) * stabs.Interval, function()
+						if stabSound and stabSound:IsA("Sound") and tool.Parent == character then
+							stabSound:Play()
+						end
+					end)
+				end
+				if release then
+					task.delay(attackTime + 0.05, function()
+						release:Stop(0.15)
+					end)
+				end
+			end
 			if release then
 				release:Play(0.05)
 			end
@@ -550,12 +586,12 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			if trail and trail:IsA("Trail") then
 				trail.Enabled = true
 			end
-			task.delay(hitDelay + TRAIL_AFTER_HIT, function()
+			task.delay(attackTime + TRAIL_AFTER_HIT, function()
 				if trail and trail:IsA("Trail") then
 					trail.Enabled = false
 				end
 			end)
-			task.delay(hitDelay + PLANTED_AFTER_HIT, function()
+			task.delay(attackTime + PLANTED_AFTER_HIT, function()
 				-- A heavy or block started since sets its own speed (and restores it after).
 				if not stopHeavy and not stopBlock then
 					humanoid.WalkSpeed = normalSpeed()
@@ -575,6 +611,8 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			startSpin(tool, heavy :: SpinHeavy)
 		elseif heavy.Kind == "Quake" then
 			startCharged(tool, heavy :: QuakeHeavy)
+		elseif heavy.Kind == "Flurry" then
+			startCharged(tool, heavy :: FlurryHeavy)
 		else
 			startCharged(tool, heavy :: ThrustHeavy)
 		end
@@ -606,7 +644,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			pressToken += 1
 			local token = pressToken
 			task.delay(heavy.HoldTime, function()
-				if token == pressToken and pressedAt and not stopBlock and not stopHeavy and equippedTool() == tool and heavy and Stamina.canAfford(player, SkillMath.staminaCost(player, config.ToolName, heavy.Stamina, "Heavy")) then
+				if token == pressToken and pressedAt and not stopBlock and not stopHeavy and os.clock() >= busyUntil and equippedTool() == tool and heavy and Stamina.canAfford(player, SkillMath.staminaCost(player, config.ToolName, heavy.Stamina, "Heavy")) then
 					startHeavy(tool)
 				end
 			end)

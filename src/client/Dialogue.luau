@@ -26,7 +26,9 @@ local SOFT_TEXT = Color3.fromRGB(190, 185, 205)
 local CARD_COLOR = Color3.fromRGB(52, 48, 68)
 local CONFIRM_COLOR = Color3.fromRGB(80, 190, 110)
 local BACK_COLOR = Color3.fromRGB(80, 78, 96)
-local CARD_SIZE = Vector2.new(150, 168)
+local CARD_SIZE = Vector2.new(150, 168) -- at most; cards narrow to fit CARDS_WIDTH
+local CARD_GAP = 14
+local CARDS_WIDTH = 940 -- the row of starter cards never gets wider than this
 
 local chooseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("StarterChoose") :: RemoteEvent
 
@@ -125,14 +127,14 @@ function Dialogue.start()
 	local cards = Instance.new("Frame")
 	cards.AnchorPoint = Vector2.new(0.5, 1)
 	cards.Position = UDim2.new(0.5, 0, 0, -16)
-	cards.Size = UDim2.fromOffset(BOX_SIZE.X, CARD_SIZE.Y)
+	cards.Size = UDim2.fromOffset(CARDS_WIDTH, CARD_SIZE.Y)
 	cards.BackgroundTransparency = 1
 	cards.Visible = false
 	cards.Parent = box
 	local cardLayout = Instance.new("UIListLayout")
 	cardLayout.FillDirection = Enum.FillDirection.Horizontal
 	cardLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	cardLayout.Padding = UDim.new(0, 14)
+	cardLayout.Padding = UDim.new(0, CARD_GAP)
 	cardLayout.Parent = cards
 
 	local confirmRow = Instance.new("Frame")
@@ -230,11 +232,13 @@ function Dialogue.start()
 				child:Destroy()
 			end
 		end
-		for order, choice in Starter.choices() do
+		local choices = Starter.choices()
+		local cardWidth = math.min(CARD_SIZE.X, math.floor((CARDS_WIDTH - (#choices - 1) * CARD_GAP) / math.max(#choices, 1)))
+		for order, choice in choices do
 			local set = ArmorConfig.Sets[choice.ArmorSet]
 			local card = Instance.new("TextButton")
 			card.LayoutOrder = order
-			card.Size = UDim2.fromOffset(CARD_SIZE.X, CARD_SIZE.Y)
+			card.Size = UDim2.fromOffset(cardWidth, CARD_SIZE.Y)
 			card.BackgroundColor3 = CARD_COLOR
 			card.Text = ""
 			card.AutoButtonColor = true
@@ -243,7 +247,7 @@ function Dialogue.start()
 			Instance.new("UIScale").Parent = card
 			local iconFrame = Instance.new("Frame")
 			iconFrame.Position = UDim2.fromOffset(15, 12)
-			iconFrame.Size = UDim2.fromOffset(CARD_SIZE.X - 30, 84)
+			iconFrame.Size = UDim2.fromOffset(cardWidth - 30, 84)
 			iconFrame.BackgroundTransparency = 1
 			iconFrame.Parent = card
 			WeaponIcon.show(WeaponIcon.viewport(iconFrame), choice.Weapon)

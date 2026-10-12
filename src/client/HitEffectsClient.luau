@@ -34,6 +34,7 @@ local LOOKS: { [string]: Look } = {
 	Greatsword = { style = "Slash", color = Color3.fromRGB(255, 200, 120), size = 1.6 },
 	Mace = { style = "Blunt", color = Color3.fromRGB(255, 215, 150), size = 1.1 },
 	Spear = { style = "Pierce", color = Color3.fromRGB(200, 230, 255), size = 1 },
+	Rapier = { style = "Pierce", color = Color3.fromRGB(235, 240, 255), size = 0.85 },
 	Axe = { style = "Slash", color = Color3.fromRGB(255, 190, 150), size = 1.15 },
 	StaffFire = { style = "Blunt", color = Color3.fromRGB(255, 120, 40), size = 1 },
 	StaffWater = { style = "Blunt", color = Color3.fromRGB(70, 160, 255), size = 1 },

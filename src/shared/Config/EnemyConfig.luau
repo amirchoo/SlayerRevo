@@ -23,6 +23,36 @@ export type EnemyType = {
 	Coins: number?, -- coins given to the killer (defaults to 0 if nil)
 	-- Only X/Z matter: each spawns dropped onto whatever ground is below, and respawns there.
 	SpawnPoints: { Vector2 },
+	Pack: Pack?, -- roams the world in packs (see Pack) as well as at any SpawnPoints
+}
+
+-- Enemies that live in packs: Count packs of Min..Max members, each with a camp somewhere in
+-- Area (X/Z). A pack's behaviour (EnemyService):
+--   Roam: the pack wanders together around its camp (within RoamRadius), walking at
+--     RoamSpeed (of WalkSpeed), pausing RoamPause seconds between moves.
+--   Aggro: when any member sees a player within AggroRange (outside the safe zone), or is
+--     hit, the whole pack turns on that player.
+--   Swarm: the MaxAttackers closest members close in and attack; the rest circle the target
+--     RingRadius studs out, waiting for a gap, so the pack surrounds you rather than piling up.
+--   Leash: a target that drags the pack more than LeashRange from its camp (or reaches the
+--     safe zone) is given up; the pack walks home and recovers its health.
+--   Respawn: once every member is dead, a new pack forms RespawnDelay seconds later at a new
+--     camp, away from players.
+export type Pack = {
+	Count: number,
+	Min: number,
+	Max: number,
+	Area: { Min: Vector2, Max: Vector2 },
+	CampSpacing: number, -- studs between camps
+	RoamRadius: number,
+	RoamSpeed: number,
+	RoamPause: { number }, -- min, max seconds
+	Spread: number, -- studs members keep around the pack's centre while roaming
+	AggroRange: number,
+	LeashRange: number,
+	MaxAttackers: number,
+	RingRadius: number,
+	RespawnDelay: number,
 }
 
 -- The hunting grounds, just north of the hub's edge.
@@ -45,10 +75,25 @@ EnemyConfig.Orc = {
 	AttackAnimation = "rbxassetid://135668765525905", -- DemonClaw
 	AttackCooldown = 1.5,
 	RespawnDelay = 8,
-	XP = 15,	Coins = 5,	SpawnPoints = {
-		Vector2.new(0, HUNTING_GROUNDS_Z),
-		Vector2.new(22, HUNTING_GROUNDS_Z - 20),
-		Vector2.new(-22, HUNTING_GROUNDS_Z - 15),
+	XP = 15,
+	Coins = 5,
+	SpawnPoints = {}, -- orcs live in packs (below); the Training Grounds places its own
+	Pack = {
+		Count = 6,
+		Min = 4,
+		Max = 6,
+		-- The hunting grounds (WorldConfig.HuntingGrounds), kept off its edges.
+		Area = { Min = Vector2.new(-480, -780), Max = Vector2.new(480, -280) },
+		CampSpacing = 150,
+		RoamRadius = 45,
+		RoamSpeed = 0.45,
+		RoamPause = { 3, 8 },
+		Spread = 7,
+		AggroRange = 45,
+		LeashRange = 130,
+		MaxAttackers = 3,
+		RingRadius = 11,
+		RespawnDelay = 30,
 	},
 } :: EnemyType
 
@@ -75,7 +120,8 @@ EnemyConfig.LesserDemon = {
 } :: EnemyType
 
 -- Every enemy type, spawned at its SpawnPoints when the server starts.
-EnemyConfig.Types = { EnemyConfig.Orc, EnemyConfig.LesserDemon }
+-- The Lesser Demon is left out for now (its model in assets/enemies isn't rigged yet).
+EnemyConfig.Types = { EnemyConfig.Orc }
 
 -- Shared by every enemy.
 EnemyConfig.AiTick = 0.2 -- seconds between AI decisions

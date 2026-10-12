@@ -40,6 +40,7 @@ InventoryConfig.Classes = {
 InventoryConfig.Weapons = {
 	{ Name = "Sword", Class = "Swords", Description = "Quick 3-hit combo. Hold to spin." },
 	{ Name = "Emberfang", Class = "Swords", Rarity = "Epic", Description = "A slayer's blade: the sword's moves, hitting harder. Shares the Sword skill tree." },
+	{ Name = "Rapier", Class = "Swords", Description = "Elegant, quick thrusts with long reach. Hold to unleash a flurry of stabs." },
 	{ Name = "Greatsword", Class = "Swords", Description = "Wide sweeps. Hold to charge a slam." },
 	{ Name = "Axe", Class = "Axes", Description = "Hard chops. Hold for a leaping cleave that bleeds." },
 	{ Name = "Mace", Class = "Blunt", Description = "Heavy hits that stun. Hold for a ground pound." },

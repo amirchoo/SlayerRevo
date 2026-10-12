@@ -286,6 +286,110 @@ local function setHeadwearHidden(model: Model, hidden: boolean)
 	end
 end
 
+-- Body parts under armor are hidden, so the blocky body can never poke through a piece's
+-- thinner spots (or show at its edges as limbs move). A part is hidden when a worn piece wraps
+-- all the way round it: the piece's box spans the part's width and depth (to within
+-- COVER_TOLERANCE) and at least COVER_LENGTH of its length. That's checked for the part the
+-- piece is worn on and the parts jointed to it (a chestplate can cover the waist, boots the
+-- feet), in the rest pose. Pieces that only partly cover a limb (a strap, a pad) leave it
+-- showing. A piece's Handle can say otherwise with a "CoversBody" attribute (false = never hide).
+-- The head always shows (helmets are open at the face).
+local COVER_TOLERANCE = 0.08
+local COVER_LENGTH = 0.6
+local NEVER_HIDDEN = { HumanoidRootPart = true, Head = true }
+
+-- A box in some part's space: its min and max corners.
+local function boxIn(cframe: CFrame, size: Vector3): (Vector3, Vector3)
+	local half = size / 2
+	local extent = Vector3.new(
+		math.abs(cframe.XVector.X) * half.X + math.abs(cframe.YVector.X) * half.Y + math.abs(cframe.ZVector.X) * half.Z,
+		math.abs(cframe.XVector.Y) * half.X + math.abs(cframe.YVector.Y) * half.Y + math.abs(cframe.ZVector.Y) * half.Z,
+		math.abs(cframe.XVector.Z) * half.X + math.abs(cframe.YVector.Z) * half.Y + math.abs(cframe.ZVector.Z) * half.Z
+	)
+	return cframe.Position - extent, cframe.Position + extent
+end
+
+-- Where `other` sits in `part`'s space at rest (from the joint between them), if jointed.
+local function restOffset(model: Model, part: BasePart, other: BasePart): CFrame?
+	for _, motor in model:GetDescendants() do
+		if motor:IsA("Motor6D") then
+			if motor.Part0 == part and motor.Part1 == other then
+				return motor.C0 * motor.C1:Inverse()
+			elseif motor.Part0 == other and motor.Part1 == part then
+				return (motor.C0 * motor.C1:Inverse()):Inverse()
+			end
+		end
+	end
+	return nil
+end
+
+-- The body parts `accessory` wraps (see above).
+local function coveredBy(model: Model, accessory: Accessory): { BasePart }
+	local handle = accessory:FindFirstChild("Handle")
+	if not (handle and handle:IsA("BasePart")) or handle:GetAttribute("CoversBody") == false then
+		return {}
+	end
+	local attachment: Attachment? = nil
+	for _, child in handle:GetChildren() do
+		if child:IsA("Attachment") and string.sub(child.Name, 1, 5) == "Armor" then
+			attachment = child
+		end
+	end
+	local body = attachment and model:FindFirstChild(string.sub(attachment.Name, 6))
+	if not attachment or not (body and body:IsA("BasePart")) then
+		return {}
+	end
+	-- The piece's box in its body part's space (the part's own attachment sits at its center).
+	local pieceLow, pieceHigh = boxIn(attachment.CFrame:Inverse(), handle.Size)
+
+	local covered: { BasePart } = {}
+	local function check(part: BasePart, inBody: CFrame)
+		local low, high = boxIn(inBody, part.Size)
+		local tolerance = Vector3.one * COVER_TOLERANCE
+		local wide = low.X >= pieceLow.X - tolerance.X and high.X <= pieceHigh.X + tolerance.X
+		local deep = low.Z >= pieceLow.Z - tolerance.Z and high.Z <= pieceHigh.Z + tolerance.Z
+		local spanned = math.min(high.Y, pieceHigh.Y) - math.max(low.Y, pieceLow.Y)
+		if wide and deep and spanned >= (high.Y - low.Y) * COVER_LENGTH then
+			table.insert(covered, part)
+		end
+	end
+	check(body, CFrame.identity)
+	for _, other in model:GetChildren() do
+		if other:IsA("BasePart") and other ~= body and other.Name ~= "HumanoidRootPart" then
+			local offset = restOffset(model, body, other)
+			if offset then
+				check(other, offset)
+			end
+		end
+	end
+	return covered
+end
+
+-- Hides every body part a worn armor piece wraps, and shows the rest again. Each hidden part
+-- remembers its transparency in an attribute, to restore it.
+local function updateBodyCover(model: Model)
+	local hide: { [BasePart]: boolean } = {}
+	for _, accessory in model:GetChildren() do
+		if accessory:IsA("Accessory") and accessory:GetAttribute("ArmorSlot") then
+			for _, part in coveredBy(model, accessory) do
+				hide[part] = true
+			end
+		end
+	end
+	for _, part in model:GetChildren() do
+		if part:IsA("BasePart") and not NEVER_HIDDEN[part.Name] then
+			local saved = part:GetAttribute("ArmorHiddenTransparency")
+			if hide[part] and saved == nil then
+				part:SetAttribute("ArmorHiddenTransparency", part.Transparency)
+				part.Transparency = 1
+			elseif not hide[part] and typeof(saved) == "number" then
+				part.Transparency = saved
+				part:SetAttribute("ArmorHiddenTransparency", nil)
+			end
+		end
+	end
+end
+
 -- Puts the look of `setId`'s `slot` piece on `model` (replacing whatever was there), or
 -- just removes it when `setId` is nil. `model` needs a Humanoid to wear accessories.
 local function dressSlotLook(model: Model, slot: string, setId: string?)
@@ -337,6 +441,7 @@ local function dressSlot(model: Model, slot: string, setId: string?)
 		local set = setId and ArmorConfig.Sets[setId]
 		setHeadwearHidden(model, set ~= nil and set.Pieces.Helmet ~= nil)
 	end
+	updateBodyCover(model)
 end
 
 -- Player state -----------------------------------------------------------------------------

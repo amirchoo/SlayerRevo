@@ -17,7 +17,7 @@
 --   Weapon: Damage, LightDamage, HeavyDamage (fractions), StaminaCost, LightStaminaCost,
 --     HeavyStaminaCost (fractions, negative = cheaper), BlockAmount, ParryWindow, and each
 --     weapon's own: SpinDuration (s, sword), ChargeSpeed (greatsword), QuakeRadius (mace),
---     LungeDistance (spear), BleedDamage (per tick, axe), DrawSpeed (bow) as fractions; the
+--     LungeDistance (spear), FlurryHits (extra stabs, rapier), BleedDamage (per tick, axe), DrawSpeed (bow) as fractions; the
 --     staff's are listed with StaffBranches below.
 
 export type Node = {
@@ -162,6 +162,12 @@ SkillTrees.Weapons = {
 		{ Id = "Phalanx", Name = "Phalanx", Description = "Blocks absorb 10 more; parry window 0.05 s longer.", Tier = 4, MaxRank = 1, Effects = { BlockAmount = 10, ParryWindow = 0.05 } },
 		{ Id = "Skewer", Name = "Skewer", Description = "+20% lunge damage, lunge carries 25% further.", Tier = 4, MaxRank = 1, Effects = { HeavyDamage = 0.2, LungeDistance = 0.25 } }
 	),
+	Rapier = weaponTree(
+		{ Id = "Finesse", Name = "Finesse", Description = "Flurry strikes 1 more time.", Tier = 2, MaxRank = 3, Effects = { FlurryHits = 1 } },
+		{ table.clone(HEAVY_TRAINING), guardcraft() },
+		{ Id = "Duelist", Name = "Duelist", Description = "+15% thrust damage, thrusts cost 20% less stamina.", Tier = 4, MaxRank = 1, Effects = { LightDamage = 0.15, LightStaminaCost = -0.2 } },
+		{ Id = "ThousandCuts", Name = "Thousand Cuts", Description = "Flurry strikes 2 more times, +15% flurry damage.", Tier = 4, MaxRank = 1, Effects = { FlurryHits = 2, HeavyDamage = 0.15 } }
+	),
 	Axe = weaponTree(
 		{ Id = "DeepCuts", Name = "Deep Cuts", Description = "Bleed deals 1 more damage per tick.", Tier = 2, MaxRank = 3, Effects = { BleedDamage = 1 } },
 		{ table.clone(HEAVY_TRAINING), guardcraft() },
@@ -259,6 +265,6 @@ SkillTrees.SharedTrees = {
 } :: { [string]: string }
 
 -- Tabs in the skill screen, in order ("General" first, then each weapon).
-SkillTrees.WeaponOrder = { "Sword", "Greatsword", "Axe", "Mace", "Spear", "Bow", "Staff" }
+SkillTrees.WeaponOrder = { "Sword", "Rapier", "Greatsword", "Axe", "Mace", "Spear", "Bow", "Staff" }
 
 return SkillTrees

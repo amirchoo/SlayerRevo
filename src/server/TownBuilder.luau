@@ -2,10 +2,11 @@
 -- Builds Beginning Town (the hub) at server start, from shared/Config/TownConfig: a cobblestone
 -- plaza with a fountain and the spawn, roads out to the buildings, shops and homes, props,
 -- lamps, a low fence ring with an arch at the north road to the hunting grounds, and trees.
--- The town sits inside the hub safe zone (shared/SafeZone), whose edge is marked with pillars.
+-- The town sits inside the hub safe zone (shared/SafeZone); its edge isn't marked in the world.
 -- Buildings with an Asset use that model from ServerStorage.TownAssets (synced from
--- assets/town) when it exists, fitted to the building's footprint; otherwise they're built
--- from parts. Townsfolk are spawned separately (NpcService).
+-- assets/town) when it exists, fitted to the building's footprint and recolored with its
+-- Walls/Roof; otherwise they're built from parts. Lamps and trees use the LampPost and Tree
+-- models the same way. Townsfolk are spawned separately (NpcService).
 -- The code is the source of truth: a "Town" saved into the place is replaced at start.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,7 +18,6 @@ local TownConfig = require(ReplicatedStorage.Shared.Config.TownConfig)
 type Building = TownConfig.Building
 type Prop = TownConfig.Prop
 
-local BORDER_PILLAR_SPACING = 35
 local FENCE_HEIGHT = 3.2
 local FENCE_POST_SPACING = 8
 
@@ -53,7 +53,35 @@ local ASSET_YAW: { [string]: number } = {
 	Houses_SecondAge_1_Level2 = 0,
 	Blacksmith = 0,
 	Fountain = 0,
+	LampPost = 90, -- the lantern hangs off the model's +X side; this turns it to the front
+	Tree = 0,
+	FarmFence = 90, -- a fence section runs along the model's X; this lines it up with the run
+	ArcheryTarget = -90, -- the target's face points along the model's -X
+	WeaponRack = 90,
+	ItemBox = 180,
+	StonePath = 90, -- the path runs along the model's X
+	NoticeBoard = 180,
 }
+-- Props made from a TownAssets model (when it's there; otherwise part-built, if they can be).
+local PROP_MODELS: { [string]: string } = {
+	well = "Well",
+	cart = "HayCart",
+	questboard = "NoticeBoard",
+	dummy = "TrainingDummy",
+	target = "ArcheryTarget",
+	rack = "WeaponRack",
+	campfire = "Campfire",
+	table = "PicnicTable",
+	itembox = "ItemBox",
+	stable = "Stable",
+	supplies = "SupplyPile",
+	tent = "MarketStall",
+}
+-- Which parts of an imported building model take the building's Walls and Roof colors.
+local ASSET_TINT: { [string]: { Walls: { string }, Roof: { string } } } = {
+	House_1 = { Walls = { "Plaster" }, Roof = { "RoofTiles" } },
+}
+local TREE_SCALE = 0.5 -- the Tree model is ~38 studs tall; town trees are about half that
 local ASSET_SINK = 0.3 -- push models slightly into the ground so they don't float on uneven terrain
 
 local TownBuilder = {}
@@ -145,18 +173,26 @@ end
 local missingAssets: { [string]: boolean } = {}
 
 -- Clones an imported model from TownAssets and fits it to a spot: scripts stripped,
--- anchored, scaled to fit `footprint` (width along local X, depth along local Z),
--- turned by its ASSET_YAW, and resting on the ground at `base`. Returns nil if the
+-- anchored, scaled to fit `footprint` (width along local X, depth along local Z) or by
+-- `scale`, turned by its ASSET_YAW, and resting on the ground at `base`. Returns nil if the
 -- asset hasn't been added yet (the caller builds it from parts).
-local function placeAsset(assetName: string, base: CFrame, footprint: Vector2): Model?
+local function template(assetName: string): Model?
 	local assets = ServerStorage:FindFirstChild("TownAssets")
-	local template = assets and assets:FindFirstChild(assetName)
-	if not template or not template:IsA("Model") then
-		missingAssets[assetName] = true
+	local found = assets and assets:FindFirstChild(assetName)
+	if found and found:IsA("Model") then
+		return found
+	end
+	missingAssets[assetName] = true
+	return nil
+end
+
+local function placeAsset(assetName: string, base: CFrame, footprint: Vector2?, scale: number?): Model?
+	local source = template(assetName)
+	if not source then
 		return nil
 	end
 
-	local model = template:Clone()
+	local model = source:Clone()
 	for _, descendant in model:GetDescendants() do
 		-- Free models can hide malicious scripts; town buildings never need code.
 		if descendant:IsA("BaseScript") or descendant:IsA("ModuleScript") then
@@ -170,7 +206,10 @@ local function placeAsset(assetName: string, base: CFrame, footprint: Vector2): 
 	model:PivotTo(CFrame.Angles(0, math.rad(ASSET_YAW[assetName] or 0), 0) * model:GetPivot())
 	local low, high = worldBounds(model)
 	local size = high - low
-	model:ScaleTo(model:GetScale() * math.min(footprint.X / size.X, footprint.Y / size.Z))
+	local factor = if footprint then math.min(footprint.X / size.X, footprint.Y / size.Z) else scale or 1
+	if factor ~= 1 then
+		model:ScaleTo(model:GetScale() * factor)
+	end
 	low, high = worldBounds(model)
 	local bottomCenter = Vector3.new((low.X + high.X) / 2, low.Y, (low.Z + high.Z) / 2)
 
@@ -213,6 +252,37 @@ local function buildFallbackFountain(plazaTop: number)
 	cylinder("FountainBowlWater", 0.2, 5, at(9.35), COLORS.Water, Enum.Material.Glass).Transparency = 0.2
 end
 
+-- Tones down a glowing model (the Fountain of Sidon's neon, water beams and blue lights) so
+-- it sits with the town's colors instead of outshining them.
+local GLOW = {
+	LightBrightness = 0.6,
+	LightRange = 10,
+	LightColor = Color3.fromRGB(160, 205, 240),
+	BeamEmission = 0.15,
+	BeamOpacity = 0.45, -- times each beam's original opacity
+	NeonColor = Color3.fromRGB(110, 165, 205),
+}
+local function calmGlow(model: Model)
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("PointLight") or descendant:IsA("SpotLight") or descendant:IsA("SurfaceLight") then
+			descendant.Brightness = math.min(descendant.Brightness, GLOW.LightBrightness)
+			descendant.Range = math.min(descendant.Range, GLOW.LightRange)
+			descendant.Color = GLOW.LightColor
+		elseif descendant:IsA("Beam") then
+			descendant.LightEmission = math.min(descendant.LightEmission, GLOW.BeamEmission)
+			local points = {}
+			for _, point in descendant.Transparency.Keypoints do
+				table.insert(points, NumberSequenceKeypoint.new(point.Time, 1 - (1 - point.Value) * GLOW.BeamOpacity, point.Envelope))
+			end
+			descendant.Transparency = NumberSequence.new(points)
+		elseif descendant:IsA("BasePart") and descendant.Material == Enum.Material.Neon then
+			descendant.Material = Enum.Material.Glass
+			descendant.Color = descendant.Color:Lerp(GLOW.NeonColor, 0.6)
+			descendant.Transparency = math.max(descendant.Transparency, 0.15)
+		end
+	end
+end
+
 local function buildPlaza(baseY: number)
 	local size = TownConfig.PlazaSize
 	local plazaTop = baseY + 0.4
@@ -224,7 +294,10 @@ local function buildPlaza(baseY: number)
 	end
 
 	local fountainSize = TownConfig.FountainSize
-	if not placeAsset("Fountain", CFrame.new(0, plazaTop, 0), Vector2.new(fountainSize, fountainSize)) then
+	local fountain = placeAsset("Fountain", CFrame.new(0, plazaTop, 0), Vector2.new(fountainSize, fountainSize))
+	if fountain then
+		calmGlow(fountain)
+	else
 		buildFallbackFountain(plazaTop)
 	end
 
@@ -251,16 +324,40 @@ local function buildPath(from: Vector2, to: Vector2, width: number, color: Color
 	part({ Name = name, Size = Vector3.new(width, 2, length), CFrame = CFrame.lookAt((a + b) / 2, b), Color = color, Material = material })
 end
 
+-- Roads are laid with the StonePath model (scaled to the road's width, pieces overlapping
+-- to fill its length), or as cobblestone slabs without it. The trail past the arch is a dirt
+-- path in the terrain (WorldTerrain).
 local function buildRoads()
+	local stones = template("StonePath")
 	for _, road in TownConfig.Roads do
-		buildPath(road.From, road.To, TownConfig.RoadWidth, COLORS.Road, Enum.Material.Cobblestone, "Road")
+		if stones then
+			local low, high = worldBounds(stones)
+			local scale = TownConfig.RoadWidth / (high.Z - low.Z)
+			local pieceLength = (high.X - low.X) * scale
+			local length = (road.To - road.From).Magnitude
+			local direction = (road.To - road.From).Unit
+			local pieces = math.max(1, math.ceil(length / pieceLength))
+			for i = 1, pieces do
+				local center = road.From + direction * (pieceLength / 2 + (length - pieceLength) * (if pieces > 1 then (i - 1) / (pieces - 1) else 0.5))
+				placeAsset("StonePath", groundCFrame(center, direction), nil, scale)
+			end
+		else
+			buildPath(road.From, road.To, TownConfig.RoadWidth, COLORS.Road, Enum.Material.Cobblestone, "Road")
+		end
 	end
-	local trail = TownConfig.Trail
-	buildPath(trail.From, trail.To, TownConfig.RoadWidth - 2, COLORS.Dirt, Enum.Material.Ground, "Trail")
 end
 
--- Lamps both sides of every road, every LampSpacing studs.
-local function buildLamp(x: number, z: number)
+-- Lamps both sides of every road, every LampSpacing studs, lanterns hanging toward the road.
+local function buildLamp(x: number, z: number, toward: Vector2)
+	local lamp = placeAsset("LampPost", groundCFrame(Vector2.new(x, z), toward), nil, 1)
+	if lamp then
+		for _, descendant in lamp:GetDescendants() do
+			if descendant:IsA("BasePart") and descendant.Material == Enum.Material.Neon then
+				addLight(descendant, 18)
+			end
+		end
+		return
+	end
 	local y = groundAt(x, z)
 	part({ Name = "LampPost", Size = Vector3.new(0.6, 10, 0.6), CFrame = CFrame.new(x, y + 4, z), Color = COLORS.Metal, Material = Enum.Material.Metal })
 	part({ Name = "LampArm", Size = Vector3.new(0.4, 0.4, 1.6), CFrame = CFrame.new(x, y + 8.8, z), Color = COLORS.Metal, Material = Enum.Material.Metal })
@@ -279,7 +376,7 @@ local function buildLamps()
 		while distance < length - 2 do
 			for _, s in { -1, 1 } do
 				local point = road.From + direction * distance + side * offset * s
-				buildLamp(point.X, point.Y)
+				buildLamp(point.X, point.Y, -side * s)
 			end
 			distance += TownConfig.LampSpacing
 		end
@@ -459,11 +556,27 @@ local BUILDERS: { [string]: (Building, CFrame, Model) -> () } = {
 local function buildBuilding(spec: Building)
 	local base = groundCFrame(spec.Position, spec.Facing) -- front faces local -Z
 	local footprint = Vector2.new(spec.Size.X, spec.Size.Z)
-	local asset = spec.Asset and placeAsset(spec.Asset, base, footprint)
+	local asset = spec.Asset and placeAsset(spec.Asset, base, if spec.Scale then nil else footprint, spec.Scale)
 	if asset then
 		asset.Name = spec.Name
-		if spec.Sign and spec.Kind ~= "stall" then
-			addSignpost(base * CFrame.new(spec.Size.X / 2 - 2, 0, -spec.Size.Z / 2 - 2.5), spec.Sign, asset, math.max(7, #spec.Sign * 0.55))
+		local tint = ASSET_TINT[spec.Asset :: string]
+		if tint then
+			for _, descendant in asset:GetDescendants() do
+				if descendant:IsA("BasePart") then
+					if spec.Walls and table.find(tint.Walls, descendant.Name) then
+						descendant.Color = spec.Walls
+					elseif spec.Roof and table.find(tint.Roof, descendant.Name) then
+						descendant.Color = spec.Roof
+					end
+				end
+			end
+		end
+		if spec.Sign then
+			-- Beside the door, just in front of the model's actual front wall.
+			local low, high = worldBounds(asset)
+			local size = base:VectorToObjectSpace(high - low)
+			local width, depth = math.abs(size.X), math.abs(size.Z)
+			addSignpost(base * CFrame.new(width / 2 - 2, 0, -depth / 2 - 2.5), spec.Sign, asset, math.max(7, #spec.Sign * 0.55))
 		end
 		return
 	end
@@ -558,18 +671,91 @@ PROPS.signpost = function(base, prop)
 	addSignpost(base, text, townFolder, math.max(7, #text * 0.5))
 end
 
+-- A tilled bed with rows of leafy crops.
+PROPS.crops = function(base, prop)
+	local size = prop.Size or Vector2.new(14, 14)
+	part({ Name = "Field", Size = Vector3.new(size.X, 1, size.Y), CFrame = base * CFrame.new(0, 0.2, 0), Color = COLORS.Dirt, Material = Enum.Material.Ground })
+	local random = Random.new(math.floor(base.Position.X * 3 + base.Position.Z * 5))
+	local rows = math.max(2, math.floor(size.X / 3))
+	for row = 1, rows do
+		local x = -size.X / 2 + (row - 0.5) * size.X / rows
+		part({ Name = "Furrow", Size = Vector3.new(1.2, 0.5, size.Y - 1.5), CFrame = base * CFrame.new(x, 0.9, 0), Color = COLORS.Trunk, Material = Enum.Material.Ground })
+		for z = -size.Y / 2 + 1.8, size.Y / 2 - 1.8, 2.2 do
+			local height = random:NextNumber(0.9, 1.6)
+			part({ Name = "Crop", Size = Vector3.new(1.1, height, 1.1), CFrame = base * CFrame.new(x, 1.1 + height / 2, z) * CFrame.Angles(0, random:NextNumber(0, math.pi), 0), Color = if random:NextNumber() < 0.5 then COLORS.Leaves else COLORS.DarkLeaves, Material = Enum.Material.Grass, CanCollide = false })
+		end
+	end
+end
+
+-- A round pond (Size.X across): water in a rocky rim, with a short wooden dock on its south side.
+PROPS.pond = function(base, prop)
+	local diameter = if prop.Size then prop.Size.X else 24
+	local radius = diameter / 2
+	local upright = CFrame.Angles(0, 0, math.rad(90)) -- cylinders run along X; this stands them up
+	local water = part({ Name = "PondWater", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, diameter, diameter), CFrame = base * CFrame.new(0, 0.1, 0) * upright, Color = COLORS.Water, Material = Enum.Material.Glass, Transparency = 0.15 })
+	water.CanCollide = false
+	part({ Name = "PondBed", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, diameter, diameter), CFrame = base * CFrame.new(0, -0.4, 0) * upright, Color = Color3.fromRGB(60, 80, 70), Material = Enum.Material.Mud })
+	local random = Random.new(5)
+	local rocks = math.floor(diameter * 1.1)
+	for i = 0, rocks - 1 do
+		local angle = i / rocks * math.pi * 2
+		local rockSize = random:NextNumber(1.6, 2.6)
+		local at = Vector3.new(math.cos(angle) * radius, 0.3, math.sin(angle) * radius)
+		part({ Name = "PondRock", Size = Vector3.new(rockSize, rockSize * 0.6, rockSize), CFrame = base * CFrame.new(at) * CFrame.Angles(0, random:NextNumber(0, math.pi), 0), Color = if i % 3 == 0 then COLORS.DarkStone else COLORS.Stone, Material = Enum.Material.Slate })
+	end
+	local dockLength = radius + 2
+	part({ Name = "Dock", Size = Vector3.new(4, 0.5, dockLength), CFrame = base * CFrame.new(0, 1.2, radius + 2 - dockLength / 2), Color = COLORS.LightWood, Material = Enum.Material.WoodPlanks })
+	for _, side in { -1, 1 } do
+		for _, z in { 0, radius / 2 } do
+			part({ Name = "DockPost", Size = Vector3.new(0.6, 2.6, 0.6), CFrame = base * CFrame.new(side * 1.8, 0.4, z), Color = COLORS.DarkWood, Material = Enum.Material.Wood })
+		end
+	end
+end
+
 local function buildProps()
 	for _, prop in TownConfig.Props do
-		PROPS[prop.Kind](groundCFrame(prop.Position, prop.Facing), prop)
+		local base = groundCFrame(prop.Position, prop.Facing)
+		local modelName = PROP_MODELS[prop.Kind]
+		local model = modelName and placeAsset(modelName, base, nil, prop.Scale)
+		if model then
+			for _, descendant in model:GetDescendants() do
+				-- Fires (the campfire) light up their surroundings.
+				if descendant:IsA("Fire") and descendant.Parent and descendant.Parent:IsA("BasePart") then
+					addLight(descendant.Parent, 24, 2, COLORS.Ember)
+				end
+				-- Color recolors the model's colored cloth (a stall's canopy stripes), not white cloth.
+				if prop.Color and descendant:IsA("BasePart") and descendant.Material == Enum.Material.Fabric then
+					local h, sat, v = descendant.Color:ToHSV()
+					if sat > 0.2 or v < 0.8 then
+						descendant.Color = prop.Color
+					end
+				end
+			end
+		elseif PROPS[prop.Kind] then
+			PROPS[prop.Kind](base, prop)
+		end
 	end
 end
 
 -- Edges ---------------------------------------------------------------------------------------
 
--- A low wooden fence from `from` to `to` (X/Z), with posts and two rails, following the ground.
+-- A wooden fence from `from` to `to` (X/Z): FarmFence model sections stretched (by scaling)
+-- to fill the run exactly, or, without the model, posts and two rails following the ground.
 local function buildFenceRun(from: Vector2, to: Vector2)
 	local length = (to - from).Magnitude
 	if length < 1 then
+		return
+	end
+	local fence = template("FarmFence")
+	if fence then
+		local low, high = worldBounds(fence)
+		local section = high.X - low.X
+		local sections = math.max(1, math.round(length / section))
+		local direction = (to - from).Unit
+		for i = 1, sections do
+			local mid = from:Lerp(to, (i - 0.5) / sections)
+			placeAsset("FarmFence", groundCFrame(mid, direction), nil, length / sections / section)
+		end
 		return
 	end
 	local count = math.max(1, math.ceil(length / FENCE_POST_SPACING))
@@ -647,7 +833,10 @@ local function buildArch()
 	addSign(outward, TownConfig.Name)
 end
 
-local function buildTree(x: number, z: number, scale: number)
+local function buildTree(x: number, z: number, scale: number, yaw: number)
+	if placeAsset("Tree", groundCFrame(Vector2.new(x, z), Vector2.new(math.sin(yaw), math.cos(yaw))), nil, TREE_SCALE * scale) then
+		return
+	end
 	local y = groundAt(x, z)
 	cylinder("Trunk", 8 * scale, 1.8 * scale, CFrame.new(x, y + 3.5 * scale, z), COLORS.Trunk, Enum.Material.Wood)
 	part({ Name = "Leaves", Shape = Enum.PartType.Ball, Size = Vector3.one * 9 * scale, CFrame = CFrame.new(x, y + 9 * scale, z), Color = COLORS.Leaves, Material = Enum.Material.Grass })
@@ -655,12 +844,13 @@ local function buildTree(x: number, z: number, scale: number)
 end
 
 local function buildTrees()
-	for _, spot in TownConfig.Trees do
-		buildTree(spot.X, spot.Y, 1)
-	end
-	-- Outside the fence: a fixed seed, so the woods look the same every server.
-	local h = TownConfig.EdgeHalfSize
+	-- A fixed seed, so the trees look the same every server.
 	local random = Random.new(7)
+	for _, spot in TownConfig.Trees do
+		buildTree(spot.X, spot.Y, 1, random:NextNumber(0, math.pi * 2))
+	end
+	-- Outside the fence.
+	local h = TownConfig.EdgeHalfSize
 	local placed, tries = 0, 0
 	while placed < TownConfig.OutsideTrees and tries < TownConfig.OutsideTrees * 20 do
 		tries += 1
@@ -671,37 +861,10 @@ local function buildTrees()
 		local onRoad = math.abs(z) < 14 and math.abs(x) > h -- east/west road exits
 		local inSafeZone = SafeZone.contains(Vector3.new(x, 0, z))
 		if outside and not onTrail and not onRoad and inSafeZone then
-			buildTree(x, z, random:NextNumber(0.8, 1.3))
+			buildTree(x, z, random:NextNumber(0.8, 1.3), random:NextNumber(0, math.pi * 2))
 			placed += 1
 		end
 	end
-end
-
--- Lantern pillars along the safe zone edge, so players can see where the hub ends.
-local function buildSafeZoneBorder()
-	local folder = Instance.new("Folder")
-	folder.Name = "SafeZoneBorder"
-
-	local half = SafeZone.HALF_SIZE
-	local count = math.max(1, math.round(half * 2 / BORDER_PILLAR_SPACING))
-	local corners = {
-		Vector3.new(-half, 0, -half),
-		Vector3.new(half, 0, -half),
-		Vector3.new(half, 0, half),
-		Vector3.new(-half, 0, half),
-	}
-	for side = 1, 4 do
-		local from, to = corners[side], corners[side % 4 + 1]
-		for i = 0, count - 1 do
-			local point = SafeZone.CENTER + from:Lerp(to, i / count)
-			local y = groundAt(point.X, point.Z)
-			part({ Name = "BorderPillar", Size = Vector3.new(2, 8, 2), CFrame = CFrame.new(point.X, y + 3, point.Z), Color = COLORS.Stone, Material = Enum.Material.Slate, Parent = folder })
-			local flame = part({ Name = "BorderFlame", Size = Vector3.new(1.2, 1.2, 1.2), CFrame = CFrame.new(point.X, y + 7.6, point.Z), Color = COLORS.LampGlow, Material = Enum.Material.Neon, CanCollide = false, Parent = folder })
-			addLight(flame, 14, 1)
-		end
-	end
-
-	folder.Parent = workspace
 end
 
 function TownBuilder.build()
@@ -713,7 +876,8 @@ function TownBuilder.build()
 	groundParams.FilterDescendantsInstances = include
 
 	-- The town is built from TownConfig; a copy saved into the place (an edit-mode preview, see
-	-- tools/preview_town.lua) is replaced, so play always matches the code.
+	-- tools/preview_town.lua) is replaced, so play always matches the code. (SafeZoneBorder was
+	-- the old pillar ring along the safe zone edge; it's no longer built.)
 	for _, name in { "Town", "SafeZoneBorder" } do
 		local saved = workspace:FindFirstChild(name)
 		if saved then
@@ -722,7 +886,6 @@ function TownBuilder.build()
 	end
 
 	local baseY = groundAt(0, 0)
-	buildSafeZoneBorder()
 	clearGrass(baseY)
 	buildPlaza(baseY)
 	buildRoads()

@@ -239,6 +239,9 @@
       "TownAssets": {
         "$path": "assets/town"
       },
+      "WorldAssets": {
+        "$path": "assets/world"
+      },
       "AnimationDrafts": {
         "$path": "assets/animations"
       },

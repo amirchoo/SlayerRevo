@@ -93,7 +93,35 @@ export type ThrustHeavy = {
 	FlipGrip: boolean?,
 }
 
-export type HeavyAttack = SpinHeavy | QuakeHeavy | ThrustHeavy
+-- Flurry: draw back while held, turning with the camera (a strip on the ground shows the
+-- reach), then release into rapid thrusts: the longer the hold (up to FullChargeTime), the
+-- more stabs (MinHits to MaxHits). Each stab hits along a narrow line ahead; the last one
+-- knocks back. You stay planted, creeping forward, until the last stab. Holding past
+-- MaxHold releases on its own.
+export type FlurryHeavy = {
+	Kind: "Flurry",
+	WindUpAnimation: string, -- drawing back; held on its last frame while charging
+	FlurryAnimation: string, -- the stabbing, looped for as long as the flurry lasts
+	Stamina: number, -- stamina spent to start charging
+	HoldTime: number, -- seconds the click must be held to count as a heavy (shorter = a normal tap)
+	FullChargeTime: number, -- seconds of charging for the most stabs
+	MaxHold: number, -- seconds of charging before it releases by itself
+	MinHits: number,
+	MaxHits: number,
+	Damage: number, -- per stab
+	Interval: number, -- seconds between stabs (matches the flurry animation's rhythm)
+	HitDelay: number, -- seconds after release that the first stab lands
+	Range: number, -- hitbox depth ahead of the player, in studs
+	Width: number,
+	Height: number,
+	FinalKnockback: number, -- studs/s the last stab pushes enemies away
+	Advance: number, -- studs/s you creep forward while stabbing
+	Recovery: number, -- seconds after the last stab before the next heavy
+	WalkSpeed: number, -- while charging
+	FlipGrip: boolean?,
+}
+
+export type HeavyAttack = SpinHeavy | QuakeHeavy | ThrustHeavy | FlurryHeavy
 
 -- A click-combo melee weapon (sword, mace, spear): see WeaponService and ComboWeaponClient.
 export type ComboWeapon = {
@@ -309,6 +337,62 @@ local Spear: ComboWeapon = {
 	},
 }
 
+-- Rapier: a duelist's thrusting blade. Three quick, elegant stabs on a long, narrow line
+-- (the third a full lunge). Its heavy charges a coiled thrust that releases as a flurry of
+-- rapid stabs. A light guard with the widest parry window of the blades: it rewards timing.
+-- Animations from tools/rapier_anims.py.
+local Rapier: ComboWeapon = {
+	ToolName = "Rapier",
+	Hand = "Right",
+	IdleAnimation = "rbxassetid://135237202710751", -- RapierIdle
+	AnimationSpeed = 1,
+	Stamina = 6,
+	ModelFit = { Length = 5.2, GripFrom = 0.08 },
+	TrailColor = Color3.fromRGB(235, 240, 255),
+	Combo = {
+		-- HitDelay matches each thrust's "Hit" keyframe in tools/rapier_anims.py.
+		{ Animation = "rbxassetid://71951880133711", Damage = 14, Cooldown = 0.26, HitDelay = 0.12 }, -- RapierThrust1
+		{ Animation = "rbxassetid://73842983778232", Damage = 16, Cooldown = 0.26, HitDelay = 0.11 }, -- RapierThrust2
+		{ Animation = "rbxassetid://99868728319102", Damage = 28, Cooldown = 0.55, HitDelay = 0.2, Lunge = 32, Knockback = 12 }, -- RapierThrust3
+	},
+	ComboWindow = 0.8,
+	Range = 8.5, -- reaches past a sword...
+	Width = 3, -- ...but only along the point
+	Height = 5,
+	Block = {
+		Animation = Sword.Block.Animation,
+		BlockAmount = 14,
+		ParryWindow = 0.28, -- a duelist's blade: the best parry of the swords
+	},
+	Heavy = {
+		Kind = "Flurry",
+		Stamina = 22,
+		WindUpAnimation = "rbxassetid://84782831490199", -- RapierWindUp
+		FlurryAnimation = "rbxassetid://102139168442942", -- RapierFlurry
+		HoldTime = 0.2,
+		FullChargeTime = 1.1,
+		MaxHold = 2.5,
+		MinHits = 3,
+		MaxHits = 8,
+		Damage = 9,
+		Interval = 0.09, -- matches RapierFlurry (two stabs per loop)
+		HitDelay = 0.08,
+		Range = 9,
+		Width = 3.5,
+		Height = 5,
+		FinalKnockback = 20,
+		Advance = 6,
+		Recovery = 0.6,
+		WalkSpeed = 6,
+	},
+}
+
+-- How many stabs a flurry gets for a charge of `power` (0..1), plus `bonus` from skills
+-- (FlurryHits). Shared so the client's animation and the server's hits agree.
+local function flurryHits(flurry: FlurryHeavy, power: number, bonus: number?): number
+	return math.round(flurry.MinHits + (flurry.MaxHits - flurry.MinHits) * math.clamp(power, 0, 1)) + (bonus or 0)
+end
+
 -- One-handed axe: hard-hitting chops (the third hops in and knocks back). Its heavy is a
 -- leaping cleave that leaves enemies bleeding. Animations from tools/sword_anims.py
 -- (Axe*); leave "" until published. Guards like the sword.
@@ -462,6 +546,8 @@ return {
 	Emberfang = Emberfang,
 	Mace = Mace,
 	Spear = Spear,
+	Rapier = Rapier,
+	flurryHits = flurryHits,
 	Axe = Axe,
 	Staff = Staff,
 	-- Shared by every weapon that can block (sword, mace, greatsword). Hold right-click to

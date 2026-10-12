@@ -1,5 +1,5 @@
 --!strict
--- Gives players their click-combo weapons (sword, Emberfang, mace, spear, axe) and resolves their hits on the server.
+-- Gives players their click-combo weapons (sword, Emberfang, mace, spear, rapier, axe) and resolves their hits on the server.
 -- The client only reports "I swung" (MeleeSwing); the server finds which combo weapon is in
 -- hand, works out which step of its combo this is (from its own timing, so clients can't
 -- skip to the finisher), checks the cooldown, builds the hitbox, and deals that step's
@@ -9,7 +9,9 @@
 -- the time limit, a weapon switch, or death. Quake: the server times the charge itself and
 -- on release (or after MaxHold) smashes the ground, hitting and pushing back everything
 -- in a radius that grows with the charge. Thrust: charged the same way, but on release
--- the player lunges forward and everything along the line (from where the lunge began) is hit. The "HeavyAttacking" player attribute
+-- the player lunges forward and everything along the line (from where the lunge began) is hit.
+-- Flurry: charged the same way; on release, a run of rapid stabs (more for a longer charge)
+-- each hits along a narrow line ahead, the last knocking back. The "HeavyAttacking" player attribute
 -- tells the client while a heavy is running (so it reacts if the server ends it first).
 
 local Players = game:GetService("Players")
@@ -30,6 +32,7 @@ local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 type ComboWeapon = CombatConfig.ComboWeapon
 type QuakeHeavy = CombatConfig.QuakeHeavy
 type ThrustHeavy = CombatConfig.ThrustHeavy
+type FlurryHeavy = CombatConfig.FlurryHeavy
 
 -- Network delay makes clicks arrive slightly early or late; allow this much either way.
 local TIMING_SLACK = 0.1
@@ -51,6 +54,8 @@ local comboStates: { [Player]: ComboState } = {}
 type HeavyState = { started: number }
 local heavyTokens: { [Player]: HeavyState } = {}
 local lastHeavyEnd: { [Player]: number } = {}
+-- Until when each player's flurry is still stabbing (no combo swings until then).
+local flurryUntil: { [Player]: number } = {}
 
 local function addPart(grip: BasePart, name: string, size: Vector3, offset: CFrame, color: Color3, material: Enum.Material, shape: Enum.PartType?): Part
 	local part = Instance.new("Part")
@@ -238,15 +243,34 @@ local function createAxe(): Tool
 	return tool
 end
 
+-- Placeholder rapier: a long, slender blade, a bell guard over a red grip.
+local function createRapier(): Tool
+	local tool, grip = newTool(
+		CombatConfig.Rapier,
+		CFrame.new(0, 0, -0.25) * CFrame.Angles(math.pi / 2, 0, 0),
+		Vector3.new(0.2, 0.2, 0.9),
+		Color3.fromRGB(150, 35, 35),
+		Enum.Material.Fabric
+	)
+	local steel = Color3.fromRGB(215, 220, 230)
+	addPart(grip, "Pommel", Vector3.one * 0.28, CFrame.new(0, 0, -0.5), Color3.fromRGB(60, 60, 65), Enum.Material.Metal, Enum.PartType.Ball)
+	addPart(grip, "Bell", Vector3.new(0.25, 0.9, 0.9), CFrame.new(0, 0, 0.55) * CFrame.Angles(0, math.pi / 2, 0), Color3.fromRGB(60, 60, 65), Enum.Material.Metal, Enum.PartType.Cylinder)
+	local blade = addPart(grip, "Blade", Vector3.new(0.08, 0.12, 4.2), CFrame.new(0, 0, 2.75), steel, Enum.Material.Metal)
+	addTrail(blade, 0.6, 2.1, 0.1, CombatConfig.Rapier.TrailColor)
+	addSwingSound(grip, "RapierSwing")
+	return tool
+end
+
 local CREATORS: { [string]: () -> Tool } = {
 	[CombatConfig.Sword.ToolName] = createSword,
 	[CombatConfig.Emberfang.ToolName] = createEmberfang,
 	[CombatConfig.Mace.ToolName] = createMace,
 	[CombatConfig.Spear.ToolName] = createSpear,
+	[CombatConfig.Rapier.ToolName] = createRapier,
 	[CombatConfig.Axe.ToolName] = createAxe,
 }
 
-local COMBO_WEAPONS: { ComboWeapon } = { CombatConfig.Sword, CombatConfig.Emberfang, CombatConfig.Mace, CombatConfig.Spear, CombatConfig.Axe }
+local COMBO_WEAPONS: { ComboWeapon } = { CombatConfig.Sword, CombatConfig.Emberfang, CombatConfig.Mace, CombatConfig.Spear, CombatConfig.Rapier, CombatConfig.Axe }
 
 local function configFor(tool: Tool): ComboWeapon?
 	for _, config in COMBO_WEAPONS do
@@ -267,6 +291,9 @@ local function onSwing(player: Player)
 	local config = tool and configFor(tool)
 	if not config or player:GetAttribute("Blocking") == true or heavyTokens[player] then
 		return -- not holding a combo weapon, blocking, or mid-spin
+	end
+	if (flurryUntil[player] or 0) > os.clock() - TIMING_SLACK then
+		return -- still stabbing
 	end
 	local combo = config.Combo
 
@@ -417,7 +444,38 @@ local function thrust(player: Player, character: Model, tool: Tool, config: Comb
 	end)
 end
 
--- Ends a charge (quake or thrust) with its attack; the power comes from the server's own
+-- The flurry's stabs, one every Interval after HitDelay, each along a narrow line ahead
+-- (from wherever the player is by then: they creep forward as they stab).
+local function flurry(player: Player, character: Model, tool: Tool, config: ComboWeapon, heavy: FlurryHeavy, power: number)
+	local hits = CombatConfig.flurryHits(heavy, power, SkillMath.weapon(player, config.ToolName, "FlurryHits"))
+	local damage = SkillMath.damage(player, config.ToolName, heavy.Damage, "Heavy")
+	local size = Vector3.new(heavy.Width, heavy.Height, heavy.Range)
+	local finish = os.clock() + heavy.HitDelay + (hits - 1) * heavy.Interval
+	flurryUntil[player] = finish
+	lastHeavyEnd[player] = finish -- the recovery counts from the last stab
+	task.spawn(function()
+		task.wait(heavy.HitDelay)
+		for stab = 1, hits do
+			local root = character:FindFirstChild("HumanoidRootPart")
+			if not root or not root:IsA("BasePart") or not HealthService.isAlive(character) or character:FindFirstChildOfClass("Tool") ~= tool then
+				break
+			end
+			for _, hit in MeleeHitbox.strike(player, character, root, size, damage, config.ToolName) do
+				if stab == hits and HealthService.isAlive(hit.model) then
+					EnemyEffects.knockBack(hit.model, root.Position, heavy.FinalKnockback, KNOCKBACK_TIME)
+				end
+			end
+			if stab < hits then
+				task.wait(heavy.Interval)
+			end
+		end
+		if flurryUntil[player] == finish then
+			flurryUntil[player] = nil
+		end
+	end)
+end
+
+-- Ends a charge (quake, thrust or flurry) with its attack; the power comes from the server's own
 -- timing of the charge.
 releaseCharge = function(player: Player)
 	local token = heavyTokens[player]
@@ -439,6 +497,9 @@ releaseCharge = function(player: Player)
 	if heavy.Kind == "Quake" then
 		local quake = heavy :: QuakeHeavy
 		smash(player, character, tool, config, quake, math.clamp((os.clock() - token.started) / quake.FullChargeTime, 0, 1))
+	elseif heavy.Kind == "Flurry" then
+		local stabs = heavy :: FlurryHeavy
+		flurry(player, character, tool, config, stabs, math.clamp((os.clock() - token.started) / stabs.FullChargeTime, 0, 1))
 	else
 		local lunge = heavy :: ThrustHeavy
 		thrust(player, character, tool, config, lunge, math.clamp((os.clock() - token.started) / lunge.FullChargeTime, 0, 1))
@@ -473,8 +534,10 @@ local function startHeavy(player: Player)
 	end
 
 	if heavy.Kind ~= "Spin" then
-		-- Charging (quake or thrust): attacks on release, or by itself after MaxHold.
-		local maxHold = if heavy.Kind == "Quake" then (heavy :: QuakeHeavy).MaxHold else (heavy :: ThrustHeavy).MaxHold
+		-- Charging (quake, thrust or flurry): attacks on release, or by itself after MaxHold.
+		local maxHold = if heavy.Kind == "Quake" then (heavy :: QuakeHeavy).MaxHold
+			elseif heavy.Kind == "Flurry" then (heavy :: FlurryHeavy).MaxHold
+			else (heavy :: ThrustHeavy).MaxHold
 		task.delay(maxHold, function()
 			if heavyTokens[player] == token then
 				releaseCharge(player)
@@ -572,6 +635,7 @@ function WeaponService.start()
 		heavyTokens[player] = nil
 		lastHeavyEnd[player] = nil
 		flipTokens[player] = nil
+		flurryUntil[player] = nil
 	end)
 	RemoteGuard.connect(swingRemote, onSwing)
 	RemoteGuard.connect(heavyRemote, onHeavy)

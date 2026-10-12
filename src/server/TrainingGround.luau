@@ -1,7 +1,7 @@
 --!strict
 -- Training Grounds: a floating arena for working on combat, away from the hub.
 -- West side: wooden dummies that reset after "dying" (for testing damage).
--- East side: a sparring ring with an Orc and a Lesser Demon behind a low wall (for testing
+-- East side: a sparring ring with an Orc behind a low wall (for testing
 -- dodging); players can jump the wall, enemies never jump. A grid on the floor marks every
 -- 10 studs for judging ranges. Teleport pads link the arena and the hub plaza.
 
@@ -25,7 +25,7 @@ local DIVIDER_X = 10 -- the sparring ring is everything east of this line
 local DIVIDER_HEIGHT = 4 -- low enough for players to jump (default jump clears ~7 studs)
 local SPARRING_SPAWNS = { -- what spars where: X/Z in the ring
 	{ kind = EnemyConfig.Orc, at = Vector2.new(CENTER.X + 32, CENTER.Z - 12) },
-	{ kind = EnemyConfig.LesserDemon, at = Vector2.new(CENTER.X + 46, CENTER.Z + 12) },
+	-- The Lesser Demon is left out for now; it sparred at (CENTER.X + 46, CENTER.Z + 12).
 }
 
 local GRID_SPACING = 10
