@@ -485,9 +485,11 @@ function Backpack.start()
 		local hotbar = hotbarList()
 		local slots = player:GetAttribute("HotbarSlots")
 		local capacity = if typeof(slots) == "number" then slots else InventoryConfig.HotbarSlots
+		local ownedValue = player:GetAttribute("OwnedWeapons")
+		local owned = if typeof(ownedValue) == "string" and ownedValue ~= "" then string.split(ownedValue, ",") else {}
 		local shown: { string } = {}
 		for _, info in InventoryConfig.Weapons do
-			if selectedClass == nil or info.Class == selectedClass then
+			if table.find(owned, info.Name) and (selectedClass == nil or info.Class == selectedClass) then
 				table.insert(shown, info.Name)
 			end
 		end
@@ -629,7 +631,7 @@ function Backpack.start()
 
 	local refreshQueued = false
 	player.AttributeChanged:Connect(function(attribute)
-		if attribute == "Hotbar" or attribute == "HotbarSlots" then
+		if attribute == "Hotbar" or attribute == "HotbarSlots" or attribute == "OwnedWeapons" then
 			updateWeapons()
 		elseif attribute == "Protection" or string.sub(attribute, 1, 5) == "Armor" or string.sub(attribute, 1, 9) == "OwnsArmor" then
 			updateArmor()

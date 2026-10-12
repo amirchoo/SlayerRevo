@@ -17,6 +17,7 @@ return {
 		ArmorEquip = 10,
 		InventoryMove = 10,
 		TestChestTake = 5,
+		StarterChoose = 3,
 		DashStart = 10,
 		SkillSpend = 10,
 		SkillRespec = 3,

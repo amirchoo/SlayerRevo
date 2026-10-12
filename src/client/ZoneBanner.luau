@@ -14,7 +14,7 @@ local FADE_INFO = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection
 
 type Zone = { text: string, color: Color3 }
 
-local HUB: Zone = { text = "Hub — Safe Zone", color = Color3.fromRGB(150, 220, 150) }
+local HUB: Zone = { text = "Beginning Town — Safe Zone", color = Color3.fromRGB(150, 220, 150) }
 local TRAINING: Zone = { text = "Training Grounds", color = Color3.fromRGB(240, 200, 90) }
 local HUNTING: Zone = { text = "Hunting Grounds", color = Color3.fromRGB(235, 110, 90) }
 

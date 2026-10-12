@@ -56,6 +56,9 @@
         "TestChestTake": {
           "$className": "RemoteEvent"
         },
+        "StarterChoose": {
+          "$className": "RemoteEvent"
+        },
         "DashStart": {
           "$className": "RemoteEvent"
         },

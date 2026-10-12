@@ -110,7 +110,7 @@ table.sort(ArmorConfig.SetOrder)
 -- the town center).
 ArmorConfig.Stand = {
 	Set = "Iron",
-	Position = Vector2.new(-8, -26),
+	Position = Vector2.new(-37, 12), -- in front of the armorer's shop
 }
 
 -- Display name of one piece, e.g. "Iron Helmet".

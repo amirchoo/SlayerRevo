@@ -2,7 +2,7 @@
 -- The Test Chest's panel (see server TestChest): opens when the server says the player used
 -- the chest (TestChestOpen), and lists every item by category: a tab per weapon class, and
 -- one for armor. Each item has a button that asks the server for it (TestChestTake):
--- weapons go to the hotbar, armor sets are given and put on. Closes with its X, Escape,
+-- weapons are given (or moved to the hotbar if owned), armor sets are given and put on. Closes with its X, Escape,
 -- or by walking away from the chest.
 -- Display and requests only: the server checks and decides; this reads what the player has
 -- from their attributes (Hotbar, HotbarSlots, OwnsArmor<Set>, Armor<Slot>).
@@ -71,6 +71,10 @@ end
 
 -- What an item's button says, and whether pressing it does anything.
 local function weaponButton(name: string): (string, boolean)
+	local owned = player:GetAttribute("OwnedWeapons")
+	if typeof(owned) ~= "string" or not table.find(string.split(owned, ","), name) then
+		return "Take", true
+	end
 	local hotbar = hotbarList()
 	if table.find(hotbar, name) then
 		return "In hotbar", false
@@ -373,7 +377,7 @@ function TestChestPanel.start()
 		if not panel.Visible or refreshQueued then
 			return
 		end
-		if attribute == "Hotbar" or attribute == "HotbarSlots" or string.sub(attribute, 1, 5) == "Armor" or string.sub(attribute, 1, 9) == "OwnsArmor" then
+		if attribute == "Hotbar" or attribute == "HotbarSlots" or attribute == "OwnedWeapons" or string.sub(attribute, 1, 5) == "Armor" or string.sub(attribute, 1, 9) == "OwnsArmor" then
 			refreshQueued = true
 			task.defer(function()
 				refreshQueued = false

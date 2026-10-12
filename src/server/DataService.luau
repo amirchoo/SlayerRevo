@@ -1,5 +1,6 @@
 --!strict
--- Saves each player's progress in a DataStore: level, XP, skill trees, hotbar, and armor.
+-- Saves each player's progress in a DataStore: level, XP, skill trees, owned weapons, the
+-- starter pick, hotbar, and armor.
 -- Session-locked: while a server has a player's data loaded it marks the save as its own, so
 -- a second server (e.g. after a quick rejoin) waits instead of loading stale data and
 -- overwriting newer progress later. A lock older than LOCK_TIMEOUT is assumed abandoned
@@ -12,6 +13,9 @@
 
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 
 local STORE_NAME = "PlayerData_v1"
 local AUTOSAVE_INTERVAL = 120
@@ -22,6 +26,8 @@ export type Data = {
 	Level: number,
 	XP: number,
 	Skills: { [string]: { [string]: number } },
+	Weapons: { [string]: boolean }, -- owned weapons (by tool name)
+	Starter: string?, -- the starter weapon picked (once per save)
 	Hotbar: { string }?,
 	Armor: { Owned: { [string]: boolean }, Worn: { [string]: string } }?,
 }
@@ -34,7 +40,7 @@ local loadedCallbacks: { (Player, Data) -> () } = {}
 local store: DataStore? = nil
 
 local function defaults(): Data
-	return { Level = 1, XP = 0, Skills = {} }
+	return { Level = 1, XP = 0, Skills = {}, Weapons = {} }
 end
 
 -- Fills in anything missing (e.g. from an older save).
@@ -51,6 +57,17 @@ local function reconcile(raw: any): Data
 	end
 	if typeof(raw.Skills) == "table" then
 		data.Skills = raw.Skills
+	end
+	if typeof(raw.Weapons) == "table" then
+		data.Weapons = raw.Weapons
+	elseif typeof(raw.Level) == "number" then
+		-- A save from before weapons were owned: everyone had every weapon, so they keep them.
+		for _, info in InventoryConfig.Weapons do
+			data.Weapons[info.Name] = true
+		end
+	end
+	if typeof(raw.Starter) == "string" then
+		data.Starter = raw.Starter
 	end
 	if typeof(raw.Hotbar) == "table" then
 		data.Hotbar = raw.Hotbar

@@ -4,7 +4,7 @@
 -- Its ProximityPrompt opens the chest panel on that player's screen (TestChestOpen remote,
 -- with the chest's position so the panel closes when they walk away). Taking an item fires
 -- TestChestTake (kind, id): the server checks the player is at the chest, then
---   "Weapon": moves the weapon (every player already owns them all) into their hotbar;
+--   "Weapon": gives the weapon if the player doesn't own it, and moves it into their hotbar;
 --   "Armor":  gives the whole armor set and puts it on (ArmorService.giveSet).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -102,7 +102,11 @@ local function onTake(player: Player, kind: unknown, id: unknown)
 		return
 	end
 	if kind == "Weapon" and InventoryConfig.weapon(id) then
-		InventoryService.move(player, id, true)
+		if InventoryService.owns(player, id) then
+			InventoryService.move(player, id, true)
+		else
+			InventoryService.grant(player, id)
+		end
 	elseif kind == "Armor" and ArmorConfig.Sets[id] then
 		ArmorService.giveSet(player, id)
 	end
