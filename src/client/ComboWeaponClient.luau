@@ -3,7 +3,8 @@
 -- While equipped the idle animation loops. Left-click steps through the combo: each click
 -- plays the next swing, and pausing too long (or finishing the last swing) starts it over.
 -- The server decides what's hit and how hard (see WeaponService). Holding right-click raises
--- a guard and tells the server we're blocking (see BlockService).
+-- a guard and tells the server we're blocking (see BlockService). With a shield worn and a
+-- one-handed weapon, the guard raises the shield instead (ShieldConfig.GuardAnimation).
 -- Weapons with a heavy attack tell a tap from a hold: a quick tap (released within
 -- Heavy.HoldTime) is a normal combo swing, while holding starts the heavy:
 --   Spin: spins until release. The server runs the spin's hits and can end it early (time
@@ -32,6 +33,7 @@ local UserInputService = game:GetService("UserInputService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
+local ShieldConfig = require(ReplicatedStorage.Shared.Config.ShieldConfig)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local Stamina = require(ReplicatedStorage.Shared.Stamina)
@@ -96,6 +98,7 @@ end
 type Tracks = {
 	idle: AnimationTrack?,
 	guard: AnimationTrack?,
+	shieldGuard: AnimationTrack?, -- a one-handed weapon's guard with a shield worn
 	heavy: AnimationTrack?, -- spin loop, a quake's or thrust's wind-up, or the whole reap
 	heavySlam: AnimationTrack?, -- a quake's smash, a thrust's lunge, a flurry's stabs, a rush's spin
 	swings: { AnimationTrack },
@@ -112,6 +115,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 
 	local idleAnimation = makeAnimation(config.IdleAnimation)
 	local guardAnimation = makeAnimation(config.Block.Animation)
+	local shieldGuardAnimation = if ShieldConfig.canUseWith(config.ToolName) then makeAnimation(ShieldConfig.GuardAnimation) else nil
 	local heavy = config.Heavy
 	local heavyAnimation: Animation? = nil
 	local heavySlamAnimation: Animation? = nil
@@ -174,6 +178,12 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			guard.Priority = Enum.AnimationPriority.Action
 			guard.Looped = true
 			tracks.guard = guard
+		end
+		if shieldGuardAnimation then
+			local shieldGuard = animator:LoadAnimation(shieldGuardAnimation)
+			shieldGuard.Priority = Enum.AnimationPriority.Action
+			shieldGuard.Looped = true
+			tracks.shieldGuard = shieldGuard
 		end
 		if heavyAnimation then
 			local heavyTrack = animator:LoadAnimation(heavyAnimation)
@@ -328,7 +338,8 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		setTrails(tool, false)
 
 		local tracks = currentTracks()
-		local guardTrack = tracks and tracks.guard
+		local shielded = typeof(player:GetAttribute("Shield")) == "string"
+		local guardTrack = tracks and (if shielded and tracks.shieldGuard then tracks.shieldGuard else tracks.guard)
 		if guardTrack then
 			guardTrack:Play(0.1)
 		else

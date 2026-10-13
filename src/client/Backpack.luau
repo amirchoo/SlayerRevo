@@ -7,9 +7,11 @@
 --          between the hotbar and storage (InventoryMove remote).
 --   right: your character facing you, with the five armor slots around it, each linked by a
 --          line to where it's worn and showing its protection. Clicking one puts the piece
---          on or takes it off (ArmorEquip remote).
+--          on or takes it off (ArmorEquip remote). A sixth slot holds a shield, put on or
+--          taken off the same way (ShieldEquip remote).
 -- Display and requests only: the server decides what you own, wear, and carry (see
--- InventoryService and ArmorService) and publishes it as player attributes, which this reads.
+-- InventoryService, ArmorService, and ShieldService) and publishes it as player attributes,
+-- which this reads.
 
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
@@ -19,6 +21,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local ArmorConfig = require(ReplicatedStorage.Shared.Config.ArmorConfig)
+local ShieldConfig = require(ReplicatedStorage.Shared.Config.ShieldConfig)
 local CurrencyConfig = require(ReplicatedStorage.Shared.Config.CurrencyConfig)
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
@@ -62,12 +65,16 @@ local ARMOR_LAYOUT: { [string]: { tile: Vector2, body: Vector2, icon: string } }
 	Leggings = { tile = Vector2.new(545, 380), body = Vector2.new(0.42, 0.66), icon = "Leggings" },
 	Boots = { tile = Vector2.new(900, 460), body = Vector2.new(0.6, 0.84), icon = "Boots" },
 }
+-- The shield's slot, below the chestplate; its line runs to the left forearm.
+local SHIELD_LAYOUT = { tile = Vector2.new(545, 265), body = Vector2.new(0.72, 0.55), icon = "Shield" }
+local SHIELD_WORN_BACKGROUND = Color3.fromRGB(52, 66, 110)
 local PROTECTION_SEGMENTS = 6
 local PROTECTION_PER_SEGMENT = 0.025 -- a 12% chestplate fills 5 of 6
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local moveRemote = remotes:WaitForChild("InventoryMove") :: RemoteEvent
 local armorRemote = remotes:WaitForChild("ArmorEquip") :: RemoteEvent
+local shieldRemote = remotes:WaitForChild("ShieldEquip") :: RemoteEvent
 
 local player = Players.LocalPlayer
 
@@ -457,9 +464,9 @@ function Backpack.start()
 	-- The character, and the armor slots around it.
 	local refreshCharacter = buildCharacterView(panel)
 	type ArmorTile = { slot: string, frame: Frame, stroke: UIStroke, icon: ImageLabel, segments: { Frame }, name: TextLabel }
-	local armorTiles: { ArmorTile } = {}
-	for _, slot in ArmorConfig.Slots do
-		local layout = ARMOR_LAYOUT[slot]
+	-- One equipment tile, linked by a line to `layout.body` on the character, with a
+	-- protection bar under it if `bar`; `onClick` runs when it's pressed.
+	local function equipmentTile(slot: string, layout: { tile: Vector2, body: Vector2, icon: string }, bar: boolean, onClick: () -> ()): ArmorTile
 		local body = CHARACTER_VIEW.position + CHARACTER_VIEW.size * layout.body
 		local tileCenter = layout.tile + Vector2.new(TILE / 2, TILE / 2)
 		-- The line leaves from the tile's side facing the character.
@@ -488,7 +495,7 @@ function Backpack.start()
 		-- Protection bar under the tile.
 		local segments: { Frame } = {}
 		local segmentWidth = (TILE - (PROTECTION_SEGMENTS - 1) * 3) / PROTECTION_SEGMENTS
-		for index = 1, PROTECTION_SEGMENTS do
+		for index = 1, if bar then PROTECTION_SEGMENTS else 0 do
 			local segment = Instance.new("Frame")
 			segment.Position = UDim2.fromOffset(layout.tile.X + (index - 1) * (segmentWidth + 3), layout.tile.Y + TILE + 8)
 			segment.Size = UDim2.fromOffset(segmentWidth, 8)
@@ -509,26 +516,47 @@ function Backpack.start()
 		button.Parent = frame
 		button.Activated:Connect(function()
 			HudStyle.pop(frame, 0.88)
-			-- Cycles through the owned sets with a piece for this slot, then takes it off.
-			local worn = player:GetAttribute(`Armor{slot}`)
-			local options: { string } = {}
-			for _, setId in ArmorConfig.SetOrder do
-				if ArmorConfig.Sets[setId].Pieces[slot] and player:GetAttribute(`OwnsArmor{setId}`) == true then
-					table.insert(options, setId)
-				end
-			end
-			local index = if typeof(worn) == "string" then table.find(options, worn) else nil
-			armorRemote:FireServer(slot, options[if index then index + 1 else 1]) -- nil past the last one
+			onClick()
 		end)
-		table.insert(armorTiles, {
+		return {
 			slot = slot,
 			frame = frame,
 			stroke = frame:FindFirstChildOfClass("UIStroke") :: UIStroke,
 			icon = iconLabel,
 			segments = segments,
 			name = name,
-		})
+		}
 	end
+
+	-- Clicking cycles through what's owned for the slot, then takes it off (nil past the last one).
+	local function nextOption(options: { string }, worn: unknown): string?
+		local index = if typeof(worn) == "string" then table.find(options, worn) else nil
+		return options[if index then index + 1 else 1]
+	end
+	local armorTiles: { ArmorTile } = {}
+	for _, slot in ArmorConfig.Slots do
+		table.insert(armorTiles, equipmentTile(slot, ARMOR_LAYOUT[slot], true, function()
+			local options: { string } = {}
+			for _, setId in ArmorConfig.SetOrder do
+				if ArmorConfig.Sets[setId].Pieces[slot] and player:GetAttribute(`OwnsArmor{setId}`) == true then
+					table.insert(options, setId)
+				end
+			end
+			armorRemote:FireServer(slot, nextOption(options, player:GetAttribute(`Armor{slot}`)))
+		end))
+	end
+	local function ownedShields(): { string }
+		local options: { string } = {}
+		for _, id in ShieldConfig.Order do
+			if player:GetAttribute(`OwnsShield{id}`) == true then
+				table.insert(options, id)
+			end
+		end
+		return options
+	end
+	local shieldTile = equipmentTile("Shield", SHIELD_LAYOUT, false, function()
+		shieldRemote:FireServer(nextOption(ownedShields(), player:GetAttribute("Shield")))
+	end)
 	local protectionLabel = text(panel, "", 16, PROTECTION_COLOR)
 	protectionLabel.AnchorPoint = Vector2.new(0.5, 0)
 	protectionLabel.Position = UDim2.fromOffset(CHARACTER_VIEW.position.X + CHARACTER_VIEW.size.X / 2, PANEL_SIZE.Y - 34)
@@ -643,6 +671,16 @@ function Backpack.start()
 				segment.BackgroundColor3 = if index <= filled then PROTECTION_COLOR else HudStyle.EMPTY
 			end
 		end
+
+		local wornShield = player:GetAttribute("Shield")
+		local shield = if typeof(wornShield) == "string" then ShieldConfig.Shields[wornShield] else nil
+		local ownsShield = #ownedShields() > 0
+		shieldTile.stroke.Color = if shield then WORN_BORDER else HudStyle.OUTLINE
+		shieldTile.frame.BackgroundColor3 = if shield then SHIELD_WORN_BACKGROUND elseif ownsShield then TILE_COLOR else EMPTY_COLOR
+		shieldTile.icon.ImageTransparency = if shield then 0 else 0.6
+		shieldTile.name.Text = if shield then shield.Name elseif ownsShield then "Wear" else "Shield"
+		local shieldRarity = if shield then InventoryConfig.rarityById(shield.Rarity) else nil
+		shieldTile.name.TextColor3 = if shieldRarity and shieldRarity ~= InventoryConfig.Rarities[1] then shieldRarity.Color else Color3.new(1, 1, 1)
 	end
 
 	local function updateHealth()
@@ -750,7 +788,13 @@ function Backpack.start()
 			updateCoins(true)
 		elseif attribute == "Consumables" then
 			updateItems()
-		elseif attribute == "Protection" or string.sub(attribute, 1, 5) == "Armor" or string.sub(attribute, 1, 9) == "OwnsArmor" then
+		elseif
+			attribute == "Protection"
+			or attribute == "Shield"
+			or string.sub(attribute, 1, 5) == "Armor"
+			or string.sub(attribute, 1, 9) == "OwnsArmor"
+			or string.sub(attribute, 1, 10) == "OwnsShield"
+		then
 			updateArmor()
 			-- Re-copy the character once the armor change has reached it.
 			if panel.Visible and not refreshQueued then

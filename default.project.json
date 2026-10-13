@@ -50,6 +50,9 @@
         "ArmorEquip": {
           "$className": "RemoteEvent"
         },
+        "ShieldEquip": {
+          "$className": "RemoteEvent"
+        },
         "InventoryMove": {
           "$className": "RemoteEvent"
         },
@@ -256,6 +259,9 @@
       },
       "WeaponModels": {
         "$path": "assets/weapons"
+      },
+      "ShieldModels": {
+        "$path": "assets/shields"
       },
       "EnemyModels": {
         "$path": "assets/enemies"

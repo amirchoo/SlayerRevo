@@ -5,14 +5,17 @@
 -- with the chest's position so the panel closes when they walk away). Taking an item fires
 -- TestChestTake (kind, id): the server checks the player is at the chest, then
 --   "Weapon": gives the weapon if the player doesn't own it, and moves it into their hotbar;
---   "Armor":  gives the whole armor set and puts it on (ArmorService.giveSet).
+--   "Armor":  gives the whole armor set and puts it on (ArmorService.giveSet);
+--   "Shield": gives the shield and puts it on (ShieldService.giveShield).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ArmorConfig = require(ReplicatedStorage.Shared.Config.ArmorConfig)
+local ShieldConfig = require(ReplicatedStorage.Shared.Config.ShieldConfig)
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 local TrainingArea = require(ReplicatedStorage.Shared.TrainingArea)
 local ArmorService = require(script.Parent.ArmorService)
+local ShieldService = require(script.Parent.ShieldService)
 local CurrencyService = require(script.Parent.CurrencyService)
 local HealthService = require(script.Parent.HealthService)
 local InventoryService = require(script.Parent.InventoryService)
@@ -110,6 +113,8 @@ local function onTake(player: Player, kind: unknown, id: unknown)
 		end
 	elseif kind == "Armor" and ArmorConfig.Sets[id] then
 		ArmorService.giveSet(player, id)
+	elseif kind == "Shield" and ShieldConfig.Shields[id] then
+		ShieldService.giveShield(player, id)
 	elseif kind == "Coins" then
 		local amount = tonumber(id) or 100
 		if amount > 0 and amount <= 5000 then

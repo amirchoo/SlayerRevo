@@ -1,11 +1,11 @@
 --!strict
 -- The Test Chest's panel (see server TestChest): opens when the server says the player used
 -- the chest (TestChestOpen), and lists every item by category: a tab per weapon class, and
--- one for armor. Each item has a button that asks the server for it (TestChestTake):
--- weapons are given (or moved to the hotbar if owned), armor sets are given and put on. Closes with its X, Escape,
--- or by walking away from the chest.
+-- one for armor (and shields). Each item has a button that asks the server for it (TestChestTake):
+-- weapons are given (or moved to the hotbar if owned), armor sets and shields are given and put on.
+-- Closes with its X, Escape, or by walking away from the chest.
 -- Display and requests only: the server checks and decides; this reads what the player has
--- from their attributes (Hotbar, HotbarSlots, OwnsArmor<Set>, Armor<Slot>).
+-- from their attributes (Hotbar, HotbarSlots, OwnsArmor<Set>, Armor<Slot>, OwnsShield<Id>, Shield).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local ArmorConfig = require(ReplicatedStorage.Shared.Config.ArmorConfig)
+local ShieldConfig = require(ReplicatedStorage.Shared.Config.ShieldConfig)
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 local Icons = require(ReplicatedStorage.Shared.Icons)
 local HudStyle = require(script.Parent.HudStyle)
@@ -99,6 +100,16 @@ local function armorButton(setId: string): (string, boolean)
 		end
 	end
 	return "Wearing", false
+end
+
+local function shieldButton(id: string): (string, boolean)
+	if player:GetAttribute(`OwnsShield{id}`) ~= true then
+		return "Take", true
+	end
+	if player:GetAttribute("Shield") == id then
+		return "Wearing", false
+	end
+	return "Wear", true
 end
 
 -- "20% full set · Helmet 4% · Chestplate 7% · ...", in the backpack's slot order.
@@ -312,6 +323,18 @@ function TestChestPanel.start()
 					Icons.image(iconFrame, "Chestplate", 10)
 				end)
 			end
+			for order, id in ShieldConfig.Order do
+				local shield = ShieldConfig.Shields[id]
+				local text, enabled = shieldButton(id)
+				local bonus = `+{shield.BlockBonus} block, +{shield.ExtraCharges} charge with Sword, Emberfang, Mace, Axe, or Rapier`
+				local detail = if shield.StarterFor then `{shield.StarterFor} set  ·  {bonus}` else bonus
+				card(#ArmorConfig.SetOrder + order, shield.Name, InventoryConfig.rarityById(shield.Rarity), detail, text, enabled, function()
+					takeRemote:FireServer("Shield", id)
+				end, function(iconFrame)
+					iconFrame.BackgroundColor3 = shield.Color
+					Icons.image(iconFrame, "Shield", 10)
+				end)
+			end
 		elseif selected == CURRENCY_CATEGORY.Id then
 			card(1, "100 Coins", InventoryConfig.Rarities[5], "Add 100 coins for testing.", "TAKE", true, function()
 				takeRemote:FireServer("Coins", "100")
@@ -406,7 +429,7 @@ function TestChestPanel.start()
 		if not panel.Visible or refreshQueued then
 			return
 		end
-		if attribute == "Hotbar" or attribute == "HotbarSlots" or attribute == "OwnedWeapons" or string.sub(attribute, 1, 5) == "Armor" or string.sub(attribute, 1, 9) == "OwnsArmor" then
+		if attribute == "Hotbar" or attribute == "HotbarSlots" or attribute == "OwnedWeapons" or string.sub(attribute, 1, 5) == "Armor" or string.sub(attribute, 1, 9) == "OwnsArmor" or attribute == "Shield" or string.sub(attribute, 1, 10) == "OwnsShield" then
 			refreshQueued = true
 			task.defer(function()
 				refreshQueued = false
