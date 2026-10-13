@@ -4,6 +4,7 @@
 -- click to continue. The guide (Action "StarterPick") ends by offering a player who hasn't
 -- picked yet the starter choice: a card per weapon (with its starter armor set), then a
 -- confirm step, then the StarterChoose remote. The server checks and grants the pick.
+-- Shop NPCs (Action "Shop") open the shop panel after their lines.
 -- Closes with its X, when the lines run out, or when you walk away.
 
 local Players = game:GetService("Players")
@@ -17,6 +18,7 @@ local NpcConfig = require(ReplicatedStorage.Shared.Config.NpcConfig)
 local Starter = require(ReplicatedStorage.Shared.Starter)
 local HudStyle = require(script.Parent.HudStyle)
 local Panels = require(script.Parent.Panels)
+local ShopPanel = require(script.Parent.ShopPanel)
 local WeaponIcon = require(script.Parent.WeaponIcon)
 
 local BOX_SIZE = Vector2.new(720, 200)
@@ -287,6 +289,11 @@ function Dialogue.start()
 			hint.Text = if lineIndex == #lines then "click to finish" else "click to continue"
 		elseif current.Action == "StarterPick" and not hasPicked() then
 			showChoices()
+		elseif current.Action == "Shop" and npcPosition then
+			local position = npcPosition
+			local sellerId = current.Id
+			setOpen(false)
+			ShopPanel.open(position, sellerId)
 		else
 			setOpen(false)
 		end

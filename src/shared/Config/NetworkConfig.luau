@@ -25,5 +25,7 @@ return {
 		StaffCast = 12,
 		StaffCharge = 12,
 		StaffRelease = 12,
+		ShopBuy = 5,
+		ConsumableUse = 8,
 	} :: { [string]: number },
 }

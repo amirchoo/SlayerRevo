@@ -33,6 +33,18 @@ function ManaService.spend(player: Player, cost: number): boolean
 	return true
 end
 
+-- Restores up to `amount` mana. Returns the amount actually restored.
+function ManaService.restore(player: Player, amount: number): number
+	local current = player:GetAttribute("Mana")
+	local max = player:GetAttribute("MaxMana")
+	if typeof(current) ~= "number" or typeof(max) ~= "number" or not (amount > 0) then
+		return 0
+	end
+	local restored = math.min(amount, max - current)
+	player:SetAttribute("Mana", current + restored)
+	return restored
+end
+
 local function refill(player: Player)
 	player:SetAttribute("MaxMana", maxOf(player))
 	player:SetAttribute("Mana", maxOf(player))

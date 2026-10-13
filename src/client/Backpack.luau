@@ -2,9 +2,9 @@
 -- The backpack: press InventoryConfig.OpenKey (B) or ArmorConfig.PanelKey (G), or click the
 -- backpack icon on the left of the screen. Laid out like a game inventory screen, in the
 -- cartoon HUD style (HudStyle), with the world blurred behind it:
---   left:  title, your health, class tabs, and a grid of weapon slots (each showing the
---          weapon's model; ones in your hotbar are highlighted with their hotbar number).
---          Clicking a weapon moves it between the hotbar and storage (InventoryMove remote).
+--   left:  title, your health, category tabs, and a grid of weapon/consumable slots. Ones in
+--          your hotbar are highlighted with their hotbar number. Clicking an item moves it
+--          between the hotbar and storage (InventoryMove remote).
 --   right: your character facing you, with the five armor slots around it, each linked by a
 --          line to where it's worn and showing its protection. Clicking one puts the piece
 --          on or takes it off (ArmorEquip remote).
@@ -21,6 +21,7 @@ local UserInputService = game:GetService("UserInputService")
 local ArmorConfig = require(ReplicatedStorage.Shared.Config.ArmorConfig)
 local CurrencyConfig = require(ReplicatedStorage.Shared.Config.CurrencyConfig)
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
+local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local Panels = require(script.Parent.Panels)
 local HudStyle = require(script.Parent.HudStyle)
 local Icons = require(ReplicatedStorage.Shared.Icons)
@@ -94,6 +95,21 @@ end
 local function hotbarList(): { string }
 	local value = player:GetAttribute("Hotbar")
 	return if typeof(value) == "string" and value ~= "" then string.split(value, ",") else {}
+end
+
+local function consumableCount(itemId: string): number
+	local value = player:GetAttribute("Consumables")
+	if typeof(value) ~= "string" or value == "" then
+		return 0
+	end
+	for _, part in string.split(value, ",") do
+		local split = string.split(part, "=")
+		if split[1] == itemId then
+			local count = tonumber(split[2])
+			return if count then count else 0
+		end
+	end
+	return 0
 end
 
 -- A straight line between two points in `parent` (offset pixels), with a dot at `to`.
@@ -329,13 +345,14 @@ function Backpack.start()
 	healthValue.Position = UDim2.fromOffset(386, 88)
 	healthValue.Size = UDim2.fromOffset(80, 26)
 
-	-- Tabs: ALL, then each weapon class, with an underline under the selected one.
+	-- Tabs: ALL, each weapon class, then consumables, with an underline under the selected one.
 	type Tab = { id: string?, button: TextButton, x: number, width: number }
 	local tabs: { Tab } = {}
 	local tabEntries: { { id: string?, name: string } } = { { id = nil, name = "ALL" } }
 	for _, class in InventoryConfig.Classes do
 		table.insert(tabEntries, { id = class.Id, name = class.Id:upper() })
 	end
+	table.insert(tabEntries, { id = ShopConfig.ConsumableCategory, name = ShopConfig.ConsumableCategory:upper() })
 	local tabX = GRID_ORIGIN.X
 	for _, entry in tabEntries do
 		local width = math.ceil(TextService:GetTextSize(entry.name, TAB_TEXT_SIZE, HudStyle.FONT, Vector2.new(400, 40)).X)
@@ -366,11 +383,11 @@ function Backpack.start()
 	underlineCorner.CornerRadius = UDim.new(0, 2)
 	underlineCorner.Parent = underline
 
-	-- The weapon grid.
-	type Tile = { frame: Frame, stroke: UIStroke, viewport: ViewportFrame, name: TextLabel, badge: TextLabel, weapon: string? }
+	-- The item grid.
+	type Tile = { frame: Frame, stroke: UIStroke, viewport: ViewportFrame, icon: ImageLabel, name: TextLabel, badge: TextLabel, item: string? }
 	local tiles: { Tile } = {}
 	local hovered: string? = nil
-	local updateWeapons: () -> ()
+	local updateItems: () -> ()
 	for index = 1, GRID_SLOTS do
 		local column = (index - 1) % GRID_COLUMNS
 		local row = (index - 1) // GRID_COLUMNS
@@ -382,6 +399,8 @@ function Backpack.start()
 		HudStyle.chunky(frame, 14, 3)
 		Instance.new("UIScale").Parent = frame
 		local viewport = WeaponIcon.viewport(frame)
+		local iconLabel = Icons.image(frame, nil, 18)
+		iconLabel.Visible = false
 		local name = text(frame, "", 12)
 		name.AnchorPoint = Vector2.new(0.5, 1)
 		name.Position = UDim2.new(0.5, 0, 1, -3)
@@ -404,27 +423,28 @@ function Backpack.start()
 			frame = frame,
 			stroke = frame:FindFirstChildOfClass("UIStroke") :: UIStroke,
 			viewport = viewport,
+			icon = iconLabel,
 			name = name,
 			badge = badge,
-			weapon = nil,
+			item = nil,
 		}
 		tiles[index] = tile
 		button.Activated:Connect(function()
-			local weapon = tile.weapon
-			if weapon then
-				local inHotbar = table.find(hotbarList(), weapon) ~= nil
-				moveRemote:FireServer(weapon, not inHotbar)
+			local item = tile.item
+			if item then
+				local inHotbar = table.find(hotbarList(), item) ~= nil
+				moveRemote:FireServer(item, not inHotbar)
 				HudStyle.pop(frame, 0.88)
 			end
 		end)
 		button.MouseEnter:Connect(function()
-			hovered = tile.weapon
-			updateWeapons()
+			hovered = tile.item
+			updateItems()
 		end)
 		button.MouseLeave:Connect(function()
-			if hovered == tile.weapon then
+			if hovered == tile.item then
 				hovered = nil
-				updateWeapons()
+				updateItems()
 			end
 		end)
 	end
@@ -532,7 +552,7 @@ function Backpack.start()
 		end
 	end
 
-	updateWeapons = function()
+	updateItems = function()
 		local hotbar = hotbarList()
 		local slots = player:GetAttribute("HotbarSlots")
 		local capacity = if typeof(slots) == "number" then slots else InventoryConfig.HotbarSlots
@@ -540,36 +560,63 @@ function Backpack.start()
 		local owned = if typeof(ownedValue) == "string" and ownedValue ~= "" then string.split(ownedValue, ",") else {}
 		local shown: { string } = {}
 		for _, info in InventoryConfig.Weapons do
-			if table.find(owned, info.Name) and (selectedClass == nil or info.Class == selectedClass) then
+			if table.find(owned, info.Name) and (selectedClass == nil or selectedClass == info.Class) then
 				table.insert(shown, info.Name)
 			end
 		end
-		for index, tile in tiles do
-			local weapon = shown[index]
-			tile.weapon = weapon
-			tile.frame.BackgroundColor3 = if weapon then TILE_COLOR else EMPTY_COLOR
-			if shownPreview[tile] ~= weapon then
-				shownPreview[tile] = if WeaponIcon.show(tile.viewport, weapon) then weapon else nil
+		if selectedClass == nil or selectedClass == ShopConfig.ConsumableCategory then
+			for _, item in ShopConfig.Items do
+				if ShopConfig.consumable(item.Id) and consumableCount(item.Id) > 0 then
+					table.insert(shown, item.Id)
+				end
 			end
-			local hotbarIndex = if weapon then table.find(hotbar, weapon) else nil
-			local rarity = if weapon then InventoryConfig.rarity(weapon) else nil
+		end
+		for index, tile in tiles do
+			local itemId = shown[index]
+			local consumable = if itemId then ShopConfig.consumable(itemId) else nil
+			tile.item = itemId
+			tile.frame.BackgroundColor3 = if itemId then TILE_COLOR else EMPTY_COLOR
+			if shownPreview[tile] ~= itemId then
+				if consumable then
+					tile.viewport:ClearAllChildren()
+					Icons.set(tile.icon, consumable.Icon)
+					shownPreview[tile] = itemId
+				else
+					tile.icon.Visible = false
+					tile.viewport.Visible = true
+					shownPreview[tile] = if WeaponIcon.show(tile.viewport, itemId) then itemId else nil
+				end
+			end
+			tile.icon.Visible = consumable ~= nil
+			tile.viewport.Visible = consumable == nil
+			if consumable then
+				tile.icon.ImageColor3 = if consumable.ManaPercent then Color3.fromRGB(120, 170, 255) else Color3.fromRGB(120, 235, 145)
+			end
+			local hotbarIndex = if itemId then table.find(hotbar, itemId) else nil
+			local rarity = if itemId and not consumable then InventoryConfig.rarity(itemId) else nil
 			local special = rarity ~= nil and rarity ~= InventoryConfig.Rarities[1]
-			tile.name.Text = weapon or ""
+			tile.name.Text = if consumable then consumable.Name else itemId or ""
 			tile.name.TextColor3 = if rarity and special then rarity.Color else Color3.new(1, 1, 1)
-			tile.badge.Text = if hotbarIndex then tostring(hotbarIndex) else ""
+			tile.badge.Text = if consumable then `x{consumableCount(consumable.Id)}` elseif hotbarIndex then tostring(hotbarIndex) else ""
+			tile.badge.TextColor3 = if consumable and hotbarIndex then HOTBAR_BORDER else if consumable then SOFT_TEXT else HOTBAR_BORDER
 			tile.stroke.Color = if hotbarIndex then HOTBAR_BORDER elseif rarity and special then rarity.Color else HudStyle.OUTLINE
 			tile.stroke.Thickness = if hotbarIndex then 3.5 else 3
 		end
 
 		local info = if hovered then InventoryConfig.weapon(hovered) else nil
+		local consumable = if hovered then ShopConfig.consumable(hovered) else nil
 		local count = `Hotbar {#hotbar}/{capacity}`
 		if info then
 			local inHotbar = table.find(hotbar, info.Name) ~= nil
 			local hint = if inHotbar then "click to store" elseif #hotbar >= capacity then "hotbar full" else "click to add to hotbar"
 			local rarity = InventoryConfig.rarity(info.Name)
 			detail.Text = `{info.Name} ({rarity.Id})  ·  {info.Description}  ({hint})`
+		elseif consumable then
+			local inHotbar = table.find(hotbar, consumable.Id) ~= nil
+			local hint = if inHotbar then "click to remove from hotbar" elseif #hotbar >= capacity then "hotbar full" else "click to add to hotbar"
+			detail.Text = `{consumable.Name} x{consumableCount(consumable.Id)}  ·  {consumable.Description}  ({hint})`
 		else
-			detail.Text = `{count}  ·  click a weapon to move it between your hotbar and backpack`
+			detail.Text = `{count}  ·  click an item to move it between your hotbar and backpack`
 		end
 	end
 
@@ -641,7 +688,7 @@ function Backpack.start()
 		end
 		if open then
 			updateTabs()
-			updateWeapons()
+			updateItems()
 			updateArmor()
 			updateHealth()
 			updateCoins(false)
@@ -669,13 +716,13 @@ function Backpack.start()
 		tab.button.Activated:Connect(function()
 			selectedClass = tab.id
 			updateTabs()
-			updateWeapons()
+			updateItems()
 		end)
 	end
 	WeaponIcon.Previews.ChildAdded:Connect(function()
 		table.clear(shownPreview) -- a weapon's look arrived: redraw the tiles
 		if panel.Visible then
-			updateWeapons()
+			updateItems()
 		end
 	end)
 
@@ -698,9 +745,11 @@ function Backpack.start()
 	local refreshQueued = false
 	player.AttributeChanged:Connect(function(attribute)
 		if attribute == "Hotbar" or attribute == "HotbarSlots" or attribute == "OwnedWeapons" then
-			updateWeapons()
+			updateItems()
 		elseif attribute == "Coins" then
 			updateCoins(true)
+		elseif attribute == "Consumables" then
+			updateItems()
 		elseif attribute == "Protection" or string.sub(attribute, 1, 5) == "Armor" or string.sub(attribute, 1, 9) == "OwnsArmor" then
 			updateArmor()
 			-- Re-copy the character once the armor change has reached it.
@@ -727,7 +776,7 @@ function Backpack.start()
 		watchHealth(player.Character)
 	end
 	updateTabs()
-	updateWeapons()
+	updateItems()
 	updateArmor()
 	updateCoins(false)
 end
