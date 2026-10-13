@@ -1,8 +1,11 @@
 --!strict
--- Blocking with a melee weapon (sword, mace, spear, or greatsword). While a player holds block with one out,
+-- Blocking with a weapon that can (see BLOCK_AMOUNTS). While a player holds block with one out,
 -- each hit has up to that weapon's block amount absorbed (the rest still gets through), using one of
 -- BLOCK.MaxCharges charges; every used charge comes back BLOCK.RechargeTime seconds later.
 -- Hits with no charges left go straight through.
+-- A shield (see ShieldConfig) held with a one-handed weapon absorbs its BlockBonus on top, and
+-- adds its ExtraCharges. Charges are counted as used ones (each waiting to come back), so
+-- the shield's charge comes and goes with the weapon in hand without swapping refilling any.
 -- The client only says whether it's holding block; the server decides every block, and
 -- tells the blocker's client (GuardHit) which way to be knocked back. The client applies
 -- the shove itself because it controls its own character's movement.
@@ -15,6 +18,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
+local ShieldConfig = require(ReplicatedStorage.Shared.Config.ShieldConfig)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local EnemyEffects = require(script.Parent.EnemyEffects)
 local RemoteGuard = require(script.Parent.RemoteGuard)
@@ -71,6 +75,10 @@ local PARRY_WINDOWS: { [string]: number } = {
 -- and when they last raised it at all.
 local parryableSince: { [Player]: number } = {}
 local lastGuardRaise: { [Player]: number } = {}
+-- Charges spent and not back yet, and a count bumped on respawn (when they all come back at
+-- once) so recharges still pending from before don't count twice.
+local usedCharges: { [Player]: number } = {}
+local chargeRound: { [Player]: number } = {}
 
 local function onBlockRequest(player: Player, wantsBlock: unknown)
 	if typeof(wantsBlock) ~= "boolean" then
@@ -97,29 +105,29 @@ local function onBlockRequest(player: Player, wantsBlock: unknown)
 	player:SetAttribute("Blocking", blocking)
 end
 
--- Block charges, with the player's skill bonus (see SkillTrees).
+-- Block charges, with the player's skill bonus (see SkillTrees) and a raised shield's.
 local function maxChargesOf(player: Player): number
-	return BLOCK.MaxCharges + SkillMath.general(player, "BlockCharges")
+	local shield = ShieldConfig.active(player)
+	return BLOCK.MaxCharges + SkillMath.general(player, "BlockCharges") + (if shield then shield.ExtraCharges else 0)
 end
 
--- Re-applies max block charges after the player's skills change.
+local function chargesLeft(player: Player): number
+	return math.max(maxChargesOf(player) - (usedCharges[player] or 0), 0)
+end
+
+-- Re-publishes block charges for the HUD after anything that changes them (skills, the
+-- shield, the weapon in hand). A new charge is ready right away; a removed one is taken away.
 function BlockService.refreshCharges(player: Player)
-	local max = maxChargesOf(player)
-	local old = player:GetAttribute("MaxBlockCharges")
-	player:SetAttribute("MaxBlockCharges", max)
-	local charges = player:GetAttribute("BlockCharges")
-	if typeof(charges) == "number" then
-		-- A new charge is ready right away; a removed one is taken away.
-		local gained = if typeof(old) == "number" then max - old else 0
-		player:SetAttribute("BlockCharges", math.clamp(charges + gained, 0, max))
-	end
+	player:SetAttribute("MaxBlockCharges", maxChargesOf(player))
+	player:SetAttribute("BlockCharges", chargesLeft(player))
 end
 
 local function rechargeOne(player: Player)
+	local round = chargeRound[player]
 	task.delay(BLOCK.RechargeTime, function()
-		local charges = player:GetAttribute("BlockCharges")
-		if player.Parent and typeof(charges) == "number" then
-			player:SetAttribute("BlockCharges", math.min(charges + 1, maxChargesOf(player)))
+		if player.Parent and chargeRound[player] == round then
+			usedCharges[player] = math.max((usedCharges[player] or 0) - 1, 0)
+			BlockService.refreshCharges(player)
 		end
 	end)
 end
@@ -148,16 +156,19 @@ local function tryBlock(target: Model, amount: number, _source: Player?, origin:
 		player:SetAttribute("Blocking", false)
 		return amount
 	end
-	local charges = player:GetAttribute("BlockCharges")
-	if typeof(charges) ~= "number" or charges <= 0 then
+	if chargesLeft(player) <= 0 then
 		return amount
 	end
 
-	player:SetAttribute("BlockCharges", charges - 1)
+	usedCharges[player] = (usedCharges[player] or 0) + 1
+	BlockService.refreshCharges(player)
 	rechargeOne(player)
 	guardHitRemote:FireClient(player, knockbackDirection(target, origin))
 	local tool = target:FindFirstChildOfClass("Tool")
-	local bonus = SkillMath.general(player, "BlockAmount") + (if tool then SkillMath.weapon(player, tool.Name, "BlockAmount") else 0)
+	local shield = ShieldConfig.active(player)
+	local bonus = SkillMath.general(player, "BlockAmount")
+		+ (if tool then SkillMath.weapon(player, tool.Name, "BlockAmount") else 0)
+		+ (if shield then shield.BlockBonus else 0)
 	return math.max(amount - (blockAmount + bonus), 0)
 end
 
@@ -192,15 +203,35 @@ function BlockService.tryParry(target: Model, attacker: Model): boolean
 end
 
 function BlockService.start()
-	local function onPlayerAdded(player: Player)
-		player:SetAttribute("MaxBlockCharges", maxChargesOf(player))
-		player:SetAttribute("BlockCharges", maxChargesOf(player))
+	local function onCharacter(player: Player, character: Model)
+		-- All charges back on respawn.
+		usedCharges[player] = 0
+		chargeRound[player] = (chargeRound[player] or 0) + 1
 		player:SetAttribute("Blocking", false)
-		player.CharacterAdded:Connect(function()
-			player:SetAttribute("Blocking", false)
-			player:SetAttribute("MaxBlockCharges", maxChargesOf(player))
-			player:SetAttribute("BlockCharges", maxChargesOf(player))
+		BlockService.refreshCharges(player)
+		-- Drawing or putting away a one-handed weapon raises or lowers a worn shield.
+		local function onToolChanged(child: Instance)
+			if child:IsA("Tool") then
+				BlockService.refreshCharges(player)
+			end
+		end
+		character.ChildAdded:Connect(onToolChanged)
+		character.ChildRemoved:Connect(onToolChanged)
+	end
+	local function onPlayerAdded(player: Player)
+		usedCharges[player] = 0
+		chargeRound[player] = 0
+		player:SetAttribute("Blocking", false)
+		BlockService.refreshCharges(player)
+		player:GetAttributeChangedSignal("Shield"):Connect(function()
+			BlockService.refreshCharges(player)
 		end)
+		player.CharacterAdded:Connect(function(character)
+			onCharacter(player, character)
+		end)
+		if player.Character then
+			onCharacter(player, player.Character)
+		end
 	end
 
 	Players.PlayerAdded:Connect(onPlayerAdded)
@@ -211,6 +242,8 @@ function BlockService.start()
 	Players.PlayerRemoving:Connect(function(player)
 		parryableSince[player] = nil
 		lastGuardRaise[player] = nil
+		usedCharges[player] = nil
+		chargeRound[player] = nil
 	end)
 	RemoteGuard.connect(blockRemote, onBlockRequest)
 	HealthService.addDamageFilter(tryBlock)

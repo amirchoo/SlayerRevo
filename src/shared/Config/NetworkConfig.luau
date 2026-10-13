@@ -15,6 +15,7 @@ return {
 		GreatswordRelease = 12,
 		GreatswordSwing = 12,
 		ArmorEquip = 10,
+		ShieldEquip = 10,
 		InventoryMove = 10,
 		TestChestTake = 5,
 		StarterChoose = 3,

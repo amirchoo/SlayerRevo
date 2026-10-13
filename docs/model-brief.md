@@ -54,6 +54,9 @@ Every model is imported into Roblox Studio, so it must follow these rules exactl
 - Budget: **under 8,000 triangles** (Emberfang is 7,600).
 - Leave out anything the game draws itself: bowstrings, magic effects, trails, glows that float
   in the air.
+- **Shields** are the exception to the pose: face toward **+Z** (the boss/front), the grip on
+  the back (-Z), round or tall side along X/Y, centered on the origin. Worn about 2.6 studs
+  across (Warden Shield: 3.08 × 3.08 × 0.86 as delivered, 1,268 triangles).
 
 ### Characters and enemies
 These are rigged automatically by Roblox's Avatar Auto Setup, which is strict. A model that
@@ -107,7 +110,7 @@ Copy one of these after the brief and fill it in.
 
     Make a weapon.
     Name: <PascalCase, e.g. Emberfang>
-    Type: <sword / axe / mace / spear / bow / staff / greatsword / new type>
+    Type: <sword / axe / mace / spear / bow / staff / greatsword / shield / new type>
     Rarity: <Common / Uncommon / Rare / Epic / Legendary>
     Length: <studs, or "same as the Sword">
     Theme: <a few words: "a demon hunter's blade, black steel with ember cracks">
@@ -149,4 +152,5 @@ What happens to a delivered `.glb`, so it can be repeated:
    etc. (see the README in each folder).
 5. Hook it up in config: a weapon's `ModelFit` in `CombatConfig.luau` (length and grip from
    the `--info` output), an enemy's `Model` in `EnemyConfig.luau`, an armor set's folder
-   name in `ArmorConfig.luau`. Playtest and screenshot it in game.
+   name in `ArmorConfig.luau`, a shield's entry in `ShieldConfig.luau` (saved into
+   `assets/shields/`, see its README). Playtest and screenshot it in game.

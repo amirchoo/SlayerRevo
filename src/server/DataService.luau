@@ -1,6 +1,6 @@
 --!strict
 -- Saves each player's progress in a DataStore: level, XP, skill trees, owned weapons, the
--- starter pick, hotbar, and armor.
+-- starter pick, hotbar, armor, and shield.
 -- Session-locked: while a server has a player's data loaded it marks the save as its own, so
 -- a second server (e.g. after a quick rejoin) waits instead of loading stale data and
 -- overwriting newer progress later. A lock older than LOCK_TIMEOUT is assumed abandoned
@@ -32,6 +32,7 @@ export type Data = {
 	Starter: string?, -- the starter weapon picked (once per save)
 	Hotbar: { string }?,
 	Armor: { Owned: { [string]: boolean }, Worn: { [string]: string } }?,
+	Shield: { Owned: { [string]: boolean }, Worn: string? }?,
 }
 
 local DataService = {}
@@ -79,6 +80,9 @@ local function reconcile(raw: any): Data
 	end
 	if typeof(raw.Armor) == "table" then
 		data.Armor = raw.Armor
+	end
+	if typeof(raw.Shield) == "table" then
+		data.Shield = raw.Shield
 	end
 	return data
 end
