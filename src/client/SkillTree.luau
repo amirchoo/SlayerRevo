@@ -1,16 +1,18 @@
 --!strict
 -- The skill tree screen: press K, or click the star icon on the left of the screen (its
--- outline glows gold while there are points to spend). Same look as the backpack (HudStyle,
--- world blurred behind). Tabs: GENERAL, then one per weapon.
+-- outline glows gold while there are points to spend). It opens like a book: a closed book
+-- pops up, its cover swings open, and the pages grow to fill the screen (closing plays it
+-- backwards). Tabs: GENERAL, then one per hotbar weapon slot (PRIMARY, MAGIC, RANGED, like
+-- the backpack); a slot's tab shows a row of pills underneath, one per weapon's tree.
 -- Each tree is drawn as a tree: round skill nodes joined by crooked branches (thick near the
 -- root, thinner toward the tips) that light up as you learn them.
 --   General: five branches fan out and up from you at the root; rivals sit on opposite
 --     sides, and a branch locked by its rival is darkened. It's bigger than the window:
---     drag the empty space to look around.
+--     drag the empty space to look around when the screen is too small to show it all.
 --   Weapons: grow up from the weapon at the root; the trunk splits into two branches and
 --     ends in the two masteries (take one, the other locks).
 -- Clicking a node selects it and the card on the right explains it; LEARN spends a point
--- (SkillSpend). RESET TAB (click twice) refunds the tab's points for free (SkillRespec).
+-- (SkillSpend). RESET TREE (click twice) refunds the shown tree's points for free (SkillRespec).
 -- All the rules come from SkillMath, the same ones the server enforces.
 
 local Lighting = game:GetService("Lighting")
@@ -20,6 +22,7 @@ local TextService = game:GetService("TextService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
+local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 local SkillTrees = require(ReplicatedStorage.Shared.Config.SkillTrees)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local Icons = require(ReplicatedStorage.Shared.Icons)
@@ -28,7 +31,8 @@ local Panels = require(script.Parent.Panels)
 local WeaponIcon = require(script.Parent.WeaponIcon)
 
 local OPEN_KEY = Enum.KeyCode.K
-local PANEL_SIZE = Vector2.new(1000, 620)
+-- The screen fills the window; below this size (in pixels) it all shrinks to fit.
+local MIN_SIZE = Vector2.new(1000, 640)
 local PANEL_COLOR = Color3.fromRGB(30, 28, 42)
 local GLOW_COLOR = Color3.fromRGB(255, 215, 90)
 local GLOW_TWEEN = TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
@@ -41,14 +45,26 @@ local MAXED = Color3.fromRGB(255, 205, 70)
 local RED = Color3.fromRGB(215, 80, 75)
 local LINE_DIM = Color3.fromRGB(80, 76, 96)
 local LINE_LIT = Color3.fromRGB(255, 220, 140)
+local PILL_COLOR = Color3.fromRGB(42, 40, 54)
+local PILL_SELECTED = Color3.fromRGB(52, 66, 110)
+local PILL_BORDER = Color3.fromRGB(110, 175, 255)
 
-local CANVAS = { position = Vector2.new(40, 182), size = Vector2.new(640, 396) }
-local INFO = { position = Vector2.new(700, 182), size = Vector2.new(260, 396) }
+-- Layout, in pixels from the screen's edges (the top leaves room for Roblox's buttons).
+local MARGIN = 40
+local HEADER_Y = 56
+local TAB_Y = HEADER_Y + 98
+local PILL_Y = TAB_Y + 46
+local PILL_HEIGHT = 26
+local PILL_TEXT_SIZE = 14
+local PILL_GAP = 8
+local CANVAS_TOP = PILL_Y + PILL_HEIGHT + 14
+local INFO_WIDTH = 300
+local INFO_GAP = 20
 local NODE_SIZE = 58
 local ROOT_SIZE = 72
-local TAB_Y = 136
-local TAB_TEXT_SIZE = 16
-local TAB_GAP = 20
+local TAB_TEXT_SIZE = 20
+local TAB_GAP = 32
+local TAB_TWEEN = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local ICON_SIZE = 52
 local BLUR_SIZE = 14
 local BLUR_TWEEN = TweenInfo.new(0.2)
@@ -66,10 +82,12 @@ local GENERAL_BEND = 0.05 -- each tier leans this much further out, like a branc
 local BRANCH_ANGLES: { [string]: number } = { Mobility = -66, Vitality = -40, Endurance = -13, Arcana = 13, Might = 40, Guard = 66 }
 -- Caster class trees (the staff's Mage, the grimoire's Occultist) use the same shape, one branch per element plus Arcane.
 
--- Weapon tree shape: root, then each tier's height; tiers with two nodes split left/right.
-local WEAPON_ROOT = Vector2.new(320, 352)
-local WEAPON_TIER_Y = { 276, 200, 124, 44 }
-local WEAPON_SPLIT_X = { 0, 120, 120, 150 }
+-- Weapon tree shape: its canvas, root, then each tier's height; tiers with two nodes split
+-- left/right.
+local WEAPON_WORLD = Vector2.new(760, 520)
+local WEAPON_ROOT = Vector2.new(380, 462)
+local WEAPON_TIER_Y = { 364, 266, 168, 64 }
+local WEAPON_SPLIT_X = { 0, 140, 140, 180 }
 local WEAPON_BRANCH_WIDTH = { 11, 9, 7, 6 }
 
 -- Crooked branches: each link bends at a few points by up to this much of its length, with
@@ -77,6 +95,13 @@ local WEAPON_BRANCH_WIDTH = { 11, 9, 7, 6 }
 local BRANCH_BENDS = 3
 local BRANCH_WOBBLE = 0.09
 local TWIG_CHANCE = 0.5
+
+-- The book the screen opens out of: one page's size (the open book is two), and its colors.
+local BOOK_PAGE = Vector2.new(210, 290)
+local BOOK_CORNER = 12
+local COVER_COLOR = Color3.fromRGB(90, 62, 140)
+local PAGE_COLOR = Color3.fromRGB(52, 46, 70)
+local SPINE_COLOR = Color3.fromRGB(28, 22, 40)
 
 -- Each skill's icon is the Icons entry named after it; these are named differently. Skills
 -- without one show their branch's icon.
@@ -169,36 +194,24 @@ function SkillTree.start()
 		end
 	end
 
-	-- The panel, in a holder that scales it down on small screens.
+	-- The panel fills the screen, in a holder that scales it down on small screens (and grows
+	-- to match, so it still fills the screen).
 	local holder = Instance.new("Frame")
 	holder.AnchorPoint = Vector2.new(0.5, 0.5)
 	holder.Position = UDim2.fromScale(0.5, 0.5)
 	holder.Size = UDim2.fromScale(1, 1)
 	holder.BackgroundTransparency = 1
+	holder.ZIndex = 10 -- over the skills icon
 	holder.Parent = gui
 	local fit = Instance.new("UIScale")
 	fit.Parent = holder
-	local function refit()
-		local screen = workspace.CurrentCamera.ViewportSize
-		fit.Scale = math.min(1, (screen.X - 40) / PANEL_SIZE.X, (screen.Y - 40) / PANEL_SIZE.Y)
-	end
-	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(refit)
-	refit()
 
 	local panel = Instance.new("Frame")
-	panel.AnchorPoint = Vector2.new(0.5, 0.5)
-	panel.Position = UDim2.fromScale(0.5, 0.5)
-	panel.Size = UDim2.fromOffset(PANEL_SIZE.X, PANEL_SIZE.Y)
+	panel.Size = UDim2.fromScale(1, 1)
 	panel.BackgroundColor3 = PANEL_COLOR
-	panel.BackgroundTransparency = 0
+	panel.BorderSizePixel = 0
 	panel.Visible = false
 	panel.Parent = holder
-	HudStyle.chunky(panel, 26, 4)
-	local rim = panel:FindFirstChildOfClass("UIStroke")
-	if rim then
-		rim.Color = Color3.fromRGB(200, 200, 215)
-	end
-	Instance.new("UIScale").Parent = panel
 	local modal = Instance.new("TextButton")
 	modal.Modal = true
 	modal.Size = UDim2.fromScale(0, 0)
@@ -208,11 +221,11 @@ function SkillTree.start()
 
 	-- Header: title, BACK, level and XP, unspent points, reset.
 	local title = text(panel, "// SKILLS", 38)
-	title.Position = UDim2.fromOffset(40, 28)
+	title.Position = UDim2.fromOffset(MARGIN, HEADER_Y)
 	title.Size = UDim2.fromOffset(300, 44)
 	local back = Instance.new("TextButton")
 	back.AnchorPoint = Vector2.new(1, 0)
-	back.Position = UDim2.new(1, -36, 0, 32)
+	back.Position = UDim2.new(1, -MARGIN, 0, HEADER_Y + 4)
 	back.Size = UDim2.fromOffset(110, 36)
 	back.BackgroundTransparency = 1
 	back.Font = HudStyle.FONT
@@ -223,10 +236,10 @@ function SkillTree.start()
 	back.Parent = panel
 
 	local levelLabel = text(panel, "", 18)
-	levelLabel.Position = UDim2.fromOffset(40, 92)
+	levelLabel.Position = UDim2.fromOffset(MARGIN, HEADER_Y + 64)
 	levelLabel.Size = UDim2.fromOffset(90, 20)
 	local xpBack = Instance.new("Frame")
-	xpBack.Position = UDim2.fromOffset(136, 95)
+	xpBack.Position = UDim2.fromOffset(MARGIN + 96, HEADER_Y + 67)
 	xpBack.Size = UDim2.fromOffset(250, 14)
 	xpBack.BackgroundColor3 = HudStyle.EMPTY
 	xpBack.Parent = panel
@@ -241,37 +254,45 @@ function SkillTree.start()
 	xpCorner.Parent = xpFill
 	HudStyle.gloss(xpFill)
 	local xpLabel = text(panel, "", 15, SOFT_TEXT)
-	xpLabel.Position = UDim2.fromOffset(398, 92)
+	xpLabel.Position = UDim2.fromOffset(MARGIN + 358, HEADER_Y + 64)
 	xpLabel.Size = UDim2.fromOffset(140, 20)
 
 	local pointsLabel = text(panel, "", 22, ACCENT)
 	pointsLabel.AnchorPoint = Vector2.new(1, 0)
-	pointsLabel.Position = UDim2.new(1, -190, 0, 88)
+	pointsLabel.Position = UDim2.new(1, -(MARGIN + 150), 0, HEADER_Y + 60)
 	pointsLabel.Size = UDim2.fromOffset(260, 26)
 	pointsLabel.TextXAlignment = Enum.TextXAlignment.Right
 	local reset = Instance.new("TextButton")
 	reset.AnchorPoint = Vector2.new(1, 0)
-	reset.Position = UDim2.new(1, -40, 0, 86)
+	reset.Position = UDim2.new(1, -MARGIN, 0, HEADER_Y + 58)
 	reset.Size = UDim2.fromOffset(136, 32)
 	reset.BackgroundColor3 = Color3.fromRGB(95, 95, 110)
 	reset.Font = HudStyle.FONT
 	reset.TextSize = 15
 	reset.TextColor3 = Color3.new(1, 1, 1)
-	reset.Text = "RESET TAB"
+	reset.Text = "RESET TREE"
 	reset.Parent = panel
 	HudStyle.chunky(reset, 8, 2.5)
 	HudStyle.gloss(reset)
 
-	-- Tabs.
-	type Tab = { id: string, button: TextButton, x: number, width: number }
+	-- Tabs: GENERAL, then one per hotbar weapon slot, each holding its weapons' trees (in
+	-- SkillTrees.WeaponOrder).
+	type Tab = { id: string, button: TextButton, x: number, width: number, trees: { string } }
 	local tabs: { Tab } = {}
-	local tabIds = { "General" }
-	for _, weapon in SkillTrees.WeaponOrder do
-		table.insert(tabIds, weapon)
+	local tabEntries: { { id: string, trees: { string } } } = { { id = "General", trees = { "General" } } }
+	for _, slot in InventoryConfig.WeaponSlots do
+		local trees = {}
+		for _, weapon in SkillTrees.WeaponOrder do
+			local index = InventoryConfig.weaponSlot(weapon)
+			if index and InventoryConfig.WeaponSlots[index].Id == slot.Id then
+				table.insert(trees, weapon)
+			end
+		end
+		table.insert(tabEntries, { id = slot.Id, trees = trees })
 	end
-	local tabX = 40
-	for _, id in tabIds do
-		local label = id:upper()
+	local tabX = MARGIN
+	for _, entry in tabEntries do
+		local label = entry.id:upper()
 		local width = math.ceil(TextService:GetTextSize(label, TAB_TEXT_SIZE, HudStyle.FONT, Vector2.new(400, 40)).X)
 		local tab = Instance.new("TextButton")
 		tab.BackgroundTransparency = 1
@@ -279,14 +300,14 @@ function SkillTree.start()
 		tab.TextSize = TAB_TEXT_SIZE
 		tab.Text = label
 		tab.Position = UDim2.fromOffset(tabX, TAB_Y)
-		tab.Size = UDim2.fromOffset(width, 28)
+		tab.Size = UDim2.fromOffset(width, 30)
 		tab.Parent = panel
-		table.insert(tabs, { id = id, button = tab, x = tabX, width = width })
+		table.insert(tabs, { id = entry.id, button = tab, x = tabX, width = width, trees = entry.trees })
 		tabX += width + TAB_GAP
 	end
 	local divider = Instance.new("Frame")
-	divider.Position = UDim2.fromOffset(40, TAB_Y + 36)
-	divider.Size = UDim2.fromOffset(920, 2)
+	divider.Position = UDim2.fromOffset(MARGIN, TAB_Y + 36)
+	divider.Size = UDim2.new(1, -2 * MARGIN, 0, 2)
 	divider.BackgroundColor3 = LINE_DIM
 	divider.BorderSizePixel = 0
 	divider.Parent = panel
@@ -299,10 +320,46 @@ function SkillTree.start()
 	underlineCorner.CornerRadius = UDim.new(0, 2)
 	underlineCorner.Parent = underline
 
+	-- Under a weapon slot's tab, a pill per weapon picks which tree shows (like the
+	-- backpack's Primary filters).
+	type Pill = { tree: string, button: TextButton, stroke: UIStroke }
+	local pills: { Pill } = {}
+	local pillRows: { [string]: Frame } = {}
+	for _, tab in tabs do
+		if tab.id == "General" then
+			continue
+		end
+		local row = Instance.new("Frame")
+		row.BackgroundTransparency = 1
+		row.Position = UDim2.fromOffset(MARGIN, PILL_Y)
+		row.Size = UDim2.new(1, -2 * MARGIN, 0, PILL_HEIGHT)
+		row.Visible = false
+		row.Parent = panel
+		pillRows[tab.id] = row
+		local pillX = 0
+		for _, tree in tab.trees do
+			local name = tree:upper()
+			local width = math.ceil(TextService:GetTextSize(name, PILL_TEXT_SIZE, HudStyle.FONT, Vector2.new(400, 40)).X) + 28
+			local pill = Instance.new("TextButton")
+			pill.Font = HudStyle.FONT
+			pill.TextSize = PILL_TEXT_SIZE
+			pill.Text = name
+			pill.AutoButtonColor = false
+			pill.Position = UDim2.fromOffset(pillX, 0)
+			pill.Size = UDim2.fromOffset(width, PILL_HEIGHT)
+			pill.Parent = row
+			HudStyle.chunky(pill, PILL_HEIGHT // 2, 2)
+			Instance.new("UIScale").Parent = pill
+			table.insert(pills, { tree = tree, button = pill, stroke = pill:FindFirstChildOfClass("UIStroke") :: UIStroke })
+			pillX += width + PILL_GAP
+		end
+	end
+
 	-- The info card on the right.
 	local info = Instance.new("Frame")
-	info.Position = UDim2.fromOffset(INFO.position.X, INFO.position.Y)
-	info.Size = UDim2.fromOffset(INFO.size.X, INFO.size.Y)
+	info.AnchorPoint = Vector2.new(1, 0)
+	info.Position = UDim2.new(1, -MARGIN, 0, CANVAS_TOP)
+	info.Size = UDim2.new(0, INFO_WIDTH, 1, -(CANVAS_TOP + MARGIN))
 	info.BackgroundColor3 = NODE_COLOR
 	info.BackgroundTransparency = 0.25
 	info.Parent = panel
@@ -323,7 +380,7 @@ function SkillTree.start()
 	infoRank.Size = UDim2.new(1, -32, 0, 20)
 	local infoBody = text(info, "", 15)
 	infoBody.Position = UDim2.fromOffset(16, 110)
-	infoBody.Size = UDim2.new(1, -32, 0, 170)
+	infoBody.Size = UDim2.new(1, -32, 1, -220)
 	infoBody.TextWrapped = true
 	infoBody.TextYAlignment = Enum.TextYAlignment.Top
 	local infoStatus = text(info, "", 14, SOFT_TEXT)
@@ -351,57 +408,99 @@ function SkillTree.start()
 	local lines: { Line } = {}
 	local branchLocks: { { branch: SkillTrees.Branch, label: TextLabel, icon: ImageLabel, views: { NodeView } } } = {}
 	local selected: NodeView? = nil
-	local selectedTab = "General"
+	local selectedTab = "General" -- the tree on show: "General" or a weapon
+	local selectedGroup = "General" -- the tab it's under
+	local lastTree: { [string]: string } = {} -- each weapon slot tab's last-viewed tree
+	for _, tab in tabs do
+		lastTree[tab.id] = tab.trees[1]
+	end
 	local dragMoved = 0 -- how far the current (or last) press has dragged the canvas
 	local refresh: () -> ()
 
-	-- The trees are drawn inside a clipped window over the canvas area; a tree bigger than
-	-- the window (General) can be dragged around inside it.
+	-- The trees are drawn inside a clipped window filling the space left of the info card; a
+	-- tree bigger than the window can be dragged around inside it, a smaller one is centred.
 	local canvasBack = Instance.new("Frame")
-	canvasBack.Position = UDim2.fromOffset(CANVAS.position.X, CANVAS.position.Y)
-	canvasBack.Size = UDim2.fromOffset(CANVAS.size.X, CANVAS.size.Y)
+	canvasBack.Position = UDim2.fromOffset(MARGIN, CANVAS_TOP)
+	canvasBack.Size = UDim2.new(1, -(2 * MARGIN + INFO_WIDTH + INFO_GAP), 1, -(CANVAS_TOP + MARGIN))
 	canvasBack.BackgroundColor3 = Color3.fromRGB(24, 22, 34)
 	canvasBack.Parent = panel
 	HudStyle.chunky(canvasBack, 14, 2)
 	local window = Instance.new("Frame")
-	window.Position = UDim2.fromOffset(CANVAS.position.X, CANVAS.position.Y)
-	window.Size = UDim2.fromOffset(CANVAS.size.X, CANVAS.size.Y)
+	window.Position = canvasBack.Position
+	window.Size = canvasBack.Size
 	window.BackgroundTransparency = 1
 	window.ClipsDescendants = true
 	window.Parent = panel
 	local dragHint = HudStyle.caption(panel, "drag to look around", 13)
 	dragHint.AnchorPoint = Vector2.new(0, 1)
-	dragHint.Position = UDim2.fromOffset(CANVAS.position.X + 10, CANVAS.position.Y + CANVAS.size.Y - 6)
+	dragHint.Position = UDim2.new(0, MARGIN + 10, 1, -(MARGIN + 6))
 	dragHint.Size = UDim2.fromOffset(170, 16)
 	dragHint.TextXAlignment = Enum.TextXAlignment.Left
 	dragHint.TextColor3 = SOFT_TEXT
 	dragHint.ZIndex = 6
 
-	type PageInfo = { frame: Frame, size: Vector2, pannable: boolean }
-	local pageInfo: { [string]: PageInfo } = {}
-
-	local function setPan(info: PageInfo, offset: Vector2)
-		local x = math.clamp(offset.X, math.min(CANVAS.size.X - info.size.X, 0), 0)
-		local y = math.clamp(offset.Y, math.min(CANVAS.size.Y - info.size.Y, 0), 0)
-		info.frame.Position = UDim2.fromOffset(x, y)
+	-- The window's size in panel pixels, worked out from the screen (so it's right even
+	-- before the panel has been shown).
+	local function windowSize(): Vector2
+		local screen = workspace.CurrentCamera.ViewportSize / fit.Scale
+		return Vector2.new(screen.X - (2 * MARGIN + INFO_WIDTH + INFO_GAP), screen.Y - (CANVAS_TOP + MARGIN))
 	end
 
-	-- A tree's canvas; `size` bigger than the window makes it draggable, starting with `focus`
-	-- (a point on it) at the bottom centre of the window.
-	local function makePage(id: string, size: Vector2?, focus: Vector2?): Frame
-		local worldSize = size or CANVAS.size
+	type PageInfo = { frame: Frame, size: Vector2, focus: Vector2? }
+	local pageInfo: { [string]: PageInfo } = {}
+
+	local function pannable(info: PageInfo): boolean
+		local view = windowSize()
+		return info.size.X > view.X or info.size.Y > view.Y
+	end
+
+	-- Along one axis: centred if the page fits, else kept from leaving a gap at either edge.
+	local function axisPan(offset: number, page: number, view: number): number
+		if page <= view then
+			return (view - page) / 2
+		end
+		return math.clamp(offset, view - page, 0)
+	end
+
+	local function setPan(info: PageInfo, offset: Vector2)
+		local view = windowSize()
+		info.frame.Position = UDim2.fromOffset(axisPan(offset.X, info.size.X, view.X), axisPan(offset.Y, info.size.Y, view.Y))
+	end
+
+	-- Back to where a page starts: its `focus` (a point on it) at the bottom centre of the
+	-- window, or centred.
+	local function recenter(info: PageInfo)
+		local view = windowSize()
+		local focus = info.focus
+		setPan(info, if focus then Vector2.new(view.X / 2 - focus.X, view.Y - focus.Y - 70) else (view - info.size) / 2)
+	end
+
+	local function makePage(id: string, size: Vector2, focus: Vector2?): Frame
 		local page = Instance.new("Frame")
-		page.Size = UDim2.fromOffset(worldSize.X, worldSize.Y)
+		page.Size = UDim2.fromOffset(size.X, size.Y)
 		page.BackgroundTransparency = 1
 		page.Visible = false
 		page.Parent = window
 		pages[id] = page
-		local info: PageInfo = { frame = page, size = worldSize, pannable = worldSize ~= CANVAS.size }
+		local info: PageInfo = { frame = page, size = size, focus = focus }
 		pageInfo[id] = info
-		local start = if focus then Vector2.new(CANVAS.size.X / 2 - focus.X, CANVAS.size.Y - focus.Y - 70) else Vector2.zero
-		setPan(info, start)
+		recenter(info)
 		return page
 	end
+
+	-- Fit the screen: shrink everything on screens smaller than MIN_SIZE (growing the holder
+	-- to match, so the panel still covers the screen), then put each tree back in place.
+	local function refit()
+		local screen = workspace.CurrentCamera.ViewportSize
+		local scale = math.min(1, screen.X / MIN_SIZE.X, screen.Y / MIN_SIZE.Y)
+		fit.Scale = scale
+		holder.Size = UDim2.fromScale(1 / scale, 1 / scale)
+		for _, info in pageInfo do
+			recenter(info)
+		end
+	end
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(refit)
+	refit()
 
 	-- A stable pseudo-random seed from text, so each branch bends the same way every time.
 	local function seedOf(textValue: string): number
@@ -606,7 +705,7 @@ function SkillTree.start()
 		if SkillTrees.Casters[weapon] then
 			continue -- drawn as its class tree, above
 		end
-		local page = makePage(weapon)
+		local page = makePage(weapon, WEAPON_WORLD)
 		local root = makeRoot(page, WEAPON_ROOT, weapon:upper())
 		local viewport = WeaponIcon.viewport(root)
 		viewport.ZIndex = 3
@@ -676,15 +775,32 @@ function SkillTree.start()
 		pointsDot.Visible = points > 0
 		setGlowing(points > 0)
 
-		-- Tabs (trees with points in them are tinted gold).
+		-- Tabs and pills (ones with points in their trees are tinted gold).
 		for _, tab in tabs do
-			local isSelected = tab.id == selectedTab
-			tab.button.TextColor3 = if isSelected then Color3.new(1, 1, 1) elseif SkillMath.spent(alloc, tab.id) > 0 then ACCENT else SOFT_TEXT
-			pages[tab.id].Visible = isSelected
-			if isSelected then
-				underline.Position = UDim2.fromOffset(tab.x - 6, TAB_Y + 33)
-				underline.Size = UDim2.fromOffset(tab.width + 12, 4)
+			local isSelected = tab.id == selectedGroup
+			local spent = 0
+			for _, tree in tab.trees do
+				spent += SkillMath.spent(alloc, tree)
 			end
+			tab.button.TextColor3 = if isSelected then Color3.new(1, 1, 1) elseif spent > 0 then ACCENT else SOFT_TEXT
+			if isSelected then
+				TweenService:Create(underline, TAB_TWEEN, {
+					Position = UDim2.fromOffset(tab.x - 6, TAB_Y + 33),
+					Size = UDim2.fromOffset(tab.width + 12, 4),
+				}):Play()
+			end
+		end
+		for id, row in pillRows do
+			row.Visible = id == selectedGroup
+		end
+		for _, pill in pills do
+			local isSelected = pill.tree == selectedTab
+			pill.button.BackgroundColor3 = if isSelected then PILL_SELECTED else PILL_COLOR
+			pill.button.TextColor3 = if isSelected then Color3.new(1, 1, 1) elseif SkillMath.spent(alloc, pill.tree) > 0 then ACCENT else SOFT_TEXT
+			pill.stroke.Color = if isSelected then PILL_BORDER else HudStyle.OUTLINE
+		end
+		for id, page in pages do
+			page.Visible = id == selectedTab
 		end
 
 		-- Nodes.
@@ -716,7 +832,7 @@ function SkillTree.start()
 				frame.BackgroundColor3 = if lit then LINE_LIT else LINE_DIM
 			end
 		end
-		dragHint.Visible = pageInfo[selectedTab].pannable
+		dragHint.Visible = pannable(pageInfo[selectedTab])
 
 		-- General branches locked by their rival.
 		for _, entry in branchLocks do
@@ -792,7 +908,7 @@ function SkillTree.start()
 	end
 	window.InputBegan:Connect(function(input)
 		local info = pageInfo[selectedTab]
-		if not isPress(input) or not info or not info.pannable then
+		if not isPress(input) or not info or not pannable(info) then
 			return
 		end
 		dragMoved = 0
@@ -845,55 +961,317 @@ function SkillTree.start()
 		end
 	end)
 
-	-- Opening, closing, resetting.
+	-- The book the screen opens out of, drawn over everything (outside the holder, so it's
+	-- in screen pixels). Two pages side by side meet at the spine in the middle; the cover
+	-- lies over the right page and swings open by shrinking toward the spine until it's
+	-- edge-on, then its inside (the left page) unfolds from the spine.
+	local book = Instance.new("Frame")
+	book.AnchorPoint = Vector2.new(0.5, 0.5)
+	book.BackgroundTransparency = 1
+	book.Visible = false
+	book.ZIndex = 20
+	book.Parent = gui
+	local bookScale = Instance.new("UIScale")
+	bookScale.Parent = book
+	local fades: { { instance: Instance, property: string } } = {} -- what fades in and out with it
+	local corners: { UICorner } = {}
+	local function bookPart(anchorX: number, color: Color3, zIndex: number): Frame
+		local frame = Instance.new("Frame")
+		frame.AnchorPoint = Vector2.new(anchorX, 0)
+		frame.Position = UDim2.fromScale(0.5, 0)
+		frame.Size = UDim2.fromScale(0.5, 1)
+		frame.BackgroundColor3 = color
+		frame.BorderSizePixel = 0
+		frame.ZIndex = zIndex
+		frame.Parent = book
+		local corner = Instance.new("UICorner")
+		corner.Parent = frame
+		table.insert(corners, corner)
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = HudStyle.OUTLINE
+		stroke.Thickness = 3
+		stroke.Parent = frame
+		table.insert(fades, { instance = frame, property = "BackgroundTransparency" })
+		table.insert(fades, { instance = stroke, property = "Transparency" })
+		return frame
+	end
+	local leftPage = bookPart(1, PAGE_COLOR, 21)
+	local rightPage = bookPart(0, PAGE_COLOR, 21)
+	local cover = bookPart(0, COVER_COLOR, 23)
+	local coverTrim = Instance.new("UIStroke")
+	coverTrim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	coverTrim.Color = GLOW_COLOR
+	coverTrim.Thickness = 2
+	coverTrim.Transparency = 0.3
+	local trim = Instance.new("Frame") -- a gold border just inside the cover's edge
+	trim.Position = UDim2.fromOffset(12, 12)
+	trim.Size = UDim2.new(1, -24, 1, -24)
+	trim.BackgroundTransparency = 1
+	trim.ZIndex = 24
+	trim.Parent = cover
+	coverTrim.Parent = trim
+	local trimCorner = Instance.new("UICorner")
+	trimCorner.CornerRadius = UDim.new(0, 6)
+	trimCorner.Parent = trim
+	table.insert(fades, { instance = coverTrim, property = "Transparency" })
+	local emblem = Icons.image(cover, "Star", 0)
+	emblem.AnchorPoint = Vector2.new(0.5, 0.5)
+	emblem.Position = UDim2.fromScale(0.5, 0.45)
+	emblem.Size = UDim2.fromScale(0.5, 0.5)
+	emblem.ZIndex = 24
+	table.insert(fades, { instance = emblem, property = "ImageTransparency" })
+	local spine = Instance.new("Frame")
+	spine.AnchorPoint = Vector2.new(0.5, 0)
+	spine.Position = UDim2.fromScale(0.5, 0)
+	spine.Size = UDim2.new(0, 8, 1, 0)
+	spine.BackgroundColor3 = SPINE_COLOR
+	spine.BorderSizePixel = 0
+	spine.ZIndex = 22
+	spine.Parent = book
+	table.insert(fades, { instance = spine, property = "BackgroundTransparency" })
+
+	local BOOK_OPEN_SIZE = UDim2.fromOffset(BOOK_PAGE.X * 2, BOOK_PAGE.Y)
+	-- Closed, the book is moved left by half a page so the cover (the right half) is centred.
+	local BOOK_CLOSED_POSITION = UDim2.new(0.5, -BOOK_PAGE.X / 2, 0.5, 0)
+	local BOOK_OPEN_POSITION = UDim2.fromScale(0.5, 0.5)
+	local HALF = UDim2.fromScale(0.5, 1)
+	local EDGE_ON = UDim2.fromScale(0, 1)
+
+	local function tween(instance: Instance, time: number, style: Enum.EasingStyle, direction: Enum.EasingDirection, goal: { [string]: any }): Tween
+		return TweenService:Create(instance, TweenInfo.new(time, style, direction), goal)
+	end
+	local function setFaded(transparency: number)
+		for _, fade in fades do
+			(fade.instance :: any)[fade.property] = if fade.instance == coverTrim and transparency == 0 then 0.3 else transparency
+		end
+	end
+	local function fadeTweens(time: number, transparency: number): { Tween }
+		local list = {}
+		for _, fade in fades do
+			local goal = if fade.instance == coverTrim and transparency == 0 then 0.3 else transparency
+			table.insert(list, tween(fade.instance, time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, { [fade.property] = goal }))
+		end
+		return list
+	end
+	local function setCorners(radius: number)
+		for _, corner in corners do
+			corner.CornerRadius = UDim.new(0, radius)
+		end
+	end
+	local function cornerTweens(time: number, radius: number): { Tween }
+		local list = {}
+		for _, corner in corners do
+			table.insert(list, tween(corner, time, Enum.EasingStyle.Quart, Enum.EasingDirection.Out, { CornerRadius = UDim.new(0, radius) }))
+		end
+		return list
+	end
+
+	-- Each open or close bumps this and cancels the running tweens; a sequence stops as soon
+	-- as a newer one has started.
+	local animation = 0
+	local running: { Tween } = {}
+	-- Plays `tweens` together and waits for the first; false if a newer sequence took over.
+	local function play(token: number, tweens: { Tween }): boolean
+		for _, each in tweens do
+			table.insert(running, each)
+			each:Play()
+		end
+		tweens[1].Completed:Wait()
+		if token ~= animation then
+			return false
+		end
+		for index = #running, 1, -1 do
+			if running[index].PlaybackState ~= Enum.PlaybackState.Playing then
+				table.remove(running, index)
+			end
+		end
+		return true
+	end
+	local function join(...: { Tween }): { Tween }
+		local list = {}
+		for _, group in { ... } do
+			table.move(group, 1, #group, #list + 1, list)
+		end
+		return list
+	end
+
 	local blur = Instance.new("BlurEffect")
 	blur.Name = "SkillTreeBlur"
 	blur.Size = 0
 	blur.Enabled = false
 	blur.Parent = Lighting
+	local isOpen = false
 
-	local function setOpen(open: boolean)
-		if open == panel.Visible then
+	local function fadeBlur()
+		local fade = TweenService:Create(blur, BLUR_TWEEN, { Size = 0 })
+		fade.Completed:Connect(function()
+			if not isOpen then
+				blur.Enabled = false
+			end
+		end)
+		fade:Play()
+	end
+
+	-- Closed book pops up, cover swings open, the open pages grow to fill the screen and
+	-- fade away to reveal the panel.
+	local function playOpen(token: number)
+		book.Size = BOOK_OPEN_SIZE
+		book.Position = BOOK_CLOSED_POSITION
+		cover.Size = HALF
+		cover.Visible = true
+		leftPage.Size = EDGE_ON
+		leftPage.BackgroundColor3 = PAGE_COLOR
+		rightPage.BackgroundColor3 = PAGE_COLOR
+		setCorners(BOOK_CORNER)
+		setFaded(0)
+		bookScale.Scale = 0.55
+		book.Visible = true
+		if not play(token, { tween(bookScale, 0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out, { Scale = 1 }) }) then
 			return
 		end
-		panel.Visible = open
+		if not play(token, {
+			tween(cover, 0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In, { Size = EDGE_ON }),
+			tween(book, 0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, { Position = BOOK_OPEN_POSITION }),
+		}) then
+			return
+		end
+		cover.Visible = false
+		if not play(token, { tween(leftPage, 0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, { Size = HALF }) }) then
+			return
+		end
+		task.wait(0.06)
+		if token ~= animation then
+			return
+		end
+		local grow = TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut)
+		if not play(token, join({
+			TweenService:Create(book, grow, { Size = UDim2.fromScale(1, 1) }),
+			TweenService:Create(leftPage, grow, { BackgroundColor3 = PANEL_COLOR }),
+			TweenService:Create(rightPage, grow, { BackgroundColor3 = PANEL_COLOR }),
+			TweenService:Create(spine, grow, { BackgroundTransparency = 1 }),
+		}, cornerTweens(0.32, 0))) then
+			return
+		end
+		refresh()
+		panel.Visible = true
+		if play(token, fadeTweens(0.18, 1)) then
+			book.Visible = false
+		end
+	end
+
+	-- The same, backwards: the screen shrinks into the open book, it closes, and it's gone.
+	local function playClose(token: number)
+		book.Size = UDim2.fromScale(1, 1)
+		book.Position = BOOK_OPEN_POSITION
+		leftPage.Size = HALF
+		leftPage.BackgroundColor3 = PANEL_COLOR
+		rightPage.BackgroundColor3 = PANEL_COLOR
+		cover.Visible = false
+		cover.Size = EDGE_ON
+		setCorners(0)
+		setFaded(0)
+		spine.BackgroundTransparency = 1
+		bookScale.Scale = 1
+		book.Visible = true
+		local shrink = TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+		if not play(token, join({
+			TweenService:Create(book, shrink, { Size = BOOK_OPEN_SIZE }),
+			TweenService:Create(leftPage, shrink, { BackgroundColor3 = PAGE_COLOR }),
+			TweenService:Create(rightPage, shrink, { BackgroundColor3 = PAGE_COLOR }),
+			TweenService:Create(spine, shrink, { BackgroundTransparency = 0 }),
+		}, cornerTweens(0.26, BOOK_CORNER))) then
+			return
+		end
+		if not play(token, { tween(leftPage, 0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In, { Size = EDGE_ON }) }) then
+			return
+		end
+		cover.Visible = true
+		if not play(token, {
+			tween(cover, 0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, { Size = HALF }),
+			tween(book, 0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, { Position = BOOK_CLOSED_POSITION }),
+		}) then
+			return
+		end
+		task.wait(0.12)
+		if token ~= animation then
+			return
+		end
+		fadeBlur()
+		if play(token, join(
+			{ tween(bookScale, 0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In, { Scale = 0.55 }) },
+			fadeTweens(0.18, 1)
+		)) then
+			book.Visible = false
+		end
+	end
+
+	-- Opening, closing, resetting. `instant` skips the book (when another panel takes over).
+	local function setOpen(open: boolean, instant: boolean?)
+		if open == isOpen then
+			return
+		end
+		isOpen = open
+		animation += 1
+		local token = animation
+		for _, each in table.clone(running) do
+			each:Cancel()
+		end
+		table.clear(running)
 		if open then
 			Panels.opened("SkillTree")
 			refresh()
-			HudStyle.pop(panel, 0.92)
 			blur.Enabled = true
 			TweenService:Create(blur, BLUR_TWEEN, { Size = BLUR_SIZE }):Play()
+			if instant then
+				panel.Visible = true
+			else
+				task.spawn(playOpen, token)
+			end
 		else
 			Panels.closed("SkillTree")
-			local fade = TweenService:Create(blur, BLUR_TWEEN, { Size = 0 })
-			fade.Completed:Connect(function()
-				if not panel.Visible then
-					blur.Enabled = false
-				end
-			end)
-			fade:Play()
+			panel.Visible = false
+			if instant then
+				book.Visible = false
+				fadeBlur()
+			else
+				task.spawn(playClose, token)
+			end
 		end
 	end
 	local function toggle()
-		setOpen(not panel.Visible)
-		HudStyle.pop(icon, if panel.Visible then 1.2 else 0.85)
+		setOpen(not isOpen)
+		HudStyle.pop(icon, if isOpen then 1.2 else 0.85)
 	end
 	Panels.register("SkillTree", function()
-		setOpen(false)
+		setOpen(false, true)
 	end)
 
 	for _, tab in tabs do
 		tab.button.Activated:Connect(function()
-			selectedTab = tab.id
+			if tab.id == selectedGroup then
+				return
+			end
+			selectedGroup = tab.id
+			selectedTab = if tab.id == "General" then "General" else lastTree[tab.id]
 			selected = nil
 			dragMoved = 0
+			refresh()
+		end)
+	end
+	for _, pill in pills do
+		pill.button.Activated:Connect(function()
+			lastTree[selectedGroup] = pill.tree
+			selectedTab = pill.tree
+			selected = nil
+			dragMoved = 0
+			HudStyle.pop(pill.button, 1.1)
 			refresh()
 		end)
 	end
 
 	local confirmUntil = 0
 	local function resetButtonIdle()
-		reset.Text = "RESET TAB"
+		reset.Text = "RESET TREE"
 		reset.BackgroundColor3 = Color3.fromRGB(95, 95, 110)
 	end
 	reset.Activated:Connect(function()
