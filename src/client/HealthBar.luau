@@ -12,7 +12,7 @@ local HudStyle = require(script.Parent.HudStyle)
 
 local WIDTH = 420
 local HEIGHT = 28
-local BOTTOM = -88 -- offset of the bar's bottom edge from the bottom of the screen (above the hotbar)
+local BOTTOM = -124 -- offset of the bar's bottom edge from the bottom of the screen (above the hotbar)
 local HIGH_COLOR = Color3.fromRGB(90, 220, 90)
 local LOW_COLOR = Color3.fromRGB(235, 65, 60)
 local TRAIL_COLOR = Color3.fromRGB(255, 240, 220)

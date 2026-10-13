@@ -1,7 +1,7 @@
 # Weapon models
 
 Synced to `ServerStorage.WeaponModels`. A file here named after a weapon's ToolName replaces
-that weapon's placeholder look: `Sword`, `Emberfang`, `Mace`, `Spear`, `Rapier`, `Grimoire`, `DualBlade`, `Scythe`, `Hammer`, `Axe`, `Greatsword`, `Bow`, `Staff` (`.rbxmx`).
+that weapon's placeholder look: `Sword`, `Emberfang`, `Mace`, `Spear`, `Rapier`, `Grimoire`, `DualBlade`, `Scythe`, `Hammer`, `Axe`, `Greatsword`, `Bow`, `Crossbow`, `Blunderbuss`, `Staff` (`.rbxmx`).
 
 Ready to import, in `assets/source/weapons/`:
 
@@ -20,6 +20,8 @@ Ready to import, in `assets/source/weapons/`:
 | DualBlade  | `DualBlade.ready.glb`   | Dual Blade (your download)      |
 | Scythe     | `Scythe.ready.glb`      | Scythe (your download)          |
 | Hammer     | `Hammer.ready.glb`      | Hammer (your download)          |
+| Crossbow   | `Crossbow.ready.glb`    | Crossbow (your download)        |
+| Blunderbuss | `Blunderbuss.ready.glb` | Blunderbuss (your download)    |
 
 The `.ready.glb` files were made with `tools/weapon_glb.py` from color-only models (Studio
 would import those grey): colors baked into a texture, put in the pose the game expects

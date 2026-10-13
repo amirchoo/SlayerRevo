@@ -39,6 +39,8 @@ enemiesFolder.Name = "Enemies"
 -- Where each live enemy spawned and what it is, so it respawns as the same thing there.
 local spawnPointOf: { [Model]: Vector2 } = {}
 local typeOf: { [Model]: EnemyType } = {}
+-- Enemies spawned with spawnOnce: when they die, the body is cleared away and nothing respawns.
+local oneOff: { [Model]: boolean } = {}
 
 local function groundCFrame(spawnPoint: Vector2): CFrame
 	local params = RaycastParams.new()
@@ -289,7 +291,7 @@ local function plainBody(kind: EnemyType): Model?
 	return result :: Model
 end
 
-local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?): Model?
+local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?, once: boolean?): Model?
 	local enemy = modelFromTemplate(kind) or plainBody(kind)
 	if not enemy then
 		return nil
@@ -320,6 +322,8 @@ local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?
 	if pack then
 		packOf[enemy] = pack
 		table.insert(pack.members, enemy)
+	elseif once then
+		oneOff[enemy] = true
 	else
 		print(`[EnemyService] Spawned {enemy.Name} at {root.Position}`)
 		spawnPointOf[enemy] = spawnPoint -- respawns here (pack members re-form as a pack instead)
@@ -350,7 +354,7 @@ local function playerNear(position: Vector3, range: number): boolean
 end
 
 -- Somewhere a pack can stand: on dry, open ground in its area (off the river, out of
--- clearings), away from the safe zone and, when `keepAway`, from other camps and players.
+-- clearings), SafeMargin clear of the safe zone and, when `keepAway`, from other camps and players.
 local function openSpot(config: EnemyConfig.Pack, random: Random, near: Vector3?, radius: number?, keepAway: boolean): Vector3?
 	local area = config.Area
 	for _ = 1, 40 do
@@ -363,7 +367,9 @@ local function openSpot(config: EnemyConfig.Pack, random: Random, near: Vector3?
 		end
 		x, z = math.clamp(x, area.Min.X, area.Max.X), math.clamp(z, area.Min.Y, area.Max.Y)
 		local p = Vector2.new(x, z)
-		local ok = WorldMap.riverDistance(p) > 12 and not WorldMap.clearingAt(p, 8) and not inSafeZone(Vector3.new(x, 0, z))
+		local fromHub = Vector2.new(x - SafeZone.CENTER.X, z - SafeZone.CENTER.Z)
+		local clearOfHub = math.max(math.abs(fromHub.X), math.abs(fromHub.Y)) > SafeZone.HALF_SIZE + config.SafeMargin
+		local ok = clearOfHub and WorldMap.riverDistance(p) > 12 and not WorldMap.clearingAt(p, 8)
 		if ok and keepAway then
 			for _, other in packs do
 				if flat(other.camp - Vector3.new(x, 0, z)).Magnitude < config.CampSpacing then
@@ -562,6 +568,12 @@ end
 -- there); it respawns there too. Yields while the model loads, so call it with task.spawn.
 EnemyService.spawnAt = spawnEnemy
 
+-- Like spawnAt, but the enemy never respawns: once dead, its body is cleared away. Yields
+-- while the model loads.
+function EnemyService.spawnOnce(spawnPoint: Vector2, kind: EnemyType): Model?
+	return spawnEnemy(spawnPoint, kind, nil, true)
+end
+
 function EnemyService.start()
 	enemiesFolder.Parent = workspace
 
@@ -575,6 +587,16 @@ function EnemyService.start()
 	end)
 
 	HealthService.Died:Connect(function(model: Model)
+		if oneOff[model] then
+			oneOff[model] = nil
+			task.delay(typeOf[model].RespawnDelay, function() -- leave the body a moment, like the others
+				if model.Parent then
+					model:Destroy()
+				end
+			end)
+			typeOf[model] = nil
+			return
+		end
 		local pack = packOf[model]
 		if pack then
 			-- Pack members don't respawn alone (the pack re-forms); clear the body away.

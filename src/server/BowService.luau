@@ -2,14 +2,12 @@
 -- Gives players a bow and simulates its arrows on the server.
 -- The client reports when it starts drawing (BowDraw) and where it aims on release
 -- (BowShoot). The server times the draw itself to get the power, checks the bow is
--- equipped, the cooldown, and ammo, then flies the arrow (with a little drop) and deals damage.
+-- equipped, the cooldown, and ammo, then flies the arrow (with a little drop; see Projectile) and deals damage.
 -- Ammo lives in the player's "Arrows"/"MaxArrows" attributes so the HUD can read it.
 -- Arrows refill on respawn and while standing in the hub or the training grounds.
 
-local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
@@ -18,11 +16,10 @@ local TrainingArea = require(ReplicatedStorage.Shared.TrainingArea)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 local HealthService = require(script.Parent.HealthService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
-local HitEffects = require(script.Parent.HitEffects)
-local EnemyEffects = require(script.Parent.EnemyEffects)
 local InventoryService = require(script.Parent.InventoryService)
 local WeaponModels = require(script.Parent.WeaponModels)
 local StaminaService = require(script.Parent.StaminaService)
+local Projectile = require(script.Parent.Projectile)
 
 local BOW = CombatConfig.Bow
 
@@ -33,12 +30,8 @@ local SHOOT_FORWARD = 2 -- and this far ahead of the player, so they don't start
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local drawRemote = remotes:WaitForChild("BowDraw") :: RemoteEvent
 local shootRemote = remotes:WaitForChild("BowShoot") :: RemoteEvent
-local damageRemote = remotes:WaitForChild("DamageDealt") :: RemoteEvent
 
 local BowService = {}
-
-local arrowsFolder = Instance.new("Folder")
-arrowsFolder.Name = "Arrows"
 
 local lastShot: { [Player]: number } = {}
 local drawStarted: { [Player]: number } = {}
@@ -103,123 +96,12 @@ local function createBow(): Tool
 	return tool
 end
 
-local function createArrowTemplate(): Part
-	local arrow = Instance.new("Part")
-	arrow.Name = "Arrow"
-	arrow.Size = Vector3.new(0.15, 0.15, 3)
-	arrow.Color = Color3.fromRGB(200, 170, 120)
-	arrow.Material = Enum.Material.Wood
-	arrow.Anchored = true
-	arrow.CanCollide = false
-	arrow.CanQuery = false
-	arrow.CanTouch = false
-	arrow.Massless = true
-
-	-- A glowing streak behind the arrow in flight: a thin ribbon from the tail (the arrow
-	-- points along -Z, so the tail is at +Z) that fades and narrows as it trails off.
-	local top = Instance.new("Attachment")
-	top.Name = "TrailTop"
-	top.Position = Vector3.new(0, 0.12, arrow.Size.Z / 2 - 0.2)
-	top.Parent = arrow
-	local bottom = Instance.new("Attachment")
-	bottom.Name = "TrailBottom"
-	bottom.Position = Vector3.new(0, -0.12, arrow.Size.Z / 2 - 0.2)
-	bottom.Parent = arrow
-	local trail = Instance.new("Trail")
-	trail.Name = "ArrowTrail"
-	trail.Attachment0 = top
-	trail.Attachment1 = bottom
-	trail.FaceCamera = true
-	trail.Lifetime = BOW.TrailLifetime
-	trail.LightEmission = 1
-	trail.Color = ColorSequence.new(Color3.fromRGB(255, 245, 220), Color3.fromRGB(255, 190, 110))
-	trail.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.15),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	trail.WidthScale = NumberSequence.new(1, 0.2)
-	trail.MinLength = 0.05
-	trail.Parent = arrow
-	return arrow
-end
-
-local arrowTemplate = createArrowTemplate()
-
--- Arrows pass through every player (no friendly fire) and other arrows.
-local function arrowRaycastParams(): RaycastParams
-	local exclude: { Instance } = { arrowsFolder }
-	for _, player in Players:GetPlayers() do
-		if player.Character then
-			table.insert(exclude, player.Character)
-		end
-	end
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = exclude
-	return params
-end
-
-local function onArrowHit(player: Player, arrow: Part, result: RaycastResult, direction: Vector3, damage: number)
-	-- Stop the streak (what's already drawn fades out), and leave the arrow stuck in what it
-	-- hit, tip slightly buried.
-	local trail = arrow:FindFirstChild("ArrowTrail")
-	if trail and trail:IsA("Trail") then
-		trail.Enabled = false
-	end
-	arrow.CFrame = CFrame.lookAt(result.Position - direction * (arrow.Size.Z / 2 - 0.4), result.Position + direction)
-
-	local model = HealthService.findDamageable(result.Instance)
-	if model then
-		local dealt = HealthService.damage(model, damage, player)
-		if dealt > 0 then
-			damageRemote:FireClient(player, result.Position, dealt, nil, model)
-			if HealthService.isAlive(model) then
-				EnemyEffects.flinch(model)
-			end
-			HitEffects.broadcast(model, result.Position, direction, BOW.ToolName, dealt)
-		end
-		-- Weld it on so it moves with the target.
-		arrow.Anchored = false
-		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = arrow
-		weld.Part1 = result.Instance :: BasePart
-		weld.Parent = arrow
-	end
-	Debris:AddItem(arrow, BOW.StuckLifetime)
-end
-
--- Steps the arrow every frame, raycasting along each step so fast arrows can't skip through things.
-local function fireArrow(player: Player, origin: Vector3, direction: Vector3, speed: number, damage: number)
-	local arrow = arrowTemplate:Clone()
-	arrow.CFrame = CFrame.lookAt(origin, origin + direction)
-	arrow.Parent = arrowsFolder
-
-	local params = arrowRaycastParams()
-	local gravity = Vector3.new(0, -BOW.Gravity, 0)
-	local position, velocity, traveled = origin, direction * speed, 0
-
-	local connection: RBXScriptConnection
-	connection = RunService.Heartbeat:Connect(function(dt)
-		local nextVelocity = velocity + gravity * dt
-		local step = (velocity + nextVelocity) / 2 * dt
-
-		local result = workspace:Raycast(position, step, params)
-		if result then
-			connection:Disconnect()
-			onArrowHit(player, arrow, result, step.Unit, damage)
-			return
-		end
-
-		position += step
-		velocity = nextVelocity
-		traveled += step.Magnitude
-		arrow.CFrame = CFrame.lookAt(position, position + velocity)
-		if traveled >= BOW.MaxRange then
-			connection:Disconnect()
-			arrow:Destroy()
-		end
-	end)
-end
+local ARROW: Projectile.Look = {
+	Name = "Arrow",
+	Size = Vector3.new(0.15, 0.15, 3),
+	Color = Color3.fromRGB(200, 170, 120),
+	TrailColor = ColorSequence.new(Color3.fromRGB(255, 245, 220), Color3.fromRGB(255, 190, 110)),
+}
 
 local function hasBowReady(player: Player): (Model?, BasePart?)
 	local character = player.Character
@@ -284,7 +166,7 @@ local function onShoot(player: Player, aimPoint: unknown)
 
 	lastShot[player] = now
 	player:SetAttribute("Arrows", arrows - 1)
-	fireArrow(player, start + direction * SHOOT_FORWARD, direction, speed, math.round(damage))
+	Projectile.fire(player, BOW, ARROW, start + direction * SHOOT_FORWARD, direction, speed, math.round(damage))
 end
 
 local function giveBow(player: Player, template: Tool)
@@ -306,7 +188,6 @@ local function refill(player: Player)
 end
 
 function BowService.start()
-	arrowsFolder.Parent = workspace
 	local bowTemplate = createBow()
 	-- A real model, if one's been added (assets/weapons). Its string is drawn by the game, so
 	-- move the string's ends to the model's limb tips and put the resting string back.

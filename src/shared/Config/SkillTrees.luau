@@ -17,7 +17,7 @@
 --   Weapon: Damage, LightDamage, HeavyDamage (fractions), StaminaCost, LightStaminaCost,
 --     HeavyStaminaCost (fractions, negative = cheaper), BlockAmount, ParryWindow, and each
 --     weapon's own: SpinDuration (s, sword), ChargeSpeed (greatsword), QuakeRadius (mace, hammer),
---     LungeDistance (spear), HookReach (scythe), FlurryHits (extra stabs, rapier), RushDuration (s, dual blade), BleedDamage (per tick, axe), DrawSpeed (bow) as fractions; the
+--     LungeDistance (spear), HookReach (scythe), FlurryHits (extra stabs, rapier), RushDuration (s, dual blade), BleedDamage (per tick, axe), DrawSpeed (bow), ReloadSpeed (crossbow, blunderbuss), DamageRange (blunderbuss) as fractions; the
 --     casters' (staff, grimoire) are listed with SkillTrees.Casters below.
 
 export type Node = {
@@ -198,6 +198,18 @@ SkillTrees.Weapons = {
 		{ Id = "Deadeye", Name = "Deadeye", Description = "+20% arrow damage.", Tier = 4, MaxRank = 1, Effects = { LightDamage = 0.2 } },
 		{ Id = "Rapidfire", Name = "Rapid Fire", Description = "Reach full draw 25% sooner.", Tier = 4, MaxRank = 1, Effects = { DrawSpeed = 0.25 } }
 	),
+	Crossbow = weaponTree(
+		{ Id = "SteadyHands", Name = "Steady Hands", Description = "Reload 8% faster.", Tier = 2, MaxRank = 3, Effects = { ReloadSpeed = 0.08 } },
+		{ { Id = "Marksman", Name = "Marksman", Description = "+6% bolt damage.", Tier = 3, MaxRank = 3, Effects = { Damage = 0.06 } } },
+		{ Id = "Piercer", Name = "Piercer", Description = "+20% bolt damage.", Tier = 4, MaxRank = 1, Effects = { LightDamage = 0.2 } },
+		{ Id = "Quickload", Name = "Quickload", Description = "Reload 25% faster.", Tier = 4, MaxRank = 1, Effects = { ReloadSpeed = 0.25 } }
+	),
+	Blunderbuss = weaponTree(
+		{ Id = "QuickPowder", Name = "Quick Powder", Description = "Reload 8% faster.", Tier = 2, MaxRank = 3, Effects = { ReloadSpeed = 0.08 } },
+		{ { Id = "HeavyShot", Name = "Heavy Shot", Description = "+6% pellet damage.", Tier = 3, MaxRank = 3, Effects = { Damage = 0.06 } } },
+		{ Id = "PointBlank", Name = "Point Blank", Description = "+20% pellet damage.", Tier = 4, MaxRank = 1, Effects = { LightDamage = 0.2 } },
+		{ Id = "LongBarrel", Name = "Long Barrel", Description = "Pellets do damage 30% further out.", Tier = 4, MaxRank = 1, Effects = { DamageRange = 0.3 } }
+	),
 } :: { [string]: { Node } }
 
 -- Caster weapons (the staff, the grimoire) each have a class tree, drawn as branches growing
@@ -302,6 +314,6 @@ SkillTrees.SharedTrees = {
 } :: { [string]: string }
 
 -- Tabs in the skill screen, in order ("General" first, then each weapon).
-SkillTrees.WeaponOrder = { "Sword", "Rapier", "DualBlade", "Greatsword", "Axe", "Mace", "Hammer", "Spear", "Scythe", "Bow", "Staff", "Grimoire" }
+SkillTrees.WeaponOrder = { "Sword", "Rapier", "DualBlade", "Greatsword", "Axe", "Mace", "Hammer", "Spear", "Scythe", "Bow", "Crossbow", "Blunderbuss", "Staff", "Grimoire" }
 
 return SkillTrees

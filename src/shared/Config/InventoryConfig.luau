@@ -2,6 +2,9 @@
 -- Weapons and the backpack, shared by the server (InventoryService: what's in the hotbar)
 -- and the client (Backpack UI). Every weapon a player owns is either in their hotbar (the
 -- Roblox Backpack, so it can be equipped) or stored in their backpack.
+-- The hotbar has a fixed slot per weapon category (WeaponSlots: one Primary, one Magic, one
+-- Ranged weapon at a time), then PotionSlots slots for consumables. Slots are numbered (and
+-- keyed 1, 2, ...) in that order.
 
 export type WeaponInfo = {
 	Name: string, -- the tool's name (its ToolName)
@@ -15,7 +18,21 @@ export type Rarity = { Id: string, Color: Color3 }
 local InventoryConfig = {}
 
 InventoryConfig.OpenKey = Enum.KeyCode.B -- (the armor key, ArmorConfig.PanelKey, opens it too)
-InventoryConfig.HotbarSlots = 5 -- weapons the hotbar holds; the rest are stored
+-- The hotbar's weapon slots, in order: each holds one weapon of its classes (Classes' Id).
+InventoryConfig.WeaponSlots = {
+	{ Id = "Primary", Classes = { "Swords", "Axes", "Blunt", "Polearms" } },
+	{ Id = "Magic", Classes = { "Magic" } },
+	{ Id = "Ranged", Classes = { "Ranged" } },
+}
+-- The filters under the backpack's Primary tab, in order: each lists the weapons it shows
+-- (by Name). Display only; the Primary slot itself goes by Class.
+InventoryConfig.PrimaryFilters = {
+	{ Id = "One-Handed", Weapons = { "Sword", "Emberfang", "Rapier", "Axe", "Mace" } },
+	{ Id = "Two-Handed", Weapons = { "Greatsword", "Hammer", "DualBlade" } },
+	{ Id = "Polearms", Weapons = { "Spear", "Scythe" } },
+}
+InventoryConfig.PotionSlots = 2 -- consumable slots, after the weapon slots
+InventoryConfig.HotbarSlots = #InventoryConfig.WeaponSlots + InventoryConfig.PotionSlots
 
 -- Rarity tiers, lowest first. The color tints a weapon's name and outline in the hotbar and
 -- backpack. (Loot will roll these once drops exist; for now each weapon has a fixed one.)
@@ -49,17 +66,34 @@ InventoryConfig.Weapons = {
 	{ Name = "Spear", Class = "Polearms", Description = "Long reach. Hold for a piercing lunge." },
 	{ Name = "Scythe", Class = "Polearms", Description = "Wide reaps that hit all around. Hold to hook an enemy, drag it in, and cut it away." },
 	{ Name = "Bow", Class = "Ranged", Description = "Hold right-click to draw, release to fire." },
+	{ Name = "Crossbow", Class = "Ranged", Description = "Hard-hitting bolts at full power every shot, but it reloads after each one. Hold right-click to aim." },
+	{ Name = "Blunderbuss", Class = "Ranged", Description = "A spray of pellets that shreds up close but does nothing at range. Three shots, then a reload. Hold right-click to aim." },
 	{ Name = "Staff", Class = "Magic", Description = "Elemental missiles; hold to charge a blast. R switches element." },
 	{ Name = "Grimoire", Class = "Magic", Description = "Necromancy and Faith: undead hands, homing swarms, and healing. R switches school." },
 } :: { WeaponInfo }
 
--- What a new player's hotbar holds (in order); everything else starts stored.
-InventoryConfig.DefaultHotbar = { "Sword", "Axe", "Mace", "Spear", "Bow" }
+-- What a new player's hotbar holds (each goes in its category's slot); everything else
+-- starts stored.
+InventoryConfig.DefaultHotbar = { "Sword", "Staff", "Bow" }
 
 function InventoryConfig.weapon(name: string): WeaponInfo?
 	for _, info in InventoryConfig.Weapons do
 		if info.Name == name then
 			return info
+		end
+	end
+	return nil
+end
+
+-- The hotbar slot (an index into WeaponSlots) a weapon goes in, or nil if it isn't a weapon.
+function InventoryConfig.weaponSlot(name: string): number?
+	local info = InventoryConfig.weapon(name)
+	if not info then
+		return nil
+	end
+	for index, slot in InventoryConfig.WeaponSlots do
+		if table.find(slot.Classes, info.Class) then
+			return index
 		end
 	end
 	return nil

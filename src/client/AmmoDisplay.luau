@@ -1,6 +1,7 @@
 --!strict
--- Arrow counter in the top-right corner, shown only while you're holding the bow.
--- Display only: reads the Arrows/MaxArrows attributes the server keeps on the player.
+-- Ammo counter in the top-right corner, shown only while you're holding a ranged weapon:
+-- arrows for the bow, bolts for the crossbow, shells for the blunderbuss. Display only: reads the ammo attributes the
+-- server keeps on the player (Arrows/MaxArrows, Bolts/MaxBolts, Shells/MaxShells).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,7 +9,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local HudStyle = require(script.Parent.HudStyle)
 
-local BOW_NAME = CombatConfig.Bow.ToolName
+type Ammo = { count: string, max: string, title: string }
+
+-- Per weapon (by ToolName): which attributes hold its ammo, and what it's called.
+local AMMO: { [string]: Ammo } = {
+	[CombatConfig.Bow.ToolName] = { count = "Arrows", max = "MaxArrows", title = "ARROWS" },
+	[CombatConfig.Crossbow.ToolName] = { count = "Bolts", max = "MaxBolts", title = "BOLTS" },
+	[CombatConfig.Blunderbuss.ToolName] = { count = "Shells", max = "MaxShells", title = "SHELLS" },
+}
 
 local NORMAL_COLOR = Color3.new(1, 1, 1)
 local LOW_COLOR = Color3.fromRGB(255, 200, 90)
@@ -47,7 +55,6 @@ local function createGui(): (Frame, TextLabel, TextLabel)
 	title.TextSize = 12
 	title.TextColor3 = Color3.fromRGB(190, 190, 190)
 	title.TextXAlignment = Enum.TextXAlignment.Right
-	title.Text = "ARROWS"
 	title.Parent = panel
 
 	local count = Instance.new("TextLabel")
@@ -66,33 +73,43 @@ end
 function AmmoDisplay.start()
 	local panel, title, count = createGui()
 
+	local shown: Ammo? = nil -- the ammo of the weapon in hand, if it has any
+
 	local function update()
-		local arrows = player:GetAttribute("Arrows")
-		local maxArrows = player:GetAttribute("MaxArrows")
-		if typeof(arrows) ~= "number" or typeof(maxArrows) ~= "number" or maxArrows <= 0 then
+		if not shown then
+			return
+		end
+		local ammo = player:GetAttribute(shown.count)
+		local maxAmmo = player:GetAttribute(shown.max)
+		if typeof(ammo) ~= "number" or typeof(maxAmmo) ~= "number" or maxAmmo <= 0 then
 			count.Text = "-- / --"
+			title.Text = shown.title
 			return
 		end
 
-		count.Text = `{arrows} / {maxArrows}`
-		if arrows <= 0 then
+		count.Text = `{ammo} / {maxAmmo}`
+		if ammo <= 0 then
 			count.TextColor3 = EMPTY_COLOR
 			title.Text = "EMPTY · REFILL IN HUB"
 		else
-			count.TextColor3 = if arrows / maxArrows <= LOW_THRESHOLD then LOW_COLOR else NORMAL_COLOR
-			title.Text = "ARROWS"
+			count.TextColor3 = if ammo / maxAmmo <= LOW_THRESHOLD then LOW_COLOR else NORMAL_COLOR
+			title.Text = shown.title
 		end
 	end
 
-	player:GetAttributeChangedSignal("Arrows"):Connect(update)
-	player:GetAttributeChangedSignal("MaxArrows"):Connect(update)
-	update()
+	player.AttributeChanged:Connect(function(attribute)
+		if shown and (attribute == shown.count or attribute == shown.max) then
+			update()
+		end
+	end)
 
-	-- Only while the bow is in hand (equipping moves a tool into the character).
+	-- Only while a ranged weapon is in hand (equipping moves a tool into the character).
 	local function watch(character: Model)
 		local function refresh()
 			local tool = character:FindFirstChildOfClass("Tool")
-			panel.Visible = tool ~= nil and tool.Name == BOW_NAME
+			shown = if tool then AMMO[tool.Name] else nil
+			panel.Visible = shown ~= nil
+			update()
 		end
 		character.ChildAdded:Connect(refresh)
 		character.ChildRemoved:Connect(refresh)

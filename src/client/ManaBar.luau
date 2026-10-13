@@ -16,7 +16,7 @@ local Stamina = require(ReplicatedStorage.Shared.Stamina)
 
 local WIDTH = 420 -- as wide as the health bar
 local HEIGHT = 10
-local BOTTOM = -140 -- just above the stamina bar (which spans -122 to -136)
+local BOTTOM = -176 -- just above the stamina bar (which spans -158 to -172)
 local FULL_COLOR = Color3.fromRGB(80, 150, 255)
 local LOW_COLOR = Color3.fromRGB(120, 100, 230)
 local EMPTY_FLASH_COLOR = Color3.fromRGB(230, 60, 60)

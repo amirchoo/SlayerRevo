@@ -9,7 +9,8 @@
 -- "OwnsShield<Id>".
 -- Looks: if ServerStorage.ShieldModels (assets/shields) has a Model or MeshPart named after
 -- the shield's id, that's worn (scaled to ShieldConfig.Diameter, its face along its -Z);
--- otherwise a placeholder built from plain parts.
+-- otherwise a placeholder built from plain parts. Look-only copies of every shield go in
+-- ReplicatedStorage.ShieldPreviews, for the backpack.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -201,7 +202,27 @@ local function onEquip(player: Player, id: unknown)
 	end
 end
 
+-- Look-only copies (anchored parts, no joints) of every shield, so the backpack can show them.
+local function publishPreviews()
+	local previews = Instance.new("Folder")
+	previews.Name = "ShieldPreviews"
+	for id, shield in ShieldConfig.Shields do
+		local preview = modelFor(id, shield)
+		preview.Name = id
+		for _, descendant in preview:GetDescendants() do
+			if descendant:IsA("JointInstance") or descendant:IsA("WeldConstraint") or descendant:IsA("LuaSourceContainer") then
+				descendant:Destroy()
+			elseif descendant:IsA("BasePart") then
+				descendant.Anchored = true
+			end
+		end
+		preview.Parent = previews
+	end
+	previews.Parent = ReplicatedStorage
+end
+
 function ShieldService.start()
+	publishPreviews()
 	-- Restores the saved shield: owned ones that still exist, and the worn one if owned.
 	DataService.onLoaded(function(player, data)
 		local saved = data.Shield

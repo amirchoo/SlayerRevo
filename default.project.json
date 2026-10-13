@@ -20,6 +20,12 @@
         "BowShoot": {
           "$className": "RemoteEvent"
         },
+        "CrossbowShoot": {
+          "$className": "RemoteEvent"
+        },
+        "BlunderbussShoot": {
+          "$className": "RemoteEvent"
+        },
         "BowDraw": {
           "$className": "RemoteEvent"
         },

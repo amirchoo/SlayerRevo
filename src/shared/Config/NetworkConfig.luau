@@ -10,6 +10,8 @@ return {
 		HeavyAttack = 12,
 		SwordBlock = 20,
 		BowDraw = 12,
+		CrossbowShoot = 12,
+		BlunderbussShoot = 12,
 		BowShoot = 12,
 		GreatswordCharge = 12,
 		GreatswordRelease = 12,

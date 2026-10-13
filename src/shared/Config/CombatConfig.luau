@@ -818,6 +818,112 @@ local Grimoire = {
 	} :: { StaffElement },
 }
 
+-- A ranged weapon that fires once and then reloads (the crossbow, the blunderbuss; see
+-- SingleShotService). Hold right-click to aim (zoom in, slow down, face the aim); left-click
+-- fires, aiming or not.
+export type SingleShot = {
+	ToolName: string,
+	Hand: string,
+	IdleAnimation: string, -- loops while equipped
+	AimAnimation: string, -- held on its last frame while aiming
+	ShootAnimation: string, -- the kick as it fires
+	ReloadAnimation: string, -- stretched to the reload time
+	ShootRemote: string, -- the RemoteEvent (in Remotes) the client fires to shoot
+	Damage: number, -- per projectile
+	ProjectileSpeed: number, -- studs per second
+	Pellets: number?, -- projectiles per shot (1 if nil)
+	Spread: number?, -- degrees; each pellet flies up to this far off the aim
+	DamageRange: number?, -- studs; projectiles do no damage past this (no limit if nil)
+	ReloadTime: number, -- seconds after each shot before it can fire again
+	ReloadWalkSpeed: number,
+	AimWalkSpeed: number,
+	AimZoomFov: number, -- camera field of view while aiming (Roblox default is 70)
+	AimZoomTime: number,
+	ZoomOutTime: number,
+	ShotStamina: number,
+	Clip: number?, -- shots it holds before it has to reload (1 if nil)
+	ShotDelay: number?, -- seconds between shots from the same clip
+	Ammo: string, -- the player attribute holding its ammo; "Max" .. Ammo holds the most
+	MaxAmmo: number,
+	Gravity: number, -- downward pull on its projectiles, studs/s² (workspace gravity is ~196)
+	MaxRange: number, -- projectiles vanish after flying this far
+	StuckLifetime: number, -- seconds a projectile stays stuck in what it hit
+	TrailLifetime: number, -- seconds a projectile's streak takes to fade behind it
+	ModelFit: { Length: number, GripFrom: number, Shift: Vector3?, FlipBlade: boolean?, FlipEdge: boolean? },
+}
+
+-- The bow's heavier cousin: no draw, every bolt flies at full power, but it has to be
+-- reloaded after every shot. Hold right-click to aim (zoom in, slow down, face the aim);
+-- left-click fires, aiming or not. Its flight, ammo refills, and arrows-stick-in-things
+-- work like the bow's (see SingleShotService).
+local Crossbow: SingleShot = {
+	ToolName = "Crossbow",
+	Hand = "Right",
+	-- Made by tools/crossbow_anims.py (assets/animations). While "", that one doesn't play.
+	IdleAnimation = "rbxassetid://76216598845137", -- CrossbowIdle: held low and ready; loops while equipped
+	AimAnimation = "rbxassetid://80845530831049", -- CrossbowAim: raised to the shoulder; held on its last frame while aiming
+	ShootAnimation = "rbxassetid://136461210557366", -- CrossbowShoot: the kick as it fires
+	ReloadAnimation = "rbxassetid://77673098666584", -- CrossbowReload: string cranked back, a bolt laid in; stretched to ReloadTime
+	Damage = 55, -- every bolt (the bow's full draw is 40)
+	ProjectileSpeed = 230, -- studs per second (the bow's full draw is 200)
+	ReloadTime = 1.3, -- seconds after each shot before it can fire again
+	ReloadWalkSpeed = 10, -- walk speed while reloading
+	AimWalkSpeed = 8, -- walk speed while aiming
+	AimZoomFov = 45, -- camera field of view while aiming (Roblox default is 70)
+	AimZoomTime = 0.15, -- seconds to zoom in
+	ZoomOutTime = 0.25, -- seconds to zoom back out
+	ShotStamina = 8, -- stamina per bolt
+	ShootRemote = "CrossbowShoot",
+	Ammo = "Bolts", -- the player attributes Bolts / MaxBolts
+	MaxAmmo = 20,
+	Gravity = 25, -- downward pull on bolts, studs/s² (flatter than arrows)
+	MaxRange = 350, -- bolts vanish after flying this far
+	StuckLifetime = 4, -- seconds a bolt stays stuck in what it hit
+	TrailLifetime = 0.3, -- seconds a bolt's streak takes to fade behind it
+	-- A real model (assets/weapons/Crossbow.rbxmx); see Sword.ModelFit. It's held like a
+	-- pistol, so its tool Grip (SingleShotService) runs it along the forearm with the thumb
+	-- on top, not out of the fist like a blade. Shift lowers the hand under the stock.
+	ModelFit = { Length = 3.8, GripFrom = 0.36, Shift = Vector3.new(0, 0, -0.04) },
+}
+
+-- A short-range gun: each shot is a spray of pellets that fly dead straight (no drop) but do
+-- nothing past DamageRange, so it's deadly up close and harmless at range. Fires 3 shots
+-- (ShotDelay apart), then reloads.
+local Blunderbuss: SingleShot = {
+	ToolName = "Blunderbuss",
+	Hand = "Right",
+	-- Made by tools/blunderbuss_anims.py (assets/animations): held one-handed like a big
+	-- pistol. Until they're published these borrow the crossbow's; put each one's id in place.
+	IdleAnimation = "113773098230304", -- BlunderbussIdle: low by the hip, muzzle down; loops while equipped
+	AimAnimation = "83517724451635", -- BlunderbussAim: arm out straight; held on its last frame
+	ShootAnimation = "83517724451635", -- BlunderbussShoot: the kick throws the arm up
+	ReloadAnimation = Crossbow.ReloadAnimation, -- BlunderbussReload: broken open, a shell from the belt thumbed in, flicked shut; stretched to ReloadTime
+	ShootRemote = "BlunderbussShoot",
+	Damage = 10, -- per pellet: 80 if all of them hit
+	Pellets = 8,
+	Spread = 7, -- degrees off the aim, at most
+	DamageRange = 35, -- studs; pellets past this do no damage
+	ProjectileSpeed = 180,
+	Clip = 3, -- shots before it has to reload
+	ShotDelay = 0.5, -- seconds between those shots
+	ReloadTime = 1.8, -- once all 3 are fired
+	ReloadWalkSpeed = 10,
+	AimWalkSpeed = 9,
+	AimZoomFov = 55, -- less zoom than the crossbow: it's for close range
+	AimZoomTime = 0.15,
+	ZoomOutTime = 0.25,
+	ShotStamina = 10,
+	Ammo = "Shells", -- the player attributes Shells / MaxShells
+	MaxAmmo = 12,
+	Gravity = 0, -- pellets fly straight
+	MaxRange = 50, -- they vanish this far out (harmless for the last stretch)
+	StuckLifetime = 0.6,
+	TrailLifetime = 0.12,
+	-- A real model (assets/weapons/Blunderbuss.rbxmx); gripped like the crossbow (the tool Grip
+	-- in SingleShotService), by the wrist of the stock just behind the trigger.
+	ModelFit = { Length = 3.6, GripFrom = 0.24 },
+}
+
 return {
 	Sword = Sword,
 	Emberfang = Emberfang,
@@ -921,6 +1027,9 @@ return {
 		MaxRange = 300, -- arrows vanish after flying this far
 		StuckLifetime = 4, -- seconds an arrow stays stuck in what it hit
 	},
+
+	Crossbow = Crossbow,
+	Blunderbuss = Blunderbuss,
 	-- Press Key to dash. Up to MaxCharges stored; spent charges refill one at a time,
 	-- each taking RechargeTime.
 	-- Lock-on (see LockOn): face and follow one enemy, with the camera framing you both.

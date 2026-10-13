@@ -82,11 +82,10 @@ local function weaponButton(name: string): (string, boolean)
 	if table.find(hotbar, name) then
 		return "In hotbar", false
 	end
-	local slots = player:GetAttribute("HotbarSlots")
-	if typeof(slots) == "number" and #hotbar >= slots then
-		return "Hotbar full", false
-	end
-	return "To hotbar", true
+	-- Moving it in swaps out the weapon in its category's slot.
+	local slot = InventoryConfig.weaponSlot(name)
+	local current = if slot then hotbar[slot] else nil
+	return if current and current ~= "" then "Swap in" else "To hotbar", true
 end
 
 local function armorButton(setId: string): (string, boolean)

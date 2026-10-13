@@ -4,9 +4,10 @@
 -- cartoon HUD style (HudStyle), with the world blurred behind it:
 --   left:  title, your health, category tabs, and a grid of weapon/consumable slots. Ones in
 --          your hotbar are highlighted with their hotbar number. Clicking an item moves it
---          between the hotbar and storage (InventoryMove remote).
+--          between the hotbar and storage (InventoryMove remote); a weapon moved in swaps
+--          out the one in its category's slot (Primary, Magic, Ranged).
 --   right: your character facing you, with the five armor slots around it, each linked by a
---          line to where it's worn and showing its protection. Clicking one puts the piece
+--          line to where it's worn, showing the worn piece's model and its protection. Clicking one puts the piece
 --          on or takes it off (ArmorEquip remote). A sixth slot holds a shield, put on or
 --          taken off the same way (ShieldEquip remote).
 -- Display and requests only: the server decides what you own, wear, and carry (see
@@ -43,14 +44,20 @@ local ICON_SIZE = 60
 
 local GRID_COLUMNS = 5
 local GRID_SLOTS = 20 -- the rest of the grid shows empty slots, filled as you get more
-local TILE = 84
-local TILE_GAP = 12
-local GRID_ORIGIN = Vector2.new(40, 196)
+local TILE = 80
+local TILE_GAP = 10
+local GRID_ORIGIN = Vector2.new(40, 212)
 local GRID_WIDTH = GRID_COLUMNS * TILE + (GRID_COLUMNS - 1) * TILE_GAP
 
 local TAB_TEXT_SIZE = 16
-local TAB_GAP = 20
-local TAB_Y = 136
+local TAB_GAP = 24
+local TAB_Y = 132
+-- The Primary tab's filter pills, between the tabs and the grid.
+local FILTER_Y = 176
+local FILTER_HEIGHT = 24
+local FILTER_TEXT_SIZE = 13
+local FILTER_GAP = 8
+local FILTER_SELECTED = Color3.fromRGB(52, 66, 110)
 
 local BLUR_SIZE = 14
 local BLUR_TWEEN = TweenInfo.new(0.2)
@@ -70,6 +77,8 @@ local SHIELD_LAYOUT = { tile = Vector2.new(545, 265), body = Vector2.new(0.72, 0
 local SHIELD_WORN_BACKGROUND = Color3.fromRGB(52, 66, 110)
 local PROTECTION_SEGMENTS = 6
 local PROTECTION_PER_SEGMENT = 0.025 -- a 12% chestplate fills 5 of 6
+-- How worn pieces are turned in their tiles: from the front, a little from the side and above.
+local PIECE_TURN = CFrame.Angles(math.rad(15), 0, 0) * CFrame.Angles(0, math.rad(180 + 30), 0)
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local moveRemote = remotes:WaitForChild("InventoryMove") :: RemoteEvent
@@ -352,12 +361,13 @@ function Backpack.start()
 	healthValue.Position = UDim2.fromOffset(386, 88)
 	healthValue.Size = UDim2.fromOffset(80, 26)
 
-	-- Tabs: ALL, each weapon class, then consumables, with an underline under the selected one.
+	-- Tabs: ALL, each hotbar weapon slot (Primary, Magic, Ranged), then consumables, with an
+	-- underline under the selected one.
 	type Tab = { id: string?, button: TextButton, x: number, width: number }
 	local tabs: { Tab } = {}
 	local tabEntries: { { id: string?, name: string } } = { { id = nil, name = "ALL" } }
-	for _, class in InventoryConfig.Classes do
-		table.insert(tabEntries, { id = class.Id, name = class.Id:upper() })
+	for _, slot in InventoryConfig.WeaponSlots do
+		table.insert(tabEntries, { id = slot.Id, name = slot.Id:upper() })
 	end
 	table.insert(tabEntries, { id = ShopConfig.ConsumableCategory, name = ShopConfig.ConsumableCategory:upper() })
 	local tabX = GRID_ORIGIN.X
@@ -389,6 +399,37 @@ function Backpack.start()
 	local underlineCorner = Instance.new("UICorner")
 	underlineCorner.CornerRadius = UDim.new(0, 2)
 	underlineCorner.Parent = underline
+
+	-- The Primary tab's filters (ALL, then PrimaryFilters), shown only while it's selected.
+	type Filter = { id: string?, button: TextButton, stroke: UIStroke }
+	local filters: { Filter } = {}
+	local filterRow = Instance.new("Frame")
+	filterRow.BackgroundTransparency = 1
+	filterRow.Position = UDim2.fromOffset(GRID_ORIGIN.X, FILTER_Y)
+	filterRow.Size = UDim2.fromOffset(GRID_WIDTH, FILTER_HEIGHT)
+	filterRow.Visible = false
+	filterRow.Parent = panel
+	local filterEntries: { string? } = { nil }
+	for _, filter in InventoryConfig.PrimaryFilters do
+		table.insert(filterEntries, filter.Id)
+	end
+	local filterX = 0
+	for index = 1, #InventoryConfig.PrimaryFilters + 1 do
+		local id = filterEntries[index]
+		local name = if id then id:upper() else "ALL"
+		local width = math.ceil(TextService:GetTextSize(name, FILTER_TEXT_SIZE, HudStyle.FONT, Vector2.new(400, 40)).X) + 24
+		local pill = Instance.new("TextButton")
+		pill.Font = HudStyle.FONT
+		pill.TextSize = FILTER_TEXT_SIZE
+		pill.Text = name
+		pill.AutoButtonColor = false
+		pill.Position = UDim2.fromOffset(filterX, 0)
+		pill.Size = UDim2.fromOffset(width, FILTER_HEIGHT)
+		pill.Parent = filterRow
+		HudStyle.chunky(pill, FILTER_HEIGHT // 2, 2)
+		table.insert(filters, { id = id, button = pill, stroke = pill:FindFirstChildOfClass("UIStroke") :: UIStroke })
+		filterX += width + FILTER_GAP
+	end
 
 	-- The item grid.
 	type Tile = { frame: Frame, stroke: UIStroke, viewport: ViewportFrame, icon: ImageLabel, name: TextLabel, badge: TextLabel, item: string? }
@@ -463,7 +504,7 @@ function Backpack.start()
 
 	-- The character, and the armor slots around it.
 	local refreshCharacter = buildCharacterView(panel)
-	type ArmorTile = { slot: string, frame: Frame, stroke: UIStroke, icon: ImageLabel, segments: { Frame }, name: TextLabel }
+	type ArmorTile = { slot: string, frame: Frame, stroke: UIStroke, icon: ImageLabel, viewport: ViewportFrame, shown: Model?, segments: { Frame }, name: TextLabel }
 	-- One equipment tile, linked by a line to `layout.body` on the character, with a
 	-- protection bar under it if `bar`; `onClick` runs when it's pressed.
 	local function equipmentTile(slot: string, layout: { tile: Vector2, body: Vector2, icon: string }, bar: boolean, onClick: () -> ()): ArmorTile
@@ -484,6 +525,12 @@ function Backpack.start()
 		local iconLabel = Icons.image(frame, layout.icon, 20)
 		iconLabel.Position = UDim2.new(0.5, 0, 0.5, -6) -- above the name
 		iconLabel.ZIndex = 5
+		-- The worn piece's model, in place of the icon (see showPiece).
+		local viewport = WeaponIcon.viewport(frame)
+		viewport.Position = UDim2.fromOffset(4, 3)
+		viewport.Size = UDim2.new(1, -8, 1, -19)
+		viewport.ZIndex = 5
+		viewport.Visible = false
 		local name = text(frame, "", 11)
 		name.AnchorPoint = Vector2.new(0.5, 1)
 		name.Position = UDim2.new(0.5, 0, 1, -3)
@@ -523,6 +570,8 @@ function Backpack.start()
 			frame = frame,
 			stroke = frame:FindFirstChildOfClass("UIStroke") :: UIStroke,
 			icon = iconLabel,
+			viewport = viewport,
+			shown = nil,
 			segments = segments,
 			name = name,
 		}
@@ -566,33 +615,67 @@ function Backpack.start()
 
 	-- Updating ---------------------------------------------------------------------------
 
-	local selectedClass: string? = nil
+	local selectedTab: string? = nil -- nil = ALL; else a WeaponSlots Id or the consumable category
+	local selectedFilter: string? = nil -- nil = ALL; else a PrimaryFilters Id
 	local shownPreview: { [Tile]: string } = {}
+	local primaryTab = InventoryConfig.WeaponSlots[1].Id
 
 	local function updateTabs()
 		for _, tab in tabs do
-			local selected = tab.id == selectedClass
+			local selected = tab.id == selectedTab
 			tab.button.TextColor3 = if selected then Color3.new(1, 1, 1) else SOFT_TEXT
 			if selected then
 				underline.Position = UDim2.fromOffset(tab.x - 6, TAB_Y + 33)
 				underline.Size = UDim2.fromOffset(tab.width + 12, 4)
 			end
 		end
+		filterRow.Visible = selectedTab == primaryTab
+		for _, filter in filters do
+			local selected = filter.id == selectedFilter
+			filter.button.BackgroundColor3 = if selected then FILTER_SELECTED else EMPTY_COLOR
+			filter.button.TextColor3 = if selected then Color3.new(1, 1, 1) else SOFT_TEXT
+			filter.stroke.Color = if selected then WORN_BORDER else HudStyle.OUTLINE
+		end
+	end
+
+	-- Whether a weapon shows under the selected tab (and, under Primary, the selected filter).
+	local function weaponShown(name: string): boolean
+		if selectedTab == nil then
+			return true
+		end
+		local slot = InventoryConfig.weaponSlot(name)
+		if not slot or InventoryConfig.WeaponSlots[slot].Id ~= selectedTab then
+			return false
+		end
+		if selectedTab ~= primaryTab or selectedFilter == nil then
+			return true
+		end
+		for _, filter in InventoryConfig.PrimaryFilters do
+			if filter.Id == selectedFilter then
+				return table.find(filter.Weapons, name) ~= nil
+			end
+		end
+		return false
 	end
 
 	updateItems = function()
 		local hotbar = hotbarList()
-		local slots = player:GetAttribute("HotbarSlots")
-		local capacity = if typeof(slots) == "number" then slots else InventoryConfig.HotbarSlots
+		local filled = 0
+		for _, item in hotbar do
+			if item ~= "" then
+				filled += 1
+			end
+		end
+		local potionFree = table.find(hotbar, "", #InventoryConfig.WeaponSlots + 1) ~= nil
 		local ownedValue = player:GetAttribute("OwnedWeapons")
 		local owned = if typeof(ownedValue) == "string" and ownedValue ~= "" then string.split(ownedValue, ",") else {}
 		local shown: { string } = {}
 		for _, info in InventoryConfig.Weapons do
-			if table.find(owned, info.Name) and (selectedClass == nil or selectedClass == info.Class) then
+			if table.find(owned, info.Name) and weaponShown(info.Name) then
 				table.insert(shown, info.Name)
 			end
 		end
-		if selectedClass == nil or selectedClass == ShopConfig.ConsumableCategory then
+		if selectedTab == nil or selectedTab == ShopConfig.ConsumableCategory then
 			for _, item in ShopConfig.Items do
 				if ShopConfig.consumable(item.Id) and consumableCount(item.Id) > 0 then
 					table.insert(shown, item.Id)
@@ -633,19 +716,40 @@ function Backpack.start()
 
 		local info = if hovered then InventoryConfig.weapon(hovered) else nil
 		local consumable = if hovered then ShopConfig.consumable(hovered) else nil
-		local count = `Hotbar {#hotbar}/{capacity}`
+		local count = `Hotbar {filled}/{InventoryConfig.HotbarSlots}`
 		if info then
 			local inHotbar = table.find(hotbar, info.Name) ~= nil
-			local hint = if inHotbar then "click to store" elseif #hotbar >= capacity then "hotbar full" else "click to add to hotbar"
+			local slot = InventoryConfig.weaponSlot(info.Name)
+			local current = if slot then hotbar[slot] else nil
+			local hint = if inHotbar
+				then "click to store"
+				elseif current and current ~= "" then `click to swap with {current}`
+				else `click to add to the {if slot then InventoryConfig.WeaponSlots[slot].Id else ""} slot`
 			local rarity = InventoryConfig.rarity(info.Name)
 			detail.Text = `{info.Name} ({rarity.Id})  ·  {info.Description}  ({hint})`
 		elseif consumable then
 			local inHotbar = table.find(hotbar, consumable.Id) ~= nil
-			local hint = if inHotbar then "click to remove from hotbar" elseif #hotbar >= capacity then "hotbar full" else "click to add to hotbar"
+			local hint = if inHotbar then "click to remove from hotbar" elseif not potionFree then "potion slots full" else "click to add to hotbar"
 			detail.Text = `{consumable.Name} x{consumableCount(consumable.Id)}  ·  {consumable.Description}  ({hint})`
 		else
-			detail.Text = `{count}  ·  click an item to move it between your hotbar and backpack`
+			detail.Text = `{count}  ·  one Primary, Magic and Ranged weapon at a time; click an item to move it between your hotbar and backpack`
 		end
+	end
+
+	-- Shows `preview` (a worn piece's look-only model) in the tile in place of its icon, or the
+	-- icon again if there's none.
+	local function showPiece(tile: ArmorTile, preview: Instance?)
+		local model = if preview and preview:IsA("Model") then preview else nil
+		if model ~= tile.shown then
+			tile.shown = model
+			if model then
+				WeaponIcon.showModel(tile.viewport, model, PIECE_TURN)
+			else
+				tile.viewport:ClearAllChildren()
+			end
+		end
+		tile.viewport.Visible = model ~= nil
+		tile.icon.Visible = model == nil
 	end
 
 	local function updateArmor()
@@ -663,6 +767,9 @@ function Backpack.start()
 			tile.stroke.Color = if set then WORN_BORDER else HudStyle.OUTLINE
 			tile.frame.BackgroundColor3 = if set then Color3.fromRGB(52, 66, 110) elseif owned then TILE_COLOR else EMPTY_COLOR
 			tile.icon.ImageTransparency = if set then 0 else 0.6
+			local previews = ReplicatedStorage:FindFirstChild("ArmorPreviews")
+			local setPreviews = if previews and set then previews:FindFirstChild(worn :: string) else nil
+			showPiece(tile, if setPreviews then setPreviews:FindFirstChild(tile.slot) else nil)
 			tile.name.Text = if set then set.Name elseif owned then "Wear" else tile.slot
 			local rarity = if set then InventoryConfig.rarityById(set.Rarity) else nil
 			tile.name.TextColor3 = if rarity and rarity ~= InventoryConfig.Rarities[1] then rarity.Color else Color3.new(1, 1, 1)
@@ -678,6 +785,8 @@ function Backpack.start()
 		shieldTile.stroke.Color = if shield then WORN_BORDER else HudStyle.OUTLINE
 		shieldTile.frame.BackgroundColor3 = if shield then SHIELD_WORN_BACKGROUND elseif ownsShield then TILE_COLOR else EMPTY_COLOR
 		shieldTile.icon.ImageTransparency = if shield then 0 else 0.6
+		local shieldPreviews = ReplicatedStorage:FindFirstChild("ShieldPreviews")
+		showPiece(shieldTile, if shieldPreviews and shield then shieldPreviews:FindFirstChild(wornShield :: string) else nil)
 		shieldTile.name.Text = if shield then shield.Name elseif ownsShield then "Wear" else "Shield"
 		local shieldRarity = if shield then InventoryConfig.rarityById(shield.Rarity) else nil
 		shieldTile.name.TextColor3 = if shieldRarity and shieldRarity ~= InventoryConfig.Rarities[1] then shieldRarity.Color else Color3.new(1, 1, 1)
@@ -752,7 +861,15 @@ function Backpack.start()
 
 	for _, tab in tabs do
 		tab.button.Activated:Connect(function()
-			selectedClass = tab.id
+			selectedTab = tab.id
+			selectedFilter = nil
+			updateTabs()
+			updateItems()
+		end)
+	end
+	for _, filter in filters do
+		filter.button.Activated:Connect(function()
+			selectedFilter = filter.id
 			updateTabs()
 			updateItems()
 		end)

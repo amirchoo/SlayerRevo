@@ -36,7 +36,7 @@ type Caster = typeof(CombatConfig.Staff)
 local BLOCK = CombatConfig.Blocking
 local ELEMENT_ICON_SIZE = 36
 local ELEMENT_GAP = 8
-local ELEMENT_BAR_BOTTOM = -208 -- above the dash and block meters
+local ELEMENT_BAR_BOTTOM = -192 -- above the mana bar
 -- Aiming with the free hand (AimWithHand): how long after a cast or release the hand stays on
 -- the target, how fast the aim eases in and out (per second), and how far the arm and head
 -- may be turned past the animation (radians).

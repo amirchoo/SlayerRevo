@@ -6,13 +6,16 @@
 -- Weapons the player doesn't own (saved in their data's Weapons) are parked out of reach
 -- instead, until InventoryService.grant gives them one (the starter pick, the Test Chest).
 -- Owned weapons are published as the "OwnedWeapons" attribute (comma-separated).
--- The client asks to move weapons with the InventoryMove remote (name, toHotbar); the server
--- checks the weapon is theirs and the hotbar has room. The hotbar list lives in the
--- player's "Hotbar" attribute (comma-separated, in order) for the backpack UI, and survives
--- respawns.
+-- The hotbar has fixed slots (InventoryConfig): one weapon per category (Primary, Magic,
+-- Ranged), then the potion slots. The client asks to move items with the InventoryMove
+-- remote (name, toHotbar); the server checks the item is theirs. A weapon moved in takes its
+-- category's slot, sending whatever was there to storage; a consumable takes a free potion
+-- slot, if there is one. The slots live in the player's "Hotbar" attribute (comma-separated,
+-- in slot order, empty slots left blank) for the UI, and survive respawns.
 -- The first time it sees each weapon it also puts a display copy (parts only: no scripts,
 -- sounds, or trails) in ReplicatedStorage.WeaponPreviews, so the backpack can show weapons
--- the player has stored, which live where clients can't see them.
+-- the player has stored, which live where clients can't see them. It also keeps a whole copy
+-- (InventoryService.displayCopy) for things like the Training Grounds' armor stands to hold.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -33,11 +36,14 @@ local previews = Instance.new("Folder")
 previews.Name = "WeaponPreviews"
 previews.Parent = ReplicatedStorage
 
+local displayTemplates: { [string]: Tool } = {} -- never parented, so their scripts don't run
+
 -- A look-only copy of `tool` for the backpack's weapon tiles.
 local function addPreview(tool: Tool)
 	if previews:FindFirstChild(tool.Name) then
 		return
 	end
+	displayTemplates[tool.Name] = tool:Clone()
 	local copy = tool:Clone()
 	local preview = Instance.new("Model")
 	preview.Name = tool.Name
@@ -101,10 +107,34 @@ local function ownsHotbarItem(player: Player, name: string): boolean
 	return InventoryService.owns(player, name) or ownsConsumable(player, name)
 end
 
+local POTION_START = #InventoryConfig.WeaponSlots + 1
+
+-- Lays `list` out in hotbar slots (each weapon in its category's slot, consumables in the
+-- potion slots, in order; "" for an empty slot), skipping what `keep` rejects and anything
+-- that doesn't fit. Works on saves from before the slots had categories too (plain lists).
+local function arrange(list: { any }, keep: (name: string) -> boolean): { string }
+	local hotbar = table.create(InventoryConfig.HotbarSlots, "")
+	for _, name in list do
+		if typeof(name) ~= "string" or name == "" or table.find(hotbar, name) or not keep(name) then
+			continue
+		end
+		local slot = InventoryConfig.weaponSlot(name)
+		if not slot and ShopConfig.consumable(name) then
+			slot = table.find(hotbar, "", POTION_START)
+		end
+		if slot and hotbar[slot] == "" then
+			hotbar[slot] = name
+		end
+	end
+	return hotbar
+end
+
 local function hotbarOf(player: Player): { string }
 	local hotbar = hotbars[player]
 	if not hotbar then
-		hotbar = table.clone(InventoryConfig.DefaultHotbar)
+		hotbar = arrange(InventoryConfig.DefaultHotbar, function()
+			return true
+		end)
 		hotbars[player] = hotbar
 	end
 	return hotbar
@@ -124,6 +154,13 @@ local function publish(player: Player)
 		end
 	end
 	player:SetAttribute("OwnedWeapons", table.concat(owned, ","))
+end
+
+-- A fresh copy of weapon `name` (the whole Tool, scripts and all), or nil until the first one
+-- has been handed out (when the first player joins).
+function InventoryService.displayCopy(name: string): Tool?
+	local template = displayTemplates[name]
+	return if template then template:Clone() else nil
 end
 
 -- The player's copy of a weapon, wherever it is right now.
@@ -154,8 +191,25 @@ function InventoryService.give(player: Player, tool: Tool)
 	end
 end
 
--- Moves one of the player's weapons/consumables into their hotbar (if there's room) or out.
--- Returns whether the item ends up where asked.
+-- Puts `tool` away into storage (unequipping it first if it's in hand, so its unequip
+-- cleanup runs).
+local function stash(player: Player, tool: Tool?)
+	if not tool then
+		return
+	end
+	local character = player.Character
+	if character and tool.Parent == character then
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid:UnequipTools()
+		end
+	end
+	tool.Parent = storageOf(player)
+end
+
+-- Moves one of the player's weapons/consumables into their hotbar or out. A weapon moved in
+-- replaces the one in its category's slot (which goes to storage); a consumable needs a free
+-- potion slot. Returns whether the item ends up where asked.
 function InventoryService.move(player: Player, name: string, toHotbar: boolean): boolean
 	local isWeapon = InventoryConfig.weapon(name) ~= nil
 	local isConsumable = ShopConfig.consumable(name) ~= nil
@@ -171,25 +225,21 @@ function InventoryService.move(player: Player, name: string, toHotbar: boolean):
 	local hotbar = hotbarOf(player)
 	local index = table.find(hotbar, name)
 	if toHotbar and not index then
-		if #hotbar >= InventoryConfig.HotbarSlots then
-			return false -- full
+		local slot = if isWeapon then InventoryConfig.weaponSlot(name) else table.find(hotbar, "", POTION_START)
+		if not slot then
+			return false -- no potion slot free (or a weapon with no category)
 		end
-		table.insert(hotbar, name)
+		local replaced = hotbar[slot]
+		if replaced ~= "" and InventoryConfig.weapon(replaced) then
+			stash(player, findTool(player, replaced))
+		end
+		hotbar[slot] = name
 		if tool then
 			tool.Parent = player:FindFirstChildOfClass("Backpack")
 		end
 	elseif not toHotbar and index then
-		table.remove(hotbar, index)
-		local character = player.Character
-		if character and tool and tool.Parent == character then
-			local humanoid = character:FindFirstChildOfClass("Humanoid")
-			if humanoid then
-				humanoid:UnequipTools() -- put it away first, so its unequip cleanup runs
-			end
-		end
-		if tool then
-			tool.Parent = storageOf(player)
-		end
+		hotbar[index] = ""
+		stash(player, tool)
 	end
 	publish(player)
 	return true
@@ -199,12 +249,12 @@ function InventoryService.removeFromHotbar(player: Player, name: string)
 	local hotbar = hotbarOf(player)
 	local index = table.find(hotbar, name)
 	if index then
-		table.remove(hotbar, index)
+		hotbar[index] = ""
 		publish(player)
 	end
 end
 
--- Gives the player weapon `name` to keep (saved), into their hotbar if there's room.
+-- Gives the player weapon `name` to keep (saved), into its hotbar slot if that's empty.
 function InventoryService.grant(player: Player, name: string)
 	local data = DataService.data(player)
 	if not data or not InventoryConfig.weapon(name) or data.Weapons[name] then
@@ -212,8 +262,9 @@ function InventoryService.grant(player: Player, name: string)
 	end
 	data.Weapons[name] = true
 	local hotbar = hotbarOf(player)
-	if not table.find(hotbar, name) and #hotbar < InventoryConfig.HotbarSlots then
-		table.insert(hotbar, name)
+	local slot = InventoryConfig.weaponSlot(name)
+	if slot and hotbar[slot] == "" then
+		hotbar[slot] = name
 	end
 	local tool = parkOf(player):FindFirstChild(name)
 	if tool then
@@ -228,17 +279,14 @@ local function onMove(player: Player, name: unknown, toHotbar: unknown)
 	end
 end
 
--- Restores a saved hotbar (owned weapons only, up to the slot limit; the default if nothing's
+-- Restores a saved hotbar (owned items only, each in its slot; the default if nothing's
 -- saved) and moves the player's weapons to match: owned ones out of the parking folder,
 -- unowned ones into it.
 local function applySaved(player: Player, saved: { string }?)
 	local list = if typeof(saved) == "table" then saved else InventoryConfig.DefaultHotbar
-	local hotbar: { string } = {}
-	for _, name in list do
-		if typeof(name) == "string" and ownsHotbarItem(player, name) and not table.find(hotbar, name) and #hotbar < InventoryConfig.HotbarSlots then
-			table.insert(hotbar, name)
-		end
-	end
+	local hotbar = arrange(list, function(name)
+		return ownsHotbarItem(player, name)
+	end)
 	hotbars[player] = hotbar
 	local backpack = player:FindFirstChildOfClass("Backpack")
 	for _, info in InventoryConfig.Weapons do

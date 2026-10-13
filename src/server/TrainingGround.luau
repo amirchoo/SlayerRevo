@@ -4,6 +4,8 @@
 -- East side: a sparring ring with an Orc behind a low wall (for testing
 -- dodging); players can jump the wall, enemies never jump. A grid on the floor marks every
 -- 10 studs for judging ranges. Teleport pads link the arena and the hub plaza.
+-- A button by the ring's wall summons extra Orcs into the ring (up to EXTRA_ORC_LIMIT at once);
+-- unlike the sparring Orc, they don't respawn once beaten.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -28,6 +30,11 @@ local SPARRING_SPAWNS = { -- what spars where: X/Z in the ring
 	-- The Lesser Demon is left out for now; it sparred at (CENTER.X + 46, CENTER.Z + 12).
 }
 
+local SUMMON_BUTTON = Vector2.new(4, 8) -- X/Z offset from the center: just west of the wall
+local EXTRA_ORC_LIMIT = 8 -- summoned Orcs alive at once
+local SUMMON_COOLDOWN = 0.5 -- seconds between summons (per server)
+local SUMMON_AREA = { minX = DIVIDER_X + 12, maxX = 52, minZ = -50, maxZ = 50 } -- offsets from the center, in the ring
+
 local GRID_SPACING = 10
 local PAD_COOLDOWN = 2
 local HUB_PAD = Vector2.new(-14, 16) -- X/Z in the hub plaza, beside the spawn
@@ -39,6 +46,7 @@ local COLORS = {
 	Post = Color3.fromRGB(105, 70, 45),
 	Sack = Color3.fromRGB(196, 170, 120),
 	Pad = Color3.fromRGB(90, 170, 255),
+	Button = Color3.fromRGB(215, 60, 50),
 	Glow = Color3.fromRGB(255, 200, 120),
 	Text = Color3.fromRGB(250, 235, 200),
 }
@@ -182,6 +190,70 @@ local function hubGroundAt(x: number, z: number): number
 	return if result then result.Position.Y else 0
 end
 
+-- A red button on a stone post; pressing it drops a non-respawning Orc somewhere in the ring.
+local function buildSummonButton()
+	local base = CENTER + Vector3.new(SUMMON_BUTTON.X, 0, SUMMON_BUTTON.Y)
+	local facing = CFrame.lookAt(base, base - Vector3.xAxis) -- toward the dummies' side
+	part({ Name = "SummonPost", Size = Vector3.new(1.6, 3, 1.6), CFrame = facing * CFrame.new(0, 1.5, 0), Color = COLORS.Wall, Material = Enum.Material.Cobblestone })
+	local button = part({
+		Name = "SummonButton",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.5, 1.2, 1.2),
+		CFrame = facing * CFrame.new(0, 3.25, 0) * CFrame.Angles(0, 0, math.rad(90)), -- a cylinder's axis is X: point it up
+		Color = COLORS.Button,
+		Material = Enum.Material.Neon,
+	})
+	local label = addLabel(button, "", 2.5)
+
+	local summoned: { Model } = {}
+	local loading = 0 -- summons still loading their model (spawnOnce yields)
+	local function alive(): number
+		for index = #summoned, 1, -1 do
+			local orc = summoned[index]
+			if not orc.Parent or not HealthService.isAlive(orc) then
+				table.remove(summoned, index)
+			end
+		end
+		return #summoned
+	end
+	local function updateLabel()
+		label.Text = `Summon Orc ({alive()}/{EXTRA_ORC_LIMIT})`
+	end
+	updateLabel()
+	HealthService.Died:Connect(function(model: Model)
+		if table.find(summoned, model) then
+			updateLabel()
+		end
+	end)
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Summon Orc"
+	prompt.ObjectText = "Doesn't respawn"
+	prompt.MaxActivationDistance = 8
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = button
+	local random = Random.new()
+	local lastSummon = 0
+	prompt.Triggered:Connect(function()
+		local now = os.clock()
+		if now - lastSummon < SUMMON_COOLDOWN or alive() + loading >= EXTRA_ORC_LIMIT then
+			return
+		end
+		lastSummon = now
+		loading += 1
+		local at = Vector2.new(
+			CENTER.X + random:NextNumber(SUMMON_AREA.minX, SUMMON_AREA.maxX),
+			CENTER.Z + random:NextNumber(SUMMON_AREA.minZ, SUMMON_AREA.maxZ)
+		)
+		local orc = EnemyService.spawnOnce(at, EnemyConfig.Orc)
+		loading -= 1
+		if orc then
+			table.insert(summoned, orc)
+		end
+		updateLabel()
+	end)
+end
+
 local function buildPads()
 	local hubPad = Vector3.new(HUB_PAD.X, hubGroundAt(HUB_PAD.X, HUB_PAD.Y), HUB_PAD.Y)
 	local arenaPad = CENTER + Vector3.new(-40, 0, 45)
@@ -201,6 +273,7 @@ function TrainingGround.build()
 		buildDummy(CENTER + Vector3.new(x, 0, DUMMY_ROW_Z))
 	end
 	buildPads()
+	buildSummonButton()
 	folder.Parent = workspace
 
 	-- Dummies never stay dead: refill their health shortly after they "die".

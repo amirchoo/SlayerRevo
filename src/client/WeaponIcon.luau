@@ -2,7 +2,8 @@
 -- Weapon icons: a weapon's model shown in a ViewportFrame, turned so its length runs
 -- diagonally up and right (held by its grip, like an item icon) and framed to fill it.
 -- The models are the look-only copies the server publishes in ReplicatedStorage.WeaponPreviews
--- (see InventoryService), so stored weapons can be shown too.
+-- (see InventoryService), so stored weapons can be shown too. showModel frames any other
+-- model the same way (the backpack's armor and shield tiles).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -27,22 +28,8 @@ function WeaponIcon.viewport(parent: Instance): ViewportFrame
 	return viewport
 end
 
--- Shows weapon `name` in `viewport` (clearing what was there); returns false if its look
--- hasn't arrived yet (Previews.ChildAdded fires when it does).
-function WeaponIcon.show(viewport: ViewportFrame, name: string?): boolean
-	viewport:ClearAllChildren()
-	local source = name and previews:FindFirstChild(name)
-	if not source or not source:IsA("Model") then
-		return false
-	end
-	local model = source:Clone()
-	local grip = model:FindFirstChild("GripPart")
-	if grip and grip:IsA("BasePart") then
-		local relative = grip.CFrame:ToObjectSpace(model:GetPivot())
-		-- Grip +Z (toward the tip) up and right; its flat side toward the camera.
-		local diagonal = CFrame.fromMatrix(Vector3.zero, Vector3.zAxis, Vector3.new(0.707, -0.707, 0))
-		model:PivotTo(diagonal * relative)
-	end
+-- Puts `model` in `viewport`, with a camera (looking along -Z) framing it to fill the view.
+local function frame(viewport: ViewportFrame, model: Model)
 	local min, max = Vector3.one * math.huge, -Vector3.one * math.huge
 	for _, part in model:GetDescendants() do
 		if part:IsA("BasePart") and part.Transparency < 1 then
@@ -63,7 +50,35 @@ function WeaponIcon.show(viewport: ViewportFrame, name: string?): boolean
 		local distance = extent / (2 * math.tan(math.rad(camera.FieldOfView / 2))) * 1.15 + (max.Z - min.Z) / 2
 		camera.CFrame = CFrame.lookAt(center + Vector3.new(0, 0, distance), center)
 	end
+end
+
+-- Shows weapon `name` in `viewport` (clearing what was there); returns false if its look
+-- hasn't arrived yet (Previews.ChildAdded fires when it does).
+function WeaponIcon.show(viewport: ViewportFrame, name: string?): boolean
+	viewport:ClearAllChildren()
+	local source = name and previews:FindFirstChild(name)
+	if not source or not source:IsA("Model") then
+		return false
+	end
+	local model = source:Clone()
+	local grip = model:FindFirstChild("GripPart")
+	if grip and grip:IsA("BasePart") then
+		local relative = grip.CFrame:ToObjectSpace(model:GetPivot())
+		-- Grip +Z (toward the tip) up and right; its flat side toward the camera.
+		local diagonal = CFrame.fromMatrix(Vector3.zero, Vector3.zAxis, Vector3.new(0.707, -0.707, 0))
+		model:PivotTo(diagonal * relative)
+	end
+	frame(viewport, model)
 	return true
+end
+
+-- Shows a copy of `source` in `viewport` (clearing what was there), turned by `turn` (the
+-- camera sees the turned model's +Z side), framed to fill it.
+function WeaponIcon.showModel(viewport: ViewportFrame, source: Model, turn: CFrame)
+	viewport:ClearAllChildren()
+	local model = source:Clone()
+	model:PivotTo(turn * model:GetPivot())
+	frame(viewport, model)
 end
 
 return WeaponIcon

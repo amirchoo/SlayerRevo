@@ -27,7 +27,8 @@ export type EnemyType = {
 }
 
 -- Enemies that live in packs: Count packs of Min..Max members, each with a camp somewhere in
--- Area (X/Z). A pack's behaviour (EnemyService):
+-- Area (X/Z), but never within SafeMargin studs of the safe zone (camps and roaming stay that
+-- far out from the town's edge). A pack's behaviour (EnemyService):
 --   Roam: the pack wanders together around its camp (within RoamRadius), walking at
 --     RoamSpeed (of WalkSpeed), pausing RoamPause seconds between moves.
 --   Aggro: when any member sees a player within AggroRange (outside the safe zone), or is
@@ -43,6 +44,7 @@ export type Pack = {
 	Min: number,
 	Max: number,
 	Area: { Min: Vector2, Max: Vector2 },
+	SafeMargin: number, -- studs kept clear around the safe zone
 	CampSpacing: number, -- studs between camps
 	RoamRadius: number,
 	RoamSpeed: number,
@@ -79,11 +81,13 @@ EnemyConfig.Orc = {
 	Coins = 5,
 	SpawnPoints = {}, -- orcs live in packs (below); the Training Grounds places its own
 	Pack = {
-		Count = 6,
+		Count = 14, -- spread over the whole map (the hunting grounds alone had 6)
 		Min = 4,
 		Max = 6,
-		-- The hunting grounds (WorldConfig.HuntingGrounds), kept off its edges.
-		Area = { Min = Vector2.new(-480, -780), Max = Vector2.new(480, -280) },
+		-- The whole map (forest and hunting grounds), short of the mountains along its edge
+		-- (WorldConfig.Mountains.Start); the hub is kept clear by SafeMargin.
+		Area = { Min = Vector2.new(-820, -820), Max = Vector2.new(820, 820) },
+		SafeMargin = 60,
 		CampSpacing = 150,
 		RoamRadius = 45,
 		RoamSpeed = 0.45,

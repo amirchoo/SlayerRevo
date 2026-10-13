@@ -46,6 +46,8 @@ local LOOKS: { [string]: Look } = {
 	GrimoireFaith = { style = "Pierce", color = Color3.fromRGB(255, 245, 190), size = 0.8 },
 	GrimoireNecromancy = { style = "Slash", color = Color3.fromRGB(130, 220, 120), size = 1 },
 	Bow = { style = "Pierce", color = Color3.fromRGB(230, 220, 200), size = 0.7 },
+	Crossbow = { style = "Pierce", color = Color3.fromRGB(215, 220, 230), size = 0.9 },
+	Blunderbuss = { style = "Blunt", color = Color3.fromRGB(255, 200, 120), size = 0.5 }, -- per pellet
 	DemonClaw = { style = "Slash", color = Color3.fromRGB(255, 70, 60), size = 0.9 }, -- enemies hitting players
 	Parry = { style = "Blunt", color = Color3.fromRGB(255, 235, 150), size = 1.3 }, -- a parried enemy (see BlockService)
 }

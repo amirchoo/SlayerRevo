@@ -11,6 +11,7 @@
 -- assets/armor/README.md), stretched to the wearer's body parts. Otherwise a
 -- placeholder built from plain parts is welded over the R15 body parts, sized to each part
 -- so it fits any avatar. The stand shows the set on a wooden R15 mannequin.
+-- Look-only copies of every piece go in ReplicatedStorage.ArmorPreviews, for the backpack.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -181,38 +182,14 @@ local function accessoriesFor(setId: string, slot: string): { Accessory }?
 	return if #list > 0 then list else nil
 end
 
--- Stretches a cloned armor Accessory to fit `model`'s body. Its Handle's "FitSize" attribute is
--- the size of the body part it was fitted on (tools/make_armor_accessory.lua sets it); every
--- part of the piece is scaled, and moved, by how much bigger or smaller the wearer's body part
--- is along each of its axes. Pieces without FitSize are worn as they are.
-local function fitToBody(accessory: Accessory, model: Model)
-	local handle = accessory:FindFirstChild("Handle")
-	if not (handle and handle:IsA("BasePart")) then
-		return
-	end
-	local fitSize = handle:GetAttribute("FitSize")
-	local handleAttachment: Attachment? = nil
-	for _, child in handle:GetChildren() do
-		if child:IsA("Attachment") and string.sub(child.Name, 1, 5) == "Armor" then
-			handleAttachment = child
-		end
-	end
-	if typeof(fitSize) ~= "Vector3" or not handleAttachment then
-		return
-	end
-	local body = model:FindFirstChild(string.sub(handleAttachment.Name, 6))
-	if not (body and body:IsA("BasePart")) then
-		return
-	end
-	local ratio = body.Size / fitSize
-	if (ratio - Vector3.one).Magnitude < 0.01 then
-		return
-	end
-
-	-- Work in the body part's space: the handle attachment lines the handle up with its center.
+-- Stretches every part of an armor Accessory by `ratio` along its body part's axes, away from
+-- `origin` (a point in the body part's space, which stays put). `handleAttachment` is the
+-- Handle's "Armor<BodyPart>" attachment, which lines the handle up with the body part's center.
+local function reshape(accessory: Accessory, handle: BasePart, handleAttachment: Attachment, ratio: Vector3, origin: Vector3)
+	-- Work in the body part's space.
 	local handleInBody = handleAttachment.CFrame:Inverse()
 	local function scaled(cframe: CFrame): CFrame
-		return CFrame.new(cframe.Position * ratio) * cframe.Rotation
+		return CFrame.new(origin + (cframe.Position - origin) * ratio) * cframe.Rotation
 	end
 	-- How much a part stretches along each of its own axes, from the body's per-axis ratio.
 	local function sizeFor(size: Vector3, rotation: CFrame): Vector3
@@ -243,6 +220,37 @@ local function fitToBody(accessory: Accessory, model: Model)
 			weld.Enabled = true
 		end
 	end
+end
+
+-- Stretches a cloned armor Accessory to fit `model`'s body. Its Handle's "FitSize" attribute is
+-- the size of the body part it was fitted on (tools/make_armor_accessory.lua sets it); every
+-- part of the piece is scaled, and moved, by how much bigger or smaller the wearer's body part
+-- is along each of its axes. Pieces without FitSize are worn as they are.
+local function fitToBody(accessory: Accessory, model: Model)
+	local handle = accessory:FindFirstChild("Handle")
+	if not (handle and handle:IsA("BasePart")) then
+		return
+	end
+	local fitSize = handle:GetAttribute("FitSize")
+	local handleAttachment: Attachment? = nil
+	for _, child in handle:GetChildren() do
+		if child:IsA("Attachment") and string.sub(child.Name, 1, 5) == "Armor" then
+			handleAttachment = child
+		end
+	end
+	if typeof(fitSize) ~= "Vector3" or not handleAttachment then
+		return
+	end
+	local body = model:FindFirstChild(string.sub(handleAttachment.Name, 6))
+	if not (body and body:IsA("BasePart")) then
+		return
+	end
+	local ratio = body.Size / fitSize
+	if (ratio - Vector3.one).Magnitude < 0.01 then
+		return
+	end
+
+	reshape(accessory, handle, handleAttachment, ratio, Vector3.zero)
 end
 
 -- Hides the avatar's own hats, hair, and face accessories like glasses (they'd poke through a
@@ -321,6 +329,39 @@ local function restOffset(model: Model, part: BasePart, other: BasePart): CFrame
 		end
 	end
 	return nil
+end
+
+-- Leg pieces are made for a taller character's proportions: on the blocky R15 leg the
+-- leggings stop a little short of the knee and most boots end partway up the shin, so the
+-- leg showed between them. So when worn, leggings are stretched down (their top stays put) to
+-- the bottom of the thigh, and boots up (their bottom stays put) to the top of the shin, the
+-- knee. +1 = the piece's top must reach its body part's top, -1 = its bottom the bottom.
+local REACH: { [string]: number } = { Leggings = -1, Boots = 1 }
+
+local function stretchToReach(accessory: Accessory, model: Model, slot: string)
+	local direction = REACH[slot]
+	local handle = accessory:FindFirstChild("Handle")
+	if not direction or not (handle and handle:IsA("BasePart")) then
+		return
+	end
+	local attachment: Attachment? = nil
+	for _, child in handle:GetChildren() do
+		if child:IsA("Attachment") and string.sub(child.Name, 1, 5) == "Armor" then
+			attachment = child
+		end
+	end
+	local body = attachment and model:FindFirstChild(string.sub(attachment.Name, 6))
+	if not attachment or not (body and body:IsA("BasePart")) then
+		return
+	end
+	local low, high = boxIn(attachment.CFrame:Inverse(), handle.Size)
+	local target = direction * body.Size.Y / 2
+	local anchor = if direction > 0 then low.Y else high.Y -- the end that stays put
+	local edge = if direction > 0 then high.Y else low.Y -- the end that has to reach
+	if (edge - target) * direction >= 0 or math.abs(edge - anchor) < 0.01 then
+		return -- already reaches
+	end
+	reshape(accessory, handle, attachment, Vector3.new(1, (target - anchor) / (edge - anchor), 1), Vector3.new(0, anchor, 0))
 end
 
 -- The body parts `accessory` wraps (see above).
@@ -423,6 +464,7 @@ local function dressSlotLook(model: Model, slot: string, setId: string?)
 				end
 			end
 			fitToBody(accessory, model)
+			stretchToReach(accessory, model, slot)
 			humanoid:AddAccessory(accessory)
 		end
 		return
@@ -578,35 +620,11 @@ local function anchoredPart(name: string, size: Vector3, cframe: CFrame, color: 
 	return part
 end
 
-local function buildStand()
-	local stand = ArmorConfig.Stand
-	local set = ArmorConfig.Sets[stand.Set]
-	assert(set, `Unknown armor set {stand.Set} for the armor stand`)
-
-	-- Find the ground under the stand.
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Include
-	local include: { Instance } = { workspace.Terrain }
-	for _, name in { "Baseplate", "Town" } do
-		local ground = workspace:FindFirstChild(name)
-		if ground then
-			table.insert(include, ground)
-		end
-	end
-	params.FilterDescendantsInstances = include
-	local top = Vector3.new(stand.Position.X, 500, stand.Position.Y)
-	local hit = workspace:Raycast(top, Vector3.new(0, -1000, 0), params)
-	local base = Vector3.new(stand.Position.X, if hit then hit.Position.Y else 0, stand.Position.Y)
-	local facing = Vector3.new(-base.X, 0, -base.Z) -- toward the town center
-	local origin = if facing.Magnitude > 0.1 then CFrame.lookAt(base, base + facing) else CFrame.new(base)
-
-	local standModel = Instance.new("Model")
-	standModel.Name = "ArmorStand"
+-- A wooden R15 mannequin (a real rig, so accessories can attach to it), its root pinned in
+-- place with its feet at `feet`, wearing every piece of `setId` (if given). Falls back to
+-- plain parts in R15 proportions if a rig can't be made. Yields while Roblox makes the rig.
+function ArmorService.mannequin(feet: CFrame, setId: string?): Model
 	local wood = Color3.fromRGB(150, 110, 70)
-	anchoredPart("Pedestal", Vector3.new(4, 0.5, 3), origin * CFrame.new(0, 0.25, 0), Color3.fromRGB(100, 100, 105), Enum.Material.Slate, standModel)
-
-	-- The mannequin: a real R15 rig (so accessories can attach to it), painted as wood and
-	-- pinned in place. Falls back to plain parts in R15 proportions if one can't be made.
 	local mannequin: Model
 	local ok, rig = pcall(function()
 		return Players:CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15)
@@ -634,21 +652,105 @@ local function buildStand()
 		if root then
 			root.Anchored = true
 			local height = root.Size.Y / 2 + (if humanoid then humanoid.HipHeight else 2)
-			mannequin:PivotTo(origin * CFrame.new(0, 0.5 + height, 0))
+			mannequin:PivotTo(feet * CFrame.new(0, height, 0))
 		end
 	else
 		warn("ArmorService: couldn't make an R15 mannequin, using a plain one:", rig)
 		mannequin = Instance.new("Model")
 		mannequin.Name = "Mannequin"
 		for _, piece in MANNEQUIN do
-			anchoredPart(piece.name, piece.size, origin * CFrame.new(piece.position), wood, Enum.Material.Wood, mannequin)
+			anchoredPart(piece.name, piece.size, feet * CFrame.new(piece.position - Vector3.new(0, 0.5, 0)), wood, Enum.Material.Wood, mannequin)
 		end
 	end
-	mannequin.Parent = standModel
 	for _, slot in ArmorConfig.Slots do
-		dressSlot(mannequin, slot, stand.Set)
+		dressSlot(mannequin, slot, setId)
 	end
+	return mannequin
+end
+
+local function buildStand()
+	local stand = ArmorConfig.Stand
+	assert(ArmorConfig.Sets[stand.Set], `Unknown armor set {stand.Set} for the armor stand`)
+
+	-- Find the ground under the stand.
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	local include: { Instance } = { workspace.Terrain }
+	for _, name in { "Baseplate", "Town" } do
+		local ground = workspace:FindFirstChild(name)
+		if ground then
+			table.insert(include, ground)
+		end
+	end
+	params.FilterDescendantsInstances = include
+	local top = Vector3.new(stand.Position.X, 500, stand.Position.Y)
+	local hit = workspace:Raycast(top, Vector3.new(0, -1000, 0), params)
+	local base = Vector3.new(stand.Position.X, if hit then hit.Position.Y else 0, stand.Position.Y)
+	local facing = Vector3.new(-base.X, 0, -base.Z) -- toward the town center
+	local origin = if facing.Magnitude > 0.1 then CFrame.lookAt(base, base + facing) else CFrame.new(base)
+
+	local standModel = Instance.new("Model")
+	standModel.Name = "ArmorStand"
+	anchoredPart("Pedestal", Vector3.new(4, 0.5, 3), origin * CFrame.new(0, 0.25, 0), Color3.fromRGB(100, 100, 105), Enum.Material.Slate, standModel)
+	ArmorService.mannequin(origin * CFrame.new(0, 0.5, 0), stand.Set).Parent = standModel
 	standModel.Parent = workspace
+end
+
+-- Armor previews -----------------------------------------------------------------------------
+
+-- Look-only copies of every set's pieces in ReplicatedStorage.ArmorPreviews.<SetId>.<Slot>
+-- (anchored parts, no joints), so the backpack can show them: the models live in
+-- ServerStorage, where clients can't see them. A pair (boots, both arms) keeps both halves
+-- where they sit on the body. Pieces with no model are the placeholder, built on a plain body.
+local function publishPreviews()
+	local previews = Instance.new("Folder")
+	previews.Name = "ArmorPreviews"
+	local body: Body = {}
+	for _, piece in MANNEQUIN do
+		local part = Instance.new("Part")
+		part.Name = piece.name
+		part.Size = piece.size
+		part.CFrame = CFrame.new(piece.position)
+		body[piece.name] = part
+	end
+	for setId, set in ArmorConfig.Sets do
+		local setFolder = Instance.new("Folder")
+		setFolder.Name = setId
+		for _, slot in ArmorConfig.Slots do
+			if not set.Pieces[slot] then
+				continue
+			end
+			local preview = Instance.new("Model")
+			preview.Name = slot
+			local accessories = accessoriesFor(setId, slot)
+			if accessories then
+				for _, template in accessories do
+					local copy = template:Clone()
+					for _, descendant in copy:GetDescendants() do
+						if descendant:IsA("BasePart") then
+							descendant.Parent = preview
+						end
+					end
+					copy:Destroy()
+				end
+			else
+				BUILDERS[slot](preview, body, set)
+			end
+			for _, descendant in preview:GetDescendants() do
+				if descendant:IsA("JointInstance") or descendant:IsA("WeldConstraint") or descendant:IsA("Attachment") or descendant:IsA("LuaSourceContainer") then
+					descendant:Destroy()
+				elseif descendant:IsA("BasePart") then
+					descendant.Anchored = true
+				end
+			end
+			preview.Parent = setFolder
+		end
+		setFolder.Parent = previews
+	end
+	for _, part in body do
+		part:Destroy()
+	end
+	previews.Parent = ReplicatedStorage
 end
 
 function ArmorService.start()
@@ -702,6 +804,7 @@ function ArmorService.start()
 
 	RemoteGuard.connect(equipRemote, onEquip)
 	HealthService.addDamageFilter(armorFilter)
+	publishPreviews()
 	task.spawn(buildStand) -- making the R15 mannequin waits on Roblox, so don't hold up the rest
 end
 

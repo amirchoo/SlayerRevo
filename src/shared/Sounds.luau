@@ -49,6 +49,8 @@ local SPECS: { [string]: SoundSpec } = {
 	GrimoireFaithHit = { Id = TICK, Pitch = 1.4, Volume = 0.7 },
 	GrimoireNecromancyHit = { Id = THUD, Pitch = 0.9, Volume = 0.8 },
 	BowHit = { Id = THUD, Pitch = 2.3, Volume = 0.6 },
+	CrossbowHit = { Id = THUD, Pitch = 1.8, Volume = 0.75 },
+	BlunderbussHit = { Id = THUD, Pitch = 2.1, Volume = 0.35 }, -- per pellet, so quieter
 
 	-- Other feedback.
 	Block = { Id = THUD, Pitch = 1.8, Volume = 0.8 }, -- a blocked hit

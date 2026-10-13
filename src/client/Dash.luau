@@ -65,8 +65,8 @@ local function createMeter()
 	-- HealthBar); the block meter takes the right half.
 	local row = Instance.new("Frame")
 	row.Name = "Meter"
-	row.AnchorPoint = Vector2.new(0, 1)
-	row.Position = UDim2.new(0.5, -210, 1, -158)
+	row.AnchorPoint = Vector2.new(1, 1)
+	row.Position = UDim2.new(0.5, -232, 1, -22) -- left of the hotbar
 	row.Size = UDim2.fromOffset(METER_WIDTH, BADGE_SIZE)
 	row.BackgroundTransparency = 1
 	row.Parent = HudStyle.holder(gui, Vector2.new(0.5, 1))
