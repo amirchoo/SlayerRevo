@@ -1,5 +1,5 @@
 --!strict
--- Input and visuals for click-combo weapons (sword, mace, spear), one controller per weapon config.
+-- Input and visuals for click-combo weapons (sword, mace, spear, dual blade, scythe...), one controller per weapon config.
 -- While equipped the idle animation loops. Left-click steps through the combo: each click
 -- plays the next swing, and pausing too long (or finishing the last swing) starts it over.
 -- The server decides what's hit and how hard (see WeaponService). Holding right-click raises
@@ -15,6 +15,12 @@
 --   Flurry: draws back like a thrust (aimed the same way); release plants you in a run of
 --   rapid stabs, more for a longer charge.
 --   For all three, the server times the charge and attacks by itself at MaxHold.
+--   Rush: gathers (nearly planted) for ChargeTime, then surges wherever we walk (straight on
+--   if we aren't), spinning, until release. The server runs its hits and can end it early
+--   (time limit, out of stamina, weapon switch, death); letting go while gathering calls it off.
+--   Reap: one press plays the whole move, aimed where the camera looks: reach out and hook,
+--   yank back, cut. Letting go doesn't stop it; the server ends it (see WeaponService).
+-- Dual-wielded weapons (DualWield) hold a second blade in the other hand; both trail.
 -- The server's "HeavyAttacking" attribute going false ends the visuals here too.
 
 local Players = game:GetService("Players")
@@ -38,6 +44,8 @@ type SpinHeavy = CombatConfig.SpinHeavy
 type QuakeHeavy = CombatConfig.QuakeHeavy
 type ThrustHeavy = CombatConfig.ThrustHeavy
 type FlurryHeavy = CombatConfig.FlurryHeavy
+type RushHeavy = CombatConfig.RushHeavy
+type ReapHeavy = CombatConfig.ReapHeavy
 -- How a heavy ends: we let go ("release"), the server ended it ("server"), or it was
 -- called off (weapon switch, or the server refused it) ("cancel").
 type StopHow = "release" | "server" | "cancel"
@@ -66,6 +74,15 @@ local blockRemote = remotes:WaitForChild("SwordBlock") :: RemoteEvent
 
 local ComboWeaponClient = {}
 
+-- Turns the swing trails on or off (both blades' for a dual-wielded weapon).
+local function setTrails(tool: Tool, enabled: boolean)
+	for _, descendant in tool:GetDescendants() do
+		if descendant.Name == "SwingTrail" and descendant:IsA("Trail") then
+			descendant.Enabled = enabled
+		end
+	end
+end
+
 local function makeAnimation(id: string): Animation?
 	if id == "" then
 		return nil
@@ -79,8 +96,8 @@ end
 type Tracks = {
 	idle: AnimationTrack?,
 	guard: AnimationTrack?,
-	heavy: AnimationTrack?, -- spin loop, or a quake's or thrust's wind-up
-	heavySlam: AnimationTrack?, -- a quake's smash, or a thrust's lunge
+	heavy: AnimationTrack?, -- spin loop, a quake's or thrust's wind-up, or the whole reap
+	heavySlam: AnimationTrack?, -- a quake's smash, a thrust's lunge, a flurry's stabs, a rush's spin
 	swings: { AnimationTrack },
 }
 
@@ -91,6 +108,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 	local combo = config.Combo
 	local weldName = `{config.ToolName}Grip`
 	local localWeldName = `Local{weldName}`
+	local offhandWeldName = `{config.ToolName}OffhandGrip`
 
 	local idleAnimation = makeAnimation(config.IdleAnimation)
 	local guardAnimation = makeAnimation(config.Block.Animation)
@@ -107,6 +125,12 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		local stabs = heavy :: FlurryHeavy
 		heavyAnimation = makeAnimation(stabs.WindUpAnimation)
 		heavySlamAnimation = makeAnimation(stabs.FlurryAnimation)
+	elseif heavy and heavy.Kind == "Rush" then
+		local rush = heavy :: RushHeavy
+		heavyAnimation = makeAnimation(rush.WindUpAnimation)
+		heavySlamAnimation = makeAnimation(rush.RushAnimation)
+	elseif heavy and heavy.Kind == "Reap" then
+		heavyAnimation = makeAnimation((heavy :: ReapHeavy).Animation)
 	elseif heavy then
 		local lunge = heavy :: ThrustHeavy
 		heavyAnimation = makeAnimation(lunge.WindUpAnimation)
@@ -160,7 +184,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		if heavySlamAnimation then
 			local slam = animator:LoadAnimation(heavySlamAnimation)
 			slam.Priority = Enum.AnimationPriority.Action
-			slam.Looped = heavy ~= nil and heavy.Kind == "Flurry" -- the flurry's stabs loop until it ends
+			slam.Looped = heavy ~= nil and (heavy.Kind == "Flurry" or heavy.Kind == "Rush") -- loops until it ends
 			tracks.heavySlam = slam
 		end
 		tracksByHumanoid[humanoid] = tracks
@@ -180,10 +204,17 @@ function ComboWeaponClient.new(config: ComboWeapon)
 
 	-- Set while blocking; call it to lower the guard.
 	local stopBlock: (() -> ())? = nil
+	local function equippedTool(): Tool?
+		local character = player.Character
+		local tool = character and character:FindFirstChildOfClass("Tool")
+		return if tool and tool.Name == config.ToolName then tool else nil
+	end
+
 	-- Moves always end at the character's normal speed (never a speed saved mid-move: a heavy
-	-- started while the last one still had us planted would save 0 and leave us stuck).
+	-- started while the last one still had us planted would save 0 and leave us stuck): the
+	-- weapon's own WalkSpeed while it's still in hand (heavy weapons), else the default.
 	local function normalSpeed(): number
-		return StarterPlayer.CharacterWalkSpeed
+		return if config.WalkSpeed and equippedTool() then config.WalkSpeed else StarterPlayer.CharacterWalkSpeed
 	end
 	-- Set during a heavy; call it to end it (see StopHow).
 	local stopHeavy: ((how: StopHow) -> ())? = nil
@@ -225,17 +256,14 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			sound:Play()
 		end
 
-		local trail = tool:FindFirstChild("SwingTrail", true)
-		if trail and trail:IsA("Trail") then
-			swingToken += 1
-			local token = swingToken
-			trail.Enabled = true
-			task.delay(combo[step].HitDelay + TRAIL_AFTER_HIT, function()
-				if token == swingToken then
-					trail.Enabled = false
-				end
-			end)
-		end
+		swingToken += 1
+		local token = swingToken
+		setTrails(tool, true)
+		task.delay(combo[step].HitDelay + TRAIL_AFTER_HIT, function()
+			if token == swingToken then
+				setTrails(tool, false)
+			end
+		end)
 	end
 
 	local function onActivated(tool: Tool)
@@ -297,10 +325,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		blockRemote:FireServer(true)
 		comboStep = 0
 		stopSwings(0.1)
-		local trail = tool:FindFirstChild("SwingTrail", true)
-		if trail and trail:IsA("Trail") then
-			trail.Enabled = false
-		end
+		setTrails(tool, false)
 
 		local tracks = currentTracks()
 		local guardTrack = tracks and tracks.guard
@@ -327,12 +352,6 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			end
 			humanoid.WalkSpeed = normalSpeed()
 		end
-	end
-
-	local function equippedTool(): Tool?
-		local character = player.Character
-		local tool = character and character:FindFirstChildOfClass("Tool")
-		return if tool and tool.Name == config.ToolName then tool else nil
 	end
 
 	-- Ends the heavy when the server says it's over, and calls it off if the server never
@@ -369,10 +388,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		if spinTrack then
 			spinTrack:Play(0.15)
 		end
-		local trail = tool:FindFirstChild("SwingTrail", true)
-		if trail and trail:IsA("Trail") then
-			trail.Enabled = true
-		end
+		setTrails(tool, true)
 		humanoid.WalkSpeed = spin.WalkSpeed
 		setGripFlipped(tool, spin.FlipGrip == true)
 
@@ -395,9 +411,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 				spinTrack:Stop(0.2)
 			end
 			setGripFlipped(tool, false)
-			if trail and trail:IsA("Trail") then
-				trail.Enabled = false
-			end
+			setTrails(tool, false)
 			humanoid.WalkSpeed = normalSpeed()
 		end
 		stopHeavy = stop
@@ -582,14 +596,9 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			if sound and sound:IsA("Sound") then
 				sound:Play()
 			end
-			local trail = tool:FindFirstChild("SwingTrail", true)
-			if trail and trail:IsA("Trail") then
-				trail.Enabled = true
-			end
+			setTrails(tool, true)
 			task.delay(attackTime + TRAIL_AFTER_HIT, function()
-				if trail and trail:IsA("Trail") then
-					trail.Enabled = false
-				end
+				setTrails(tool, false)
 			end)
 			task.delay(attackTime + PLANTED_AFTER_HIT, function()
 				-- A heavy or block started since sets its own speed (and restores it after).
@@ -603,6 +612,178 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		attributeConnection = watchServer(stop)
 	end
 
+	-- Rush: gather while held, then surge wherever we walk, spinning, until release.
+	local function startRush(tool: Tool, rush: RushHeavy)
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if not character or not humanoid or not root or not root:IsA("BasePart") then
+			return
+		end
+
+		heavyRemote:FireServer(true)
+		comboStep = 0
+		stopSwings(0.1)
+		local tracks = currentTracks()
+		local windUp = tracks and tracks.heavy
+		local rushTrack = tracks and tracks.heavySlam
+		if windUp then
+			windUp:Play(0.1)
+		end
+		humanoid.WalkSpeed = rush.WalkSpeed
+		setGripFlipped(tool, rush.FlipGrip == true)
+
+		local active = true
+		local rushing = false
+		local attributeConnection: RBXScriptConnection? = nil
+		local steer: ((Vector3, number) -> ())? = nil
+		local stopPush: (() -> ())? = nil
+		local direction = root.CFrame.LookVector
+
+		local renderConnection = RunService.RenderStepped:Connect(function(dt)
+			if not rushing then
+				-- Hold the gathering pose on its last frame.
+				if windUp and windUp.IsPlaying and windUp.Speed > 0 and windUp.Length > 0 and windUp.TimePosition >= windUp.Length - 0.05 then
+					windUp:AdjustSpeed(0)
+				end
+				return
+			end
+			-- Turn toward where we're walking (smoothly), or keep going the same way.
+			local wanted = Vector3.new(humanoid.MoveDirection.X, 0, humanoid.MoveDirection.Z)
+			if wanted.Magnitude > 0.1 then
+				local turned = direction:Lerp(wanted.Unit, math.min(1, dt * 10))
+				if turned.Magnitude > 0.01 then
+					direction = turned.Unit
+				end
+			end
+			if steer then
+				steer(direction, rush.Speed)
+			end
+		end)
+
+		local function stop(how: StopHow)
+			if not active then
+				return
+			end
+			active = false
+			stopHeavy = nil
+			if attributeConnection then
+				attributeConnection:Disconnect()
+			end
+			renderConnection:Disconnect()
+			if stopPush then
+				stopPush()
+			end
+			if how ~= "server" then
+				heavyRemote:FireServer(false)
+			end
+			if windUp then
+				windUp:Stop(0.15)
+			end
+			if rushTrack then
+				rushTrack:Stop(0.2)
+			end
+			setGripFlipped(tool, false)
+			setTrails(tool, false)
+			humanoid.WalkSpeed = normalSpeed()
+		end
+		stopHeavy = stop
+		-- The server ends the rush on its own (time limit, stamina, weapon switch, death).
+		attributeConnection = watchServer(stop)
+
+		-- The rush starts once gathered (when the server starts its hits).
+		task.delay(rush.ChargeTime, function()
+			if not active then
+				return
+			end
+			rushing = true
+			if windUp then
+				windUp:Stop(0.1)
+			end
+			if rushTrack then
+				rushTrack:Play(0.1)
+			end
+			setTrails(tool, true)
+			humanoid.WalkSpeed = rush.Speed
+			local flat = Vector3.new(direction.X, 0, direction.Z)
+			direction = if flat.Magnitude > 0.01 then flat.Unit else Vector3.new(0, 0, -1)
+			steer, stopPush = Push.hold(root)
+			Sounds.play("ChargeLevel", workspace.CurrentCamera, 1.6)
+			-- A whoosh each turn.
+			while active do
+				local sound = tool:FindFirstChild("SlashSound", true)
+				if sound and sound:IsA("Sound") then
+					sound:Play()
+				end
+				task.wait(rush.TickInterval)
+			end
+		end)
+	end
+
+	-- Reap: the whole move from one press, facing where the camera looks; the server lands the
+	-- hook and the cut, and ends it.
+	local function startReap(tool: Tool, reap: ReapHeavy)
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if not character or not humanoid or not root or not root:IsA("BasePart") then
+			return
+		end
+
+		-- Turn to the camera first, so the server hooks the way we're looking.
+		local look = workspace.CurrentCamera.CFrame.LookVector
+		local flat = Vector3.new(look.X, 0, look.Z)
+		if flat.Magnitude > 0.01 then
+			root.CFrame = CFrame.lookAt(root.Position, root.Position + flat)
+		end
+		humanoid.AutoRotate = false
+		heavyRemote:FireServer(true)
+		comboStep = 0
+		stopSwings(0.1)
+		busyUntil = os.clock() + reap.Duration
+		local tracks = currentTracks()
+		local reapTrack = tracks and tracks.heavy
+		if reapTrack then
+			reapTrack:Play(0.1)
+		end
+		humanoid.WalkSpeed = reap.WalkSpeed
+		setGripFlipped(tool, reap.FlipGrip == true)
+		setTrails(tool, true)
+
+		local active = true
+		local attributeConnection: RBXScriptConnection? = nil
+		local function stop(how: StopHow)
+			if not active or how == "release" then
+				return -- letting go doesn't stop a reap
+			end
+			active = false
+			stopHeavy = nil
+			busyUntil = 0
+			if attributeConnection then
+				attributeConnection:Disconnect()
+			end
+			if reapTrack and how == "cancel" then
+				reapTrack:Stop(0.2)
+			end
+			humanoid.AutoRotate = true
+			setGripFlipped(tool, false)
+			setTrails(tool, false)
+			humanoid.WalkSpeed = normalSpeed()
+		end
+		stopHeavy = stop
+		attributeConnection = watchServer(stop)
+
+		-- A whoosh for the reach and another for the cut.
+		for _, at in { 0, reap.CutDelay - 0.08 } do
+			task.delay(at, function()
+				local sound = tool:FindFirstChild("SlashSound", true)
+				if active and sound and sound:IsA("Sound") then
+					sound:Play()
+				end
+			end)
+		end
+	end
+
 	local function startHeavy(tool: Tool)
 		if not heavy then
 			return
@@ -613,6 +794,10 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			startCharged(tool, heavy :: QuakeHeavy)
 		elseif heavy.Kind == "Flurry" then
 			startCharged(tool, heavy :: FlurryHeavy)
+		elseif heavy.Kind == "Rush" then
+			startRush(tool, heavy :: RushHeavy)
+		elseif heavy.Kind == "Reap" then
+			startReap(tool, heavy :: ReapHeavy)
 		else
 			startCharged(tool, heavy :: ThrustHeavy)
 		end
@@ -676,9 +861,16 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		local character = player.Character
 		if character and child.Parent == character then
 			HandGrip.attachLocal(child, character, config.Hand :: HandGrip.Hand, weldName)
+			if config.DualWield then
+				HandGrip.attachLocal(child, character, HandGrip.opposite(config.Hand :: HandGrip.Hand), offhandWeldName, HandGrip.OFFHAND_NAME)
+			end
 			local tracks = currentTracks()
 			if tracks and tracks.idle then
 				tracks.idle:Play(0.2)
+			end
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			if config.WalkSpeed and humanoid then
+				humanoid.WalkSpeed = config.WalkSpeed
 			end
 		end
 
@@ -693,12 +885,18 @@ function ComboWeaponClient.new(config: ComboWeapon)
 				end
 				pressedAt = nil
 				HandGrip.detach(child, localWeldName)
+				HandGrip.detach(child, `Local{offhandWeldName}`, HandGrip.OFFHAND_NAME)
 				comboStep = 0
 				local tracks = currentTracks()
 				if tracks and tracks.idle then
 					tracks.idle:Stop(0.2)
 				end
 				stopSwings(0.1)
+				local character = player.Character
+				local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+				if config.WalkSpeed and humanoid then
+					humanoid.WalkSpeed = StarterPlayer.CharacterWalkSpeed
+				end
 			end)
 		end
 	end

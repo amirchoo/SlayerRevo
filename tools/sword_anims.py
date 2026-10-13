@@ -77,7 +77,7 @@ STAND = (0, 0, 0)  # leg: (hip, knee, ankle) degrees
 
 
 def pose(arm=None, wrist=-60, chest=0, hips=0, lean=0, drop=0.0, larm=0, lelbow=20, lleg=STAND, rleg=STAND, blade_lean=None,
-         head_forward=True, head=(0, 0), larm_yaw=0):
+         head_forward=True, head=(0, 0), larm_yaw=0, larm_dir=None, lwrist=0, lblade_lean=None):
     """One full-body pose.
     arm: right-arm direction in chest space (None = hanging). wrist: wrist flex.
     chest / hips: twist in degrees (+ = turn left). lean: chest lean (+ = back).
@@ -88,11 +88,14 @@ def pose(arm=None, wrist=-60, chest=0, hips=0, lean=0, drop=0.0, larm=0, lelbow=
     head_forward: counter-turn the head so it keeps facing forward through twists
     (False for spins, where the head should turn with the body).
     head: (pitch, yaw) on top of that, in degrees (+ = look up / look left).
-    larm_yaw: turns the left arm's swing across the body (- = toward the right)."""
+    larm_yaw: turns the left arm's swing across the body (- = toward the right).
+    larm_dir / lwrist / lblade_lean: aim the left arm like the right (for a blade in the left
+    hand; its swing plane is the animation's "lplane"). When set, larm / lelbow are ignored."""
     return {
         "arm": arm, "wrist": wrist, "chest": chest, "hips": hips, "lean": lean, "drop": drop,
         "larm": larm, "lelbow": lelbow, "lleg": lleg, "rleg": rleg, "blade_lean": blade_lean,
         "head_forward": head_forward, "head": head, "larm_yaw": larm_yaw,
+        "larm_dir": larm_dir, "lwrist": lwrist, "lblade_lean": lblade_lean,
     }
 
 
@@ -410,6 +413,28 @@ def resolve_arm_leans():
                 p["arm"] = (direction, lean)
             resolved.append((time, p))
         swing["keys"] = resolved
+        resolve_left_arm(swing)
+
+
+def resolve_left_arm(swing):
+    """Same as the right arm's, for poses that aim the left arm (larm_dir)."""
+    plane = swing.get("lplane")
+    axis = norm(cross(norm(plane[0]), norm(plane[1]))) if plane else None
+    lean = None
+    resolved = []
+    for time, p in swing["keys"]:
+        p = dict(p)
+        if p["larm_dir"] is not None:
+            direction = norm(p["larm_dir"])
+            if p["lblade_lean"] is not None:
+                lean = p["lblade_lean"]
+            elif axis is not None:
+                lean = cross(axis, direction)
+            else:
+                lean = lean or (0, 0, -1)
+            p["larm_dir"] = (direction, lean)
+        resolved.append((time, p))
+    swing["keys"] = resolved
 
 
 def leg(hip, knee, ankle):
@@ -431,8 +456,9 @@ def joint_rotations(p):
         "RightUpperArm": aim_arm(*p["arm"]),
         "RightLowerArm": identity(),
         "RightHand": rx(p["wrist"]),
-        "LeftUpperArm": matmul(ry(p["larm_yaw"]), rx(p["larm"])),
-        "LeftLowerArm": rx(p["lelbow"]),
+        "LeftUpperArm": aim_arm(*p["larm_dir"]) if p["larm_dir"] else matmul(ry(p["larm_yaw"]), rx(p["larm"])),
+        "LeftLowerArm": identity() if p["larm_dir"] else rx(p["lelbow"]),
+        "LeftHand": rx(p["lwrist"]) if p["larm_dir"] else identity(),
         "LeftUpperLeg": l_hip, "LeftLowerLeg": l_knee, "LeftFoot": l_ankle,
         "RightUpperLeg": r_hip, "RightLowerLeg": r_knee, "RightFoot": r_ankle,
     }
@@ -487,7 +513,7 @@ def keyframe_xml(time, p, depth=2, upper_body_only=False):
     upper = pose_xml("UpperTorso", r["UpperTorso"], 1, [
         chain(["Head"], torso_depth + 1),
         chain(["RightUpperArm", "RightLowerArm", "RightHand"], torso_depth + 1),
-        chain(["LeftUpperArm", "LeftLowerArm"], torso_depth + 1),
+        chain(["LeftUpperArm", "LeftLowerArm"] + (["LeftHand"] if p["larm_dir"] else []), torso_depth + 1),
     ], torso_depth)
     if upper_body_only:
         # Hips and legs left to the walk/idle animations (weight-0 placeholder).

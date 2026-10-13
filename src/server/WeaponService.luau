@@ -1,9 +1,10 @@
 --!strict
--- Gives players their click-combo weapons (sword, Emberfang, mace, spear, rapier, axe) and resolves their hits on the server.
+-- Gives players their click-combo weapons (sword, Emberfang, mace, spear, rapier, axe, dual blade, scythe, hammer) and resolves their hits on the server.
 -- The client only reports "I swung" (MeleeSwing); the server finds which combo weapon is in
 -- hand, works out which step of its combo this is (from its own timing, so clients can't
 -- skip to the finisher), checks the cooldown, builds the hitbox, and deals that step's
--- damage, plus its knockback and stun if it has any.
+-- damage, plus its knockback and stun if it has any. A step with a Radius sweeps an arc around
+-- the player instead of the box ahead; one with Shockwave also shakes the ground in front.
 -- Weapons with a heavy attack can also be held (HeavyAttack remote: true on hold, false on
 -- release). Spin: the server runs the spin, hitting all around every tick until release,
 -- the time limit, a weapon switch, or death. Quake: the server times the charge itself and
@@ -11,7 +12,12 @@
 -- in a radius that grows with the charge. Thrust: charged the same way, but on release
 -- the player lunges forward and everything along the line (from where the lunge began) is hit.
 -- Flurry: charged the same way; on release, a run of rapid stabs (more for a longer charge)
--- each hits along a narrow line ahead, the last knocking back. The "HeavyAttacking" player attribute
+-- each hits along a narrow line ahead, the last knocking back. Rush: after ChargeTime of
+-- holding, the server hits all around every tick (the client steers the rush) until release,
+-- the time limit, running out of stamina, a weapon switch, or death; letting go before then
+-- calls it off. Reap: one press runs the whole move (letting go doesn't stop it): the hook
+-- lands ahead and drags what it caught in close, then the cut hits all around and knocks
+-- back. The "HeavyAttacking" player attribute
 -- tells the client while a heavy is running (so it reacts if the server ends it first).
 
 local Players = game:GetService("Players")
@@ -33,6 +39,8 @@ type ComboWeapon = CombatConfig.ComboWeapon
 type QuakeHeavy = CombatConfig.QuakeHeavy
 type ThrustHeavy = CombatConfig.ThrustHeavy
 type FlurryHeavy = CombatConfig.FlurryHeavy
+type RushHeavy = CombatConfig.RushHeavy
+type ReapHeavy = CombatConfig.ReapHeavy
 
 -- Network delay makes clicks arrive slightly early or late; allow this much either way.
 local TIMING_SLACK = 0.1
@@ -261,6 +269,81 @@ local function createRapier(): Tool
 	return tool
 end
 
+-- Placeholder dual blades: two short blades with dark grips, one on each grip part (the
+-- off-hand one is welded to the other hand when equipped; see HandGrip.OFFHAND_NAME). At rest
+-- (in the backpack's icon) the off-hand blade crosses the main one.
+local function createDualBlade(): Tool
+	local config = CombatConfig.DualBlade
+	local tool, grip = newTool(
+		config,
+		CFrame.new(0, 0, -0.25) * CFrame.Angles(math.pi / 2, 0, 0),
+		Vector3.new(0.24, 0.24, 0.8),
+		Color3.fromRGB(25, 20, 22),
+		Enum.Material.Fabric
+	)
+	local offhand = grip:Clone()
+	offhand.Name = HandGrip.OFFHAND_NAME
+	offhand.CFrame = grip.CFrame * CFrame.new(0, 0, 1.3) * CFrame.Angles(math.rad(70), 0, 0) * CFrame.new(0, 0, -1.3)
+	offhand.Parent = tool
+	local steel = Color3.fromRGB(150, 150, 165)
+	for _, holder in { grip, offhand } do
+		addPart(holder, "Guard", Vector3.new(0.9, 0.22, 0.18), CFrame.new(0, 0, 0.5), Color3.fromRGB(30, 28, 34), Enum.Material.Metal)
+		local blade = addPart(holder, "Blade", Vector3.new(0.1, 0.4, 2.4), CFrame.new(0, 0, 1.8), steel, Enum.Material.Metal)
+		addTrail(blade, -1, 1.2, 0.12, config.TrailColor)
+	end
+	addSwingSound(grip, "DualBladeSwing")
+	return tool
+end
+
+-- Placeholder scythe: a long dark shaft (held low on its grip wrap) with a steel blade curving
+-- out from the top on the grip's +Y side, so it leads the reaps.
+local function createScythe(): Tool
+	local config = CombatConfig.Scythe
+	local tool, grip = newTool(
+		config,
+		CFrame.new(0, 0, -0.3) * CFrame.Angles(math.pi / 2, 0, 0),
+		Vector3.new(0.26, 0.26, 1.4),
+		Color3.fromRGB(20, 14, 14),
+		Enum.Material.Fabric
+	)
+	local dark = Color3.fromRGB(30, 28, 34)
+	local steel = Color3.fromRGB(170, 175, 190)
+	-- The hand is 2.4 studs up an 8-stud shaft.
+	addPart(grip, "Shaft", Vector3.new(0.22, 0.22, 8), CFrame.new(0, 0, 1.6), Color3.fromRGB(60, 35, 20), Enum.Material.Wood)
+	addPart(grip, "ButtCap", Vector3.one * 0.32, CFrame.new(0, 0, -2.4), dark, Enum.Material.Metal, Enum.PartType.Ball)
+	addPart(grip, "Collar", Vector3.new(0.34, 0.34, 0.5), CFrame.new(0, 0, 5.3), dark, Enum.Material.Metal)
+	-- The blade: three tilted segments sweeping out and curving down toward the tip.
+	addPart(grip, "Blade1", Vector3.new(0.08, 1.4, 0.45), CFrame.new(0, 0.7, 5.45) * CFrame.Angles(math.rad(-8), 0, 0), steel, Enum.Material.Metal)
+	addPart(grip, "Blade2", Vector3.new(0.07, 1.3, 0.38), CFrame.new(0, 1.95, 5.3) * CFrame.Angles(math.rad(12), 0, 0), steel, Enum.Material.Metal)
+	addPart(grip, "Blade3", Vector3.new(0.06, 1.1, 0.28), CFrame.new(0, 3.0, 4.95) * CFrame.Angles(math.rad(30), 0, 0), steel, Enum.Material.Metal)
+	addTrail(grip, 3, 5.6, 0.15, config.TrailColor)
+	addSwingSound(grip, "ScytheSwing")
+	return tool
+end
+
+-- Placeholder hammer: a long wooden haft with a dark grip, a big steel head on top (blunt
+-- faces front and back along the grip's Y).
+local function createHammer(): Tool
+	local config = CombatConfig.Hammer
+	local tool, grip = newTool(
+		config,
+		CFrame.new(0, 0, -0.4) * CFrame.Angles(math.pi / 2, 0, 0),
+		Vector3.new(0.34, 0.34, 1.8),
+		Color3.fromRGB(20, 14, 14),
+		Enum.Material.Fabric
+	)
+	local steel = Color3.fromRGB(85, 82, 95)
+	-- The hand is 1.7 studs up a 7.2-stud haft.
+	addPart(grip, "Haft", Vector3.new(0.3, 0.3, 5.2), CFrame.new(0, 0, 2.6), Color3.fromRGB(65, 35, 15), Enum.Material.Wood)
+	addPart(grip, "Pommel", Vector3.one * 0.45, CFrame.new(0, 0, -1.5), steel, Enum.Material.Metal, Enum.PartType.Ball)
+	local head = addPart(grip, "Head", Vector3.new(1.4, 2.8, 1.5), CFrame.new(0, 0, 4.7), steel, Enum.Material.Metal)
+	addPart(grip, "Band1", Vector3.new(1.5, 0.3, 1.6), CFrame.new(0, 0.9, 4.7), Color3.fromRGB(20, 18, 22), Enum.Material.Metal)
+	addPart(grip, "Band2", Vector3.new(1.5, 0.3, 1.6), CFrame.new(0, -0.9, 4.7), Color3.fromRGB(20, 18, 22), Enum.Material.Metal)
+	addTrail(head, -0.6, 0.6, 0.2, config.TrailColor)
+	addSwingSound(grip, "HammerSwing")
+	return tool
+end
+
 local CREATORS: { [string]: () -> Tool } = {
 	[CombatConfig.Sword.ToolName] = createSword,
 	[CombatConfig.Emberfang.ToolName] = createEmberfang,
@@ -268,9 +351,12 @@ local CREATORS: { [string]: () -> Tool } = {
 	[CombatConfig.Spear.ToolName] = createSpear,
 	[CombatConfig.Rapier.ToolName] = createRapier,
 	[CombatConfig.Axe.ToolName] = createAxe,
+	[CombatConfig.DualBlade.ToolName] = createDualBlade,
+	[CombatConfig.Scythe.ToolName] = createScythe,
+	[CombatConfig.Hammer.ToolName] = createHammer,
 }
 
-local COMBO_WEAPONS: { ComboWeapon } = { CombatConfig.Sword, CombatConfig.Emberfang, CombatConfig.Mace, CombatConfig.Spear, CombatConfig.Rapier, CombatConfig.Axe }
+local COMBO_WEAPONS: { ComboWeapon } = { CombatConfig.Sword, CombatConfig.Emberfang, CombatConfig.Mace, CombatConfig.Spear, CombatConfig.Rapier, CombatConfig.Axe, CombatConfig.DualBlade, CombatConfig.Scythe, CombatConfig.Hammer }
 
 local function configFor(tool: Tool): ComboWeapon?
 	for _, config in COMBO_WEAPONS do
@@ -279,6 +365,16 @@ local function configFor(tool: Tool): ComboWeapon?
 		end
 	end
 	return nil
+end
+
+-- Where a ground smash lands: the ground under the player's feet, or `ahead` studs in front.
+local function groundBelow(character: Model, root: BasePart, ahead: number?): Vector3
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+	local from = root.Position + root.CFrame.LookVector * Vector3.new(1, 0, 1) * (ahead or 0)
+	local result = workspace:Raycast(from, Vector3.new(0, -12, 0), params)
+	return if result then result.Position else from - Vector3.new(0, 3, 0)
 end
 
 local function onSwing(player: Player)
@@ -323,9 +419,15 @@ local function onSwing(player: Player)
 		if not root or not root:IsA("BasePart") or not HealthService.isAlive(character) then
 			return
 		end
-		local size = Vector3.new(config.Width, config.Height, config.Range)
 		local damage = SkillMath.damage(player, config.ToolName, move.Damage, "Light")
-		for _, hit in MeleeHitbox.strike(player, character, root, size, damage, config.ToolName) do
+		if move.Shockwave and move.Radius then
+			-- The head lands about halfway out along the reach.
+			shockwaveRemote:FireAllClients(groundBelow(character, root, move.Radius / 2), move.Radius / 2, config.ToolName)
+		end
+		local hits = if move.Radius
+			then MeleeHitbox.strikeArc(player, character, root, move.Radius, move.Arc or 360, damage, config.ToolName)
+			else MeleeHitbox.strike(player, character, root, Vector3.new(config.Width, config.Height, config.Range), damage, config.ToolName)
+		for _, hit in hits do
 			if HealthService.isAlive(hit.model) then
 				if move.Knockback then
 					EnemyEffects.knockBack(hit.model, root.Position, move.Knockback, KNOCKBACK_TIME)
@@ -381,21 +483,14 @@ local function stopHeavy(player: Player, unflipAfter: number?)
 	end
 end
 
--- Where a ground smash lands: the ground under the player's feet.
-local function groundBelow(character: Model, root: BasePart): Vector3
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { character }
-	local result = workspace:Raycast(root.Position, Vector3.new(0, -12, 0), params)
-	return if result then result.Position else root.Position - Vector3.new(0, 3, 0)
-end
-
 local function smash(player: Player, character: Model, tool: Tool, config: ComboWeapon, quake: QuakeHeavy, power: number)
 	local function lerp(min: number, max: number): number
 		return min + (max - min) * power
 	end
 	local radius = lerp(quake.MinRadius, quake.MaxRadius) * (1 + SkillMath.weapon(player, config.ToolName, "QuakeRadius"))
 	local damage = SkillMath.damage(player, config.ToolName, lerp(quake.MinDamage, quake.MaxDamage), "Heavy")
+	local knockback = lerp(quake.Knockback, quake.MaxKnockback or quake.Knockback)
+	local knockbackTime = quake.KnockbackTime or KNOCKBACK_TIME
 
 	task.delay(quake.HitDelay, function()
 		local root = character:FindFirstChild("HumanoidRootPart")
@@ -405,7 +500,7 @@ local function smash(player: Player, character: Model, tool: Tool, config: Combo
 		shockwaveRemote:FireAllClients(groundBelow(character, root), radius, config.ToolName)
 		for _, hit in MeleeHitbox.strikeAround(player, character, root, radius, damage, config.ToolName) do
 			if HealthService.isAlive(hit.model) then
-				EnemyEffects.knockBack(hit.model, root.Position, quake.Knockback, KNOCKBACK_TIME)
+				EnemyEffects.knockBack(hit.model, root.Position, knockback, knockbackTime)
 			end
 		end
 	end)
@@ -487,11 +582,12 @@ releaseCharge = function(player: Player)
 	local heldConfig = held and configFor(held)
 	local releasing = heldConfig and heldConfig.Heavy
 	-- A flipped weapon stays flipped through the release attack's animation.
-	stopHeavy(player, if releasing and releasing.Kind ~= "Spin" then (releasing :: ThrustHeavy).HitDelay + UNFLIP_AFTER_HIT else nil)
+	local charged = releasing and releasing.Kind ~= "Spin" and releasing.Kind ~= "Rush" and releasing.Kind ~= "Reap"
+	stopHeavy(player, if charged then (releasing :: ThrustHeavy).HitDelay + UNFLIP_AFTER_HIT else nil)
 	local tool = character and character:FindFirstChildOfClass("Tool")
 	local config = tool and configFor(tool)
 	local heavy = config and config.Heavy
-	if not character or not tool or not config or not heavy or heavy.Kind == "Spin" or not HealthService.isAlive(character) then
+	if not character or not tool or not config or not heavy or heavy.Kind == "Spin" or heavy.Kind == "Rush" or heavy.Kind == "Reap" or not HealthService.isAlive(character) then
 		return
 	end
 	if heavy.Kind == "Quake" then
@@ -503,6 +599,52 @@ releaseCharge = function(player: Player)
 	else
 		local lunge = heavy :: ThrustHeavy
 		thrust(player, character, tool, config, lunge, math.clamp((os.clock() - token.started) / lunge.FullChargeTime, 0, 1))
+	end
+end
+
+-- The reap's hook, then its cut (see ReapHeavy); ends the heavy once the move is over. Each
+-- step is skipped if the player died, switched weapons, or the heavy was ended meanwhile.
+local function reap(player: Player, character: Model, tool: Tool, config: ComboWeapon, heavy: ReapHeavy, token: HeavyState)
+	local reach = heavy.Reach * (1 + SkillMath.weapon(player, config.ToolName, "HookReach"))
+	local hookDamage = SkillMath.damage(player, config.ToolName, heavy.HookDamage, "Heavy")
+	local cutDamage = SkillMath.damage(player, config.ToolName, heavy.CutDamage, "Heavy")
+	local function stillGoing(): BasePart?
+		local root = character:FindFirstChild("HumanoidRootPart")
+		if heavyTokens[player] ~= token or not HealthService.isAlive(character) or character:FindFirstChildOfClass("Tool") ~= tool then
+			return nil
+		end
+		return if root and root:IsA("BasePart") then root else nil
+	end
+
+	task.wait(heavy.HookDelay)
+	local root = stillGoing()
+	if root then
+		-- Hooked enemies are held until the cut lands, and dragged in front of us meanwhile.
+		local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+		local landing = root.Position + (if look.Magnitude > 0.01 then look.Unit else Vector3.zero) * heavy.PullTo
+		local hold = heavy.CutDelay - heavy.HookDelay + 0.1
+		local size = Vector3.new(heavy.Width, heavy.Height, reach)
+		for _, hit in MeleeHitbox.strike(player, character, root, size, hookDamage, config.ToolName) do
+			if HealthService.isAlive(hit.model) then
+				EnemyEffects.stun(hit.model, hold, true)
+				EnemyEffects.pull(hit.model, landing, heavy.PullTime)
+			end
+		end
+	end
+
+	task.wait(heavy.CutDelay - heavy.HookDelay)
+	root = stillGoing()
+	if root then
+		for _, hit in MeleeHitbox.strikeArc(player, character, root, heavy.CutRadius, heavy.CutArc, cutDamage, config.ToolName) do
+			if HealthService.isAlive(hit.model) then
+				EnemyEffects.knockBack(hit.model, root.Position, heavy.Knockback, KNOCKBACK_TIME)
+			end
+		end
+	end
+
+	task.wait(heavy.Duration - heavy.CutDelay)
+	if heavyTokens[player] == token then
+		stopHeavy(player)
 	end
 end
 
@@ -520,8 +662,14 @@ local function startHeavy(player: Player)
 	if os.clock() - (lastHeavyEnd[player] or 0) < heavy.Recovery - TIMING_SLACK then
 		return -- still recovering from the last heavy
 	end
-	-- A charge pays up front; a spin pays per hit, starting with the first.
-	if not StaminaService.spend(player, SkillMath.staminaCost(player, config.ToolName, heavy.Stamina, "Heavy")) then
+	-- A charge pays up front; a spin pays per hit, starting with the first; a rush pays per
+	-- hit once it starts (gathering is free, but you need enough for the first hit).
+	local cost = SkillMath.staminaCost(player, config.ToolName, heavy.Stamina, "Heavy")
+	if heavy.Kind == "Rush" then
+		if not StaminaService.has(player, cost) then
+			return -- too tired
+		end
+	elseif not StaminaService.spend(player, cost) then
 		return -- too tired
 	end
 
@@ -531,6 +679,39 @@ local function startHeavy(player: Player)
 	player:SetAttribute("HeavyAttacking", true)
 	if heavy.FlipGrip then
 		setGripFlipped(player, tool, config, true)
+	end
+
+	if heavy.Kind == "Reap" then
+		task.spawn(reap, player, character, tool, config, heavy :: ReapHeavy, token)
+		return
+	end
+
+	if heavy.Kind == "Rush" then
+		local rush = heavy :: RushHeavy
+		local maxDuration = rush.MaxDuration + SkillMath.weapon(player, config.ToolName, "RushDuration")
+		local tickDamage = SkillMath.damage(player, config.ToolName, rush.Damage, "Heavy")
+		task.spawn(function()
+			task.wait(rush.ChargeTime) -- gathering; letting go before now calls it off
+			local started = os.clock()
+			while heavyTokens[player] == token do
+				local root = character:FindFirstChild("HumanoidRootPart")
+				local stillHolding = character:FindFirstChildOfClass("Tool") == tool
+				if os.clock() - started > maxDuration or not HealthService.isAlive(character) or not stillHolding then
+					break
+				end
+				if not StaminaService.spend(player, cost) then
+					break -- out of stamina
+				end
+				if root and root:IsA("BasePart") then
+					MeleeHitbox.strikeAround(player, character, root, rush.Radius, tickDamage, config.ToolName)
+				end
+				task.wait(rush.TickInterval)
+			end
+			if heavyTokens[player] == token then
+				stopHeavy(player)
+			end
+		end)
+		return
 	end
 
 	if heavy.Kind ~= "Spin" then
@@ -587,7 +768,9 @@ local function onHeavy(player: Player, holding: unknown)
 		local tool = character and character:FindFirstChildOfClass("Tool")
 		local config = tool and configFor(tool)
 		local heavy = config and config.Heavy
-		if heavy and heavy.Kind ~= "Spin" then
+		if heavy and heavy.Kind == "Reap" then
+			return -- the reap runs to the end once started
+		elseif heavy and heavy.Kind ~= "Spin" and heavy.Kind ~= "Rush" then
 			releaseCharge(player)
 		else
 			stopHeavy(player)
@@ -598,14 +781,19 @@ end
 local function giveWeapon(player: Player, config: ComboWeapon, template: Tool)
 	local weapon = template:Clone()
 	local weldName = `{config.ToolName}Grip`
+	local offhandWeldName = `{config.ToolName}OffhandGrip`
 	weapon.Equipped:Connect(function()
 		local character = weapon.Parent
 		if character and character:IsA("Model") then
 			HandGrip.attach(weapon, character, config.Hand :: HandGrip.Hand, weldName)
+			if config.DualWield then
+				HandGrip.attach(weapon, character, HandGrip.opposite(config.Hand :: HandGrip.Hand), offhandWeldName, HandGrip.OFFHAND_NAME)
+			end
 		end
 	end)
 	weapon.Unequipped:Connect(function()
 		HandGrip.detach(weapon, weldName)
+		HandGrip.detach(weapon, offhandWeldName, HandGrip.OFFHAND_NAME)
 		comboStates[player] = nil
 		stopHeavy(player)
 	end)

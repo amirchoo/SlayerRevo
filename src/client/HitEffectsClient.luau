@@ -36,6 +36,9 @@ local LOOKS: { [string]: Look } = {
 	Spear = { style = "Pierce", color = Color3.fromRGB(200, 230, 255), size = 1 },
 	Rapier = { style = "Pierce", color = Color3.fromRGB(235, 240, 255), size = 0.85 },
 	Axe = { style = "Slash", color = Color3.fromRGB(255, 190, 150), size = 1.15 },
+	DualBlade = { style = "Slash", color = Color3.fromRGB(200, 215, 255), size = 0.85 },
+	Hammer = { style = "Blunt", color = Color3.fromRGB(255, 200, 130), size = 1.6 },
+	Scythe = { style = "Slash", color = Color3.fromRGB(190, 200, 215), size = 1.3 },
 	StaffFire = { style = "Blunt", color = Color3.fromRGB(255, 120, 40), size = 1 },
 	StaffWater = { style = "Blunt", color = Color3.fromRGB(70, 160, 255), size = 1 },
 	StaffEarth = { style = "Blunt", color = Color3.fromRGB(170, 125, 70), size = 1.2 },
@@ -256,7 +259,7 @@ local function onShockwave(position: Vector3, radius: number, weapon: string)
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if root and root:IsA("BasePart") then
 		local distance = (root.Position - position).Magnitude
-		shakeCamera(SHOCKWAVE_SHAKE * (1 - math.clamp(distance / (radius * 2), 0, 1)))
+		shakeCamera(SHOCKWAVE_SHAKE * look.size * (1 - math.clamp(distance / (radius * 2), 0, 1)))
 	end
 end
 

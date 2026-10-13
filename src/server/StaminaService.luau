@@ -30,6 +30,12 @@ function StaminaService.spend(player: Player, cost: number): boolean
 	return true
 end
 
+-- True if the player has at least `cost` stamina (nothing is taken).
+function StaminaService.has(player: Player, cost: number): boolean
+	local current = player:GetAttribute("Stamina")
+	return typeof(current) == "number" and current >= cost
+end
+
 -- Max stamina and regen, with the player's skill bonuses (see SkillTrees).
 local function maxOf(player: Player): number
 	return STAMINA.Max + SkillMath.general(player, "MaxStamina")

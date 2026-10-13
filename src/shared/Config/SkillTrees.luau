@@ -16,8 +16,8 @@
 --     (fraction, every weapon).
 --   Weapon: Damage, LightDamage, HeavyDamage (fractions), StaminaCost, LightStaminaCost,
 --     HeavyStaminaCost (fractions, negative = cheaper), BlockAmount, ParryWindow, and each
---     weapon's own: SpinDuration (s, sword), ChargeSpeed (greatsword), QuakeRadius (mace),
---     LungeDistance (spear), FlurryHits (extra stabs, rapier), BleedDamage (per tick, axe), DrawSpeed (bow) as fractions; the
+--     weapon's own: SpinDuration (s, sword), ChargeSpeed (greatsword), QuakeRadius (mace, hammer),
+--     LungeDistance (spear), HookReach (scythe), FlurryHits (extra stabs, rapier), RushDuration (s, dual blade), BleedDamage (per tick, axe), DrawSpeed (bow) as fractions; the
 --     casters' (staff, grimoire) are listed with SkillTrees.Casters below.
 
 export type Node = {
@@ -156,17 +156,35 @@ SkillTrees.Weapons = {
 		{ Id = "Crusher", Name = "Crusher", Description = "+20% ground pound damage, 20% wider.", Tier = 4, MaxRank = 1, Effects = { HeavyDamage = 0.2, QuakeRadius = 0.2 } },
 		{ Id = "Brawler", Name = "Brawler", Description = "+15% combo damage, combo swings cost 20% less stamina.", Tier = 4, MaxRank = 1, Effects = { LightDamage = 0.15, LightStaminaCost = -0.2 } }
 	),
+	Hammer = weaponTree(
+		{ Id = "Earthshaker", Name = "Earthshaker", Description = "Ground slam reaches 10% wider.", Tier = 2, MaxRank = 3, Effects = { QuakeRadius = 0.1 } },
+		{ table.clone(HEAVY_TRAINING), guardcraft() },
+		{ Id = "Bonecrusher", Name = "Bonecrusher", Description = "+15% combo damage, combo blows cost 20% less stamina.", Tier = 4, MaxRank = 1, Effects = { LightDamage = 0.15, LightStaminaCost = -0.2 } },
+		{ Id = "Cataclysm", Name = "Cataclysm", Description = "+20% ground slam damage, 20% wider.", Tier = 4, MaxRank = 1, Effects = { HeavyDamage = 0.2, QuakeRadius = 0.2 } }
+	),
 	Spear = weaponTree(
 		{ Id = "LongLunge", Name = "Long Lunge", Description = "Lunge carries 15% further.", Tier = 2, MaxRank = 3, Effects = { LungeDistance = 0.15 } },
 		{ table.clone(HEAVY_TRAINING), guardcraft() },
 		{ Id = "Phalanx", Name = "Phalanx", Description = "Blocks absorb 10 more; parry window 0.05 s longer.", Tier = 4, MaxRank = 1, Effects = { BlockAmount = 10, ParryWindow = 0.05 } },
 		{ Id = "Skewer", Name = "Skewer", Description = "+20% lunge damage, lunge carries 25% further.", Tier = 4, MaxRank = 1, Effects = { HeavyDamage = 0.2, LungeDistance = 0.25 } }
 	),
+	Scythe = weaponTree(
+		{ Id = "GrimReach", Name = "Grim Reach", Description = "Reap's hook reaches 10% further.", Tier = 2, MaxRank = 3, Effects = { HookReach = 0.1 } },
+		{ table.clone(HEAVY_TRAINING), guardcraft() },
+		{ Id = "Harvester", Name = "Harvester", Description = "+15% reap damage in the combo, combo sweeps cost 20% less stamina.", Tier = 4, MaxRank = 1, Effects = { LightDamage = 0.15, LightStaminaCost = -0.2 } },
+		{ Id = "DeathsGrasp", Name = "Death's Grasp", Description = "+20% hook-and-cut damage, the hook reaches 20% further.", Tier = 4, MaxRank = 1, Effects = { HeavyDamage = 0.2, HookReach = 0.2 } }
+	),
 	Rapier = weaponTree(
 		{ Id = "Finesse", Name = "Finesse", Description = "Flurry strikes 1 more time.", Tier = 2, MaxRank = 3, Effects = { FlurryHits = 1 } },
 		{ table.clone(HEAVY_TRAINING), guardcraft() },
 		{ Id = "Duelist", Name = "Duelist", Description = "+15% thrust damage, thrusts cost 20% less stamina.", Tier = 4, MaxRank = 1, Effects = { LightDamage = 0.15, LightStaminaCost = -0.2 } },
 		{ Id = "ThousandCuts", Name = "Thousand Cuts", Description = "Flurry strikes 2 more times, +15% flurry damage.", Tier = 4, MaxRank = 1, Effects = { FlurryHits = 2, HeavyDamage = 0.15 } }
+	),
+	DualBlade = weaponTree(
+		{ Id = "Relentless", Name = "Relentless", Description = "Rush lasts 0.5 s longer.", Tier = 2, MaxRank = 3, Effects = { RushDuration = 0.5 } },
+		{ table.clone(HEAVY_TRAINING), guardcraft() },
+		{ Id = "TwinFangs", Name = "Twin Fangs", Description = "+15% combo damage, combo cuts cost 20% less stamina.", Tier = 4, MaxRank = 1, Effects = { LightDamage = 0.15, LightStaminaCost = -0.2 } },
+		{ Id = "Bladestorm", Name = "Bladestorm", Description = "+20% rush damage, rush lasts 1 s longer.", Tier = 4, MaxRank = 1, Effects = { HeavyDamage = 0.2, RushDuration = 1 } }
 	),
 	Axe = weaponTree(
 		{ Id = "DeepCuts", Name = "Deep Cuts", Description = "Bleed deals 1 more damage per tick.", Tier = 2, MaxRank = 3, Effects = { BleedDamage = 1 } },
@@ -284,6 +302,6 @@ SkillTrees.SharedTrees = {
 } :: { [string]: string }
 
 -- Tabs in the skill screen, in order ("General" first, then each weapon).
-SkillTrees.WeaponOrder = { "Sword", "Rapier", "Greatsword", "Axe", "Mace", "Spear", "Bow", "Staff", "Grimoire" }
+SkillTrees.WeaponOrder = { "Sword", "Rapier", "DualBlade", "Greatsword", "Axe", "Mace", "Hammer", "Spear", "Scythe", "Bow", "Staff", "Grimoire" }
 
 return SkillTrees

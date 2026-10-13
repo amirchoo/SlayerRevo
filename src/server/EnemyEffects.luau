@@ -1,5 +1,5 @@
 --!strict
--- Hit effects on enemies: knockback, stun, bleed and burn, slow, and the flinch when hit. Enemies are simulated by the server,
+-- Hit effects on enemies: knockback, pull, stun, bleed and burn, slow, and the flinch when hit. Enemies are simulated by the server,
 -- so these happen here (players' own characters are pushed by their clients instead).
 -- A stunned enemy has a "StunnedUntil" attribute (server os.clock() time); EnemyService
 -- checks it to freeze the enemy and cancel its wind-up attacks.
@@ -52,20 +52,51 @@ function EnemyEffects.knockBack(model: Model, from: Vector3, speed: number, dura
 	Debris:AddItem(attachment, duration)
 end
 
+-- Drags `model` horizontally to `to` over `duration` seconds (the scythe's hook). Nothing
+-- happens if it's already there.
+function EnemyEffects.pull(model: Model, to: Vector3, duration: number)
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") or root.Anchored or duration <= 0 then
+		return
+	end
+	local toward = Vector3.new(to.X - root.Position.X, 0, to.Z - root.Position.Z)
+	if toward.Magnitude < 0.5 then
+		return
+	end
+
+	local attachment = Instance.new("Attachment")
+	attachment.Parent = root
+	local drag = Instance.new("LinearVelocity")
+	drag.Attachment0 = attachment
+	drag.RelativeTo = Enum.ActuatorRelativeTo.World
+	drag.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+	drag.PrimaryTangentAxis = Vector3.xAxis
+	drag.SecondaryTangentAxis = Vector3.zAxis
+	drag.PlaneVelocity = Vector2.new(toward.X, toward.Z) / duration
+	drag.MaxForce = 1e5
+	drag.Parent = root
+	Debris:AddItem(drag, duration)
+	Debris:AddItem(attachment, duration)
+end
+
 function EnemyEffects.isStunned(model: Model): boolean
 	local stunnedUntil = model:GetAttribute("StunnedUntil")
 	return typeof(stunnedUntil) == "number" and os.clock() < stunnedUntil
 end
 
 -- Stuns `model` for `duration` seconds (extending any current stun) and shows a
--- "STUNNED" label over its head until it wears off.
-function EnemyEffects.stun(model: Model, duration: number)
+-- "STUNNED" label over its head until it wears off (unless `silent`, e.g. while it's held
+-- by a hook: the hold isn't a stun the player earned).
+function EnemyEffects.stun(model: Model, duration: number, silent: boolean?)
 	local stunnedUntil = os.clock() + duration
 	local current = model:GetAttribute("StunnedUntil")
 	if typeof(current) == "number" and current > stunnedUntil then
 		stunnedUntil = current
 	end
 	model:SetAttribute("StunnedUntil", stunnedUntil)
+	if silent then
+		return
+	end
 
 	local head = model:FindFirstChild("Head")
 	if not head or not head:IsA("BasePart") then

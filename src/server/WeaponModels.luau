@@ -66,21 +66,11 @@ local function bounds(model: Model): (CFrame, Vector3)
 	return model:GetBoundingBox()
 end
 
--- Replaces `tool`'s placeholder parts with its model, if one exists. The grip part stays
--- (now invisible) and keeps the swing sound; the trail is rebuilt along the new blade.
--- Returns true if a model was applied.
-function WeaponModels.apply(tool: Tool, fit: Fit?): boolean
-	local model = sourceModel(tool.Name)
-	local grip = tool:FindFirstChild(HandGrip.GRIP_NAME)
-	if not model or not fit or not grip or not grip:IsA("BasePart") then
-		return false
-	end
-
+-- Fits `model` (straight from sourceModel) onto `grip` and welds it there, with a swing
+-- trail from a little above the hand to the tip.
+local function fitTo(model: Model, grip: BasePart, fit: Fit, trailLifetime: number, trailColor: ColorSequence?)
 	-- Scale so its length (along Y) is the weapon's length.
 	local _, before = bounds(model)
-	if before.Y < math.max(before.X, before.Z) then
-		warn(`WeaponModels: {tool.Name}'s longest side isn't its Y axis; it may be held sideways (see tools/weapon_glb.py)`)
-	end
 	model:ScaleTo(model:GetScale() * fit.Length / before.Y)
 	local center, size = bounds(model)
 	local length = size.Y
@@ -95,17 +85,6 @@ function WeaponModels.apply(tool: Tool, fit: Fit?): boolean
 	local frame = CFrame.fromMatrix(gripPoint, thin, along:Cross(thin))
 	model:PivotTo(grip.CFrame * frame:ToObjectSpace(model:GetPivot()))
 
-	-- Remove the placeholder (every part but the grip; its trail goes with the blade).
-	local oldTrail = tool:FindFirstChild("SwingTrail", true)
-	local trailLifetime = if oldTrail and oldTrail:IsA("Trail") then oldTrail.Lifetime else 0.15
-	local trailColor = if oldTrail and oldTrail:IsA("Trail") then oldTrail.Color else nil
-	for _, child in tool:GetChildren() do
-		if child:IsA("BasePart") and child ~= grip then
-			child:Destroy()
-		end
-	end
-	grip.Transparency = 1
-
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			descendant.Anchored = false
@@ -119,10 +98,8 @@ function WeaponModels.apply(tool: Tool, fit: Fit?): boolean
 			weld.Parent = descendant
 		end
 	end
-	model.Name = "Model"
-	model.Parent = tool
+	grip.Transparency = 1
 
-	-- Swing trail from a little above the hand to the tip.
 	local tipZ = length * (1 - fit.GripFrom)
 	local base = Instance.new("Attachment")
 	base.Name = "TrailBase"
@@ -144,6 +121,55 @@ function WeaponModels.apply(tool: Tool, fit: Fit?): boolean
 		trail.Color = trailColor -- e.g. Emberfang's ember
 	end
 	trail.Parent = grip
+end
+
+-- Replaces `tool`'s placeholder parts with its model, if one exists. The grip part stays
+-- (now invisible) and keeps the swing sound; the trail is rebuilt along the new blade.
+-- A dual-wielded weapon (with an off-hand grip part, see HandGrip) gets a second copy there.
+-- Returns true if a model was applied.
+function WeaponModels.apply(tool: Tool, fit: Fit?): boolean
+	local model = sourceModel(tool.Name)
+	local grip = tool:FindFirstChild(HandGrip.GRIP_NAME)
+	if not model or not fit or not grip or not grip:IsA("BasePart") then
+		return false
+	end
+	local _, before = bounds(model)
+	if before.Y < math.max(before.X, before.Z) then
+		warn(`WeaponModels: {tool.Name}'s longest side isn't its Y axis; it may be held sideways (see tools/weapon_glb.py)`)
+	end
+	local found = tool:FindFirstChild(HandGrip.OFFHAND_NAME)
+	local offhand: BasePart? = if found and found:IsA("BasePart") then found else nil
+	local grips: { BasePart } = { grip }
+	if offhand then
+		table.insert(grips, offhand)
+	end
+
+	-- Remove the placeholder (every part but the grips; the trails go with the blades).
+	local oldTrail = tool:FindFirstChild("SwingTrail", true)
+	local trailLifetime = if oldTrail and oldTrail:IsA("Trail") then oldTrail.Lifetime else 0.15
+	local trailColor = if oldTrail and oldTrail:IsA("Trail") then oldTrail.Color else nil
+	for _, child in tool:GetChildren() do
+		if child:IsA("BasePart") and child ~= grip and child ~= offhand then
+			child:Destroy()
+		end
+	end
+	for _, holder in grips do
+		for _, child in holder:GetChildren() do
+			if child:IsA("Trail") or (child:IsA("Attachment") and string.match(child.Name, "^Trail")) then
+				child:Destroy()
+			end
+		end
+	end
+
+	fitTo(model, grip, fit, trailLifetime, trailColor)
+	model.Name = "Model"
+	model.Parent = tool
+	if offhand then
+		local offhandModel = sourceModel(tool.Name) :: Model -- a fresh copy, fitted the same way
+		fitTo(offhandModel, offhand, fit, trailLifetime, trailColor)
+		offhandModel.Name = "OffhandModel"
+		offhandModel.Parent = tool
+	end
 	return true
 end
 

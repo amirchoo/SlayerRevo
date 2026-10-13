@@ -5,6 +5,9 @@
 -- HitDelay: seconds after the click that the hit lands (line it up with the animation).
 -- Knockback / Stun (optional): push the enemy back (studs/s) / stun it (seconds) on hit.
 -- Lunge (optional): the attacker surges forward at this many studs/s as they swing.
+-- Radius / Arc (optional, together): a sweep that hits everything within Radius studs inside
+-- Arc degrees around where the attacker faces (360 = all around), instead of the weapon's box.
+-- Shockwave (optional): the blow hits the ground, drawing a dust ring as wide as Radius.
 export type ComboMove = {
 	Animation: string,
 	Damage: number,
@@ -13,6 +16,9 @@ export type ComboMove = {
 	Knockback: number?,
 	Stun: number?,
 	Lunge: number?,
+	Radius: number?,
+	Arc: number?,
+	Shockwave: boolean?,
 }
 
 -- Heavy attacks (optional, per combo weapon): hold left-click instead of tapping.
@@ -52,6 +58,10 @@ export type QuakeHeavy = {
 	MinRadius: number, -- studs around the player the shockwave reaches
 	MaxRadius: number,
 	Knockback: number, -- studs/s enemies are pushed away from the impact
+	-- Optional: the push grows with the charge, from Knockback to MaxKnockback, and lasts
+	-- KnockbackTime seconds (longer = thrown further; 0.2 if unset).
+	MaxKnockback: number?,
+	KnockbackTime: number?,
 	HitDelay: number, -- seconds after release that the smash lands (matches the animation)
 	Recovery: number, -- seconds after a smash before the next heavy
 	WalkSpeed: number, -- while charging
@@ -121,7 +131,56 @@ export type FlurryHeavy = {
 	FlipGrip: boolean?,
 }
 
-export type HeavyAttack = SpinHeavy | QuakeHeavy | ThrustHeavy | FlurryHeavy
+-- Rush: crouch and gather while held (feet nearly planted). After ChargeTime the rush starts
+-- by itself: you surge in whichever direction you walk (straight on if you aren't), spinning
+-- and slashing everything within Radius every TickInterval, for as long as you hold (up to
+-- MaxDuration) or until stamina runs out. Letting go before the rush starts calls it off.
+export type RushHeavy = {
+	Kind: "Rush",
+	WindUpAnimation: string, -- gathering; held on its last frame until the rush starts
+	RushAnimation: string, -- the spinning slashes, looped while rushing
+	Stamina: number, -- stamina spent per hit (the first when the rush starts; nothing to charge)
+	HoldTime: number, -- seconds the click must be held to count as a heavy (shorter = a normal tap)
+	ChargeTime: number, -- seconds of gathering before the rush starts
+	WalkSpeed: number, -- while gathering
+	Speed: number, -- studs/s you rush at
+	TickInterval: number, -- seconds between hits
+	Damage: number, -- per hit
+	Radius: number, -- studs around the player that each hit reaches
+	MaxDuration: number, -- seconds a rush can last
+	Recovery: number, -- seconds after a rush before the next heavy
+	FlipGrip: boolean?,
+}
+
+-- Reap: one press, no charging. The weapon reaches far ahead and hooks whatever it catches
+-- (HookDelay after the press): each enemy within Reach takes HookDamage, is held (a silent
+-- stun) and dragged in to PullTo studs in front of you over PullTime. At CutDelay you cut all
+-- around (CutRadius, inside CutArc degrees), knocking everything back. Letting go doesn't stop
+-- it; the move lasts Duration.
+export type ReapHeavy = {
+	Kind: "Reap",
+	Animation: string, -- the whole move: reach, yank back, cut
+	Stamina: number, -- stamina spent when it starts
+	HoldTime: number, -- seconds the click must be held to count as a heavy (shorter = a normal tap)
+	WalkSpeed: number, -- during the move
+	HookDelay: number, -- seconds after the press that the hook lands (the animation's "Hit")
+	Reach: number, -- studs ahead the hook reaches
+	Width: number, -- the hook's hitbox
+	Height: number,
+	HookDamage: number,
+	PullTime: number, -- seconds to drag a hooked enemy in
+	PullTo: number, -- studs in front of you it's dragged to
+	CutDelay: number, -- seconds after the press that the cut lands (the animation's "Cut")
+	CutDamage: number,
+	CutRadius: number,
+	CutArc: number, -- degrees around where you face (360 = all around)
+	Knockback: number, -- studs/s the cut pushes enemies away
+	Duration: number, -- seconds the whole move lasts
+	Recovery: number, -- seconds after it ends before the next heavy
+	FlipGrip: boolean?,
+}
+
+export type HeavyAttack = SpinHeavy | QuakeHeavy | ThrustHeavy | FlurryHeavy | RushHeavy | ReapHeavy
 
 -- A click-combo melee weapon (sword, mace, spear): see WeaponService and ComboWeaponClient.
 export type ComboWeapon = {
@@ -147,6 +206,11 @@ export type ComboWeapon = {
 	-- out held by the tip.
 	ModelFit: { Length: number, GripFrom: number, FlipBlade: boolean?, FlipEdge: boolean?, Shift: Vector3? }?,
 	TrailColor: Color3?, -- the swing trail's color (white if unset)
+	-- A second copy of the weapon held in the other hand (dual blades). Both hands hold the
+	-- same model, fitted with the same ModelFit; the hitboxes are the weapon's as usual.
+	DualWield: boolean?,
+	-- Walk speed while it's equipped (heavy weapons); the normal walk speed if unset.
+	WalkSpeed: number?,
 }
 
 -- One click in the greatsword's combo: a wide sweep hitting everything within Radius studs
@@ -445,6 +509,163 @@ local Axe: ComboWeapon = {
 	},
 }
 
+-- Dual Blade: a pair of short blades, light and fast. A four-cut combo alternating hands (the
+-- last a crossing slash that knocks back). Its heavy gathers, then rushes wherever you walk,
+-- spinning and slashing everything around. A light guard but a good parry: it rewards timing.
+-- Animations from tools/dualblade_anims.py.
+local DualBlade: ComboWeapon = {
+	ToolName = "DualBlade",
+	Hand = "Right", -- and its twin in the left (DualWield)
+	DualWield = true,
+	IdleAnimation = "rbxassetid://126261020043365", -- DualBladeIdle
+	AnimationSpeed = 1,
+	Stamina = 5,
+	-- The hand on the grip wrap, which sits a little off the model's center line (in the imported
+	-- model's terms: Studio turns GLBs 180 degrees on import, see WeaponModels). FlipEdge turns
+	-- it so the edge leads the cuts.
+	ModelFit = { Length = 3.5, GripFrom = 0.13, Shift = Vector3.new(0.03, 0, 0), FlipEdge = true },
+	TrailColor = Color3.fromRGB(200, 215, 255),
+	Combo = {
+		-- HitDelay matches each slash's "Hit" keyframe in tools/dualblade_anims.py.
+		{ Animation = "rbxassetid://85225520731947", Damage = 12, Cooldown = 0.2, HitDelay = 0.1 }, -- DualBladeSlash1 (right)
+		{ Animation = "rbxassetid://90923424107382", Damage = 12, Cooldown = 0.2, HitDelay = 0.1 }, -- DualBladeSlash2 (left)
+		{ Animation = "rbxassetid://97352809754863", Damage = 15, Cooldown = 0.24, HitDelay = 0.11 }, -- DualBladeSlash3 (right, spinning)
+		{ Animation = "rbxassetid://96172665039338", Damage = 26, Cooldown = 0.45, HitDelay = 0.16, Knockback = 15, Lunge = 24 }, -- DualBladeSlash4 (both)
+	},
+	ComboWindow = 0.7,
+	Range = 5.5,
+	Width = 6.5,
+	Height = 6,
+	Block = {
+		Animation = "rbxassetid://85472441817145", -- DualBladeGuard
+		BlockAmount = 12,
+		ParryWindow = 0.27, -- quick hands: second only to the spear
+	},
+	Heavy = {
+		Kind = "Rush",
+		WindUpAnimation = "rbxassetid://106005210293110", -- DualBladeWindUp
+		RushAnimation = "rbxassetid://132412277806315", -- DualBladeRush
+		Stamina = 5, -- per hit
+		HoldTime = 0.2,
+		ChargeTime = 0.6,
+		WalkSpeed = 6,
+		Speed = 24,
+		TickInterval = 0.3, -- matches one turn of DualBladeRush
+		Damage = 10,
+		Radius = 7,
+		MaxDuration = 3,
+		Recovery = 0.8,
+	},
+}
+
+-- Scythe: a long, two-handed reaper's blade that towers over its wielder. Slow, wide reaps
+-- that hit everything around (a forehand sweep, a full spin, an overhead crescent that steps
+-- in and knocks back). Its heavy reaches far out to hook an enemy, drags it in, and cuts it
+-- away. A middling guard and a short parry window: the reach is its defense.
+-- Animations from tools/scythe_anims.py.
+local Scythe: ComboWeapon = {
+	ToolName = "Scythe",
+	Hand = "Right",
+	IdleAnimation = "rbxassetid://109652222193210", -- ScytheIdle
+	AnimationSpeed = 1,
+	Stamina = 8, -- a wide sweep costs more than a cut
+	-- Taller than its wielder, like the spear. The hand holds the low end of the grip wrap;
+	-- the shaft sits off the model's center (the blade sticks out to one side), and FlipEdge
+	-- turns the blade to lead the reaps (in the imported model's terms, see WeaponModels).
+	ModelFit = { Length = 8, GripFrom = 0.3, Shift = Vector3.new(0.228, 0, 0), FlipEdge = true },
+	TrailColor = Color3.fromRGB(190, 200, 215),
+	Combo = {
+		-- HitDelay matches each reap's "Hit" keyframe in tools/scythe_anims.py.
+		{ Animation = "rbxassetid://100336990978687", Damage = 18, Cooldown = 0.42, HitDelay = 0.2, Radius = 9, Arc = 200 }, -- ScytheSlash1 (forehand sweep)
+		{ Animation = "rbxassetid://79245477162837", Damage = 20, Cooldown = 0.5, HitDelay = 0.25, Radius = 9, Arc = 360 }, -- ScytheSlash2 (full spin)
+		{ Animation = "rbxassetid://84455638228199", Damage = 34, Cooldown = 0.75, HitDelay = 0.26, Radius = 10, Arc = 160, Lunge = 20, Knockback = 18 }, -- ScytheSlash3 (crescent)
+	},
+	ComboWindow = 0.8,
+	-- The box hitbox isn't used (every reap sweeps), but stays sized like the reach.
+	Range = 9,
+	Width = 12,
+	Height = 6,
+	Block = {
+		Animation = "rbxassetid://137637794904376", -- ScytheGuard
+		BlockAmount = 14,
+		ParryWindow = 0.2,
+	},
+	Heavy = {
+		Kind = "Reap",
+		Animation = "rbxassetid://93099600284244", -- ScytheReap
+		Stamina = 22,
+		HoldTime = 0.2,
+		WalkSpeed = 2,
+		HookDelay = 0.3, -- matches ScytheReap's "Hit" marker
+		Reach = 12,
+		Width = 5,
+		Height = 6,
+		HookDamage = 8,
+		PullTime = 0.3,
+		PullTo = 4,
+		CutDelay = 0.78, -- matches ScytheReap's "Cut" marker
+		CutDamage = 40,
+		CutRadius = 8,
+		CutArc = 220,
+		Knockback = 32,
+		Duration = 1.15,
+		Recovery = 0.6,
+	},
+}
+
+-- Hammer: a huge two-handed warhammer, the heaviest weapon (you walk slowly with it out).
+-- Slow, crushing blows: an overhead pound into the ground in front, a wide sweeping swing,
+-- then a leaping pound that knocks everything back. Its heavy raises it high while held and
+-- slams the ground: a shockwave like the mace's, but wider and throwing enemies much further.
+-- The sturdiest guard, but the hardest to parry with. Animations from tools/hammer_anims.py.
+local Hammer: ComboWeapon = {
+	ToolName = "Hammer",
+	Hand = "Right",
+	WalkSpeed = 12, -- like the greatsword
+	IdleAnimation = "rbxassetid://126322227016170", -- HammerIdle
+	AnimationSpeed = 1,
+	Stamina = 14,
+	-- Scaled up well past the model's own size: it should look huge. The right hand holds the
+	-- top of the grip wrap, the left hand below it.
+	ModelFit = { Length = 7.2, GripFrom = 0.24 },
+	TrailColor = Color3.fromRGB(255, 210, 150),
+	Combo = {
+		-- HitDelay matches each blow's "Hit" keyframe in tools/hammer_anims.py.
+		{ Animation = "rbxassetid://72402918663640", Damage = 30, Cooldown = 0.65, HitDelay = 0.36, Radius = 8, Arc = 110, Knockback = 15, Shockwave = true }, -- HammerPound
+		{ Animation = "rbxassetid://107585366377673", Damage = 34, Cooldown = 0.65, HitDelay = 0.33, Radius = 9.5, Arc = 220, Knockback = 25 }, -- HammerSwing
+		{ Animation = "rbxassetid://91897241931056", Damage = 55, Cooldown = 1.1, HitDelay = 0.46, Radius = 10, Arc = 150, Knockback = 45, Lunge = 18, Shockwave = true }, -- HammerCrush
+	},
+	ComboWindow = 0.8,
+	-- The box hitbox isn't used (every blow is a Radius sweep), but stays sized like the reach.
+	Range = 9,
+	Width = 9,
+	Height = 8,
+	Block = {
+		Animation = "rbxassetid://87210542607297", -- HammerGuard
+		BlockAmount = 35, -- as sturdy as the greatsword
+		ParryWindow = 0.12, -- and as hard to parry with
+	},
+	Heavy = {
+		Kind = "Quake",
+		Stamina = 30,
+		WindUpAnimation = "rbxassetid://106260116576920", -- HammerWindUp
+		SlamAnimation = "rbxassetid://87753330606839", -- HammerSlam
+		HoldTime = 0.25,
+		FullChargeTime = 1.5,
+		MaxHold = 3,
+		MinDamage = 45,
+		MaxDamage = 110,
+		MinRadius = 7,
+		MaxRadius = 14,
+		Knockback = 40, -- the mace's is 25 (for 0.2 s): this throws enemies 3 to 6 times as far
+		MaxKnockback = 80,
+		KnockbackTime = 0.35,
+		HitDelay = 0.2, -- matches HammerSlam's "Hit" keyframe
+		Recovery = 1.3,
+		WalkSpeed = 4,
+	},
+}
+
 -- One element of the staff: its light missile and its charged heavy attack.
 --   Light: a missile flying at Speed; Damage on the first enemy it hits, plus optional
 --     Slow { Factor, Duration }, Knockback (studs/s), Chain { Count, Range, DamageScale },
@@ -605,6 +826,9 @@ return {
 	Rapier = Rapier,
 	flurryHits = flurryHits,
 	Axe = Axe,
+	DualBlade = DualBlade,
+	Scythe = Scythe,
+	Hammer = Hammer,
 	Staff = Staff,
 	Grimoire = Grimoire,
 	-- Every caster weapon, for the systems that serve them all (StaffService, StaffClient, ManaBar).

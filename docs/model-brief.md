@@ -50,7 +50,7 @@ Every model is imported into Roblox Studio, so it must follow these rules exactl
   position is obvious.
 - Size: the game scales it to fit, but keep real proportions. Reference lengths (handle end to
   tip, in studs): Sword 5.2, Emberfang 5.4, Axe 4.4, Mace 3.8, Bow 5.6, Staff 6, Spear 8.3,
-  Greatsword 8.9.
+  Hammer 7.2, Greatsword 8.9.
 - Budget: **under 8,000 triangles** (Emberfang is 7,600).
 - Leave out anything the game draws itself: bowstrings, magic effects, trails, glows that float
   in the air.

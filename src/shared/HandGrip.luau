@@ -10,11 +10,19 @@ local HandGrip = {}
 export type Hand = "Left" | "Right"
 
 HandGrip.GRIP_NAME = "GripPart"
+-- A dual-wielded weapon's second grip part, held in the other hand (see CombatConfig DualWield).
+HandGrip.OFFHAND_NAME = "OffhandGripPart"
 
-function HandGrip.attach(tool: Tool, character: Model, hand: Hand, weldName: string): Weld?
+-- The other hand.
+function HandGrip.opposite(hand: Hand): Hand
+	return if hand == "Left" then "Right" else "Left"
+end
+
+-- `gripName` picks which grip part to weld (GRIP_NAME unless given, e.g. OFFHAND_NAME).
+function HandGrip.attach(tool: Tool, character: Model, hand: Hand, weldName: string, gripName: string?): Weld?
 	local handPart = character:FindFirstChild(`{hand}Hand`)
 	local attachment = handPart and handPart:FindFirstChild(`{hand}GripAttachment`)
-	local grip = tool:FindFirstChild(HandGrip.GRIP_NAME)
+	local grip = tool:FindFirstChild(gripName or HandGrip.GRIP_NAME)
 	if
 		not handPart
 		or not handPart:IsA("BasePart")
@@ -45,9 +53,9 @@ end
 -- switch off the server's replicated weld on this client only, now or when it arrives.
 -- That way the local weld alone holds the tool on this screen and can be adjusted (e.g. a
 -- guard pose) without two welds fighting. Other players still see the server's weld.
-function HandGrip.attachLocal(tool: Tool, character: Model, hand: Hand, serverWeldName: string): Weld?
-	local weld = HandGrip.attach(tool, character, hand, "Local" .. serverWeldName)
-	local grip = tool:FindFirstChild(HandGrip.GRIP_NAME)
+function HandGrip.attachLocal(tool: Tool, character: Model, hand: Hand, serverWeldName: string, gripName: string?): Weld?
+	local weld = HandGrip.attach(tool, character, hand, "Local" .. serverWeldName, gripName)
+	local grip = tool:FindFirstChild(gripName or HandGrip.GRIP_NAME)
 	if not weld or not grip then
 		return weld
 	end
@@ -67,8 +75,8 @@ function HandGrip.attachLocal(tool: Tool, character: Model, hand: Hand, serverWe
 	return weld
 end
 
-function HandGrip.detach(tool: Tool, weldName: string)
-	local grip = tool:FindFirstChild(HandGrip.GRIP_NAME)
+function HandGrip.detach(tool: Tool, weldName: string, gripName: string?)
+	local grip = tool:FindFirstChild(gripName or HandGrip.GRIP_NAME)
 	local weld = grip and grip:FindFirstChild(weldName)
 	if weld then
 		weld:Destroy()

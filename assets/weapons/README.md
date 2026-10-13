@@ -1,7 +1,7 @@
 # Weapon models
 
 Synced to `ServerStorage.WeaponModels`. A file here named after a weapon's ToolName replaces
-that weapon's placeholder look: `Sword`, `Emberfang`, `Mace`, `Spear`, `Rapier`, `Grimoire`, `Axe`, `Greatsword`, `Bow`, `Staff` (`.rbxmx`).
+that weapon's placeholder look: `Sword`, `Emberfang`, `Mace`, `Spear`, `Rapier`, `Grimoire`, `DualBlade`, `Scythe`, `Hammer`, `Axe`, `Greatsword`, `Bow`, `Staff` (`.rbxmx`).
 
 Ready to import, in `assets/source/weapons/`:
 
@@ -17,6 +17,9 @@ Ready to import, in `assets/source/weapons/`:
 | Staff      | `Staff.ready.glb`       | Staff by Quaternius             |
 | Rapier     | `Rapier.ready.glb`      | Epee by AroniaStudios           |
 | Grimoire   | `Grimoire.ready.glb`    | Grimoire (your download)        |
+| DualBlade  | `DualBlade.ready.glb`   | Dual Blade (your download)      |
+| Scythe     | `Scythe.ready.glb`      | Scythe (your download)          |
+| Hammer     | `Hammer.ready.glb`      | Hammer (your download)          |
 
 The `.ready.glb` files were made with `tools/weapon_glb.py` from color-only models (Studio
 would import those grey): colors baked into a texture, put in the pose the game expects
@@ -40,5 +43,8 @@ turned so the blade points the right way, and held by the handle. Tune it with t
 - `FlipBlade = true`: if it comes out held by the tip.
 - `FlipEdge = true`: turns it 180 degrees around the handle, e.g. if an axe's edge faces
   backwards (the Axe uses this).
+
+A dual-wielded weapon (`DualWield`, the DualBlade) holds a second copy of the same model in
+the other hand, fitted the same way.
 
 Only the look changes; damage, reach, and animations don't.

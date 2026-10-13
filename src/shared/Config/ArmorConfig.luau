@@ -142,6 +142,51 @@ ArmorConfig.Sets = {
 			Boots = 0.02,
 		}, -- 18% with the full set
 	},
+	Prowler = {
+		Name = "Prowler",
+		Color = Color3.fromRGB(80, 40, 20), -- fur-lined leather
+		TrimColor = Color3.fromRGB(85, 80, 95), -- steel buckles and studs
+		Material = Enum.Material.Fabric,
+		Rarity = "Uncommon",
+		StarterFor = "DualBlade",
+		Pieces = { -- placeholder numbers, to tune
+			Helmet = 0.03,
+			Chestplate = 0.07,
+			Armwear = 0.03,
+			Leggings = 0.04,
+			Boots = 0.02,
+		}, -- 19% with the full set: light furs for the Dual Blade (fast, gets in close)
+	},
+	Reaper = {
+		Name = "Reaper",
+		Color = Color3.fromRGB(25, 22, 26), -- black, ragged robes
+		TrimColor = Color3.fromRGB(165, 130, 60), -- the gold corset and circlet
+		Material = Enum.Material.Fabric,
+		Rarity = "Uncommon",
+		StarterFor = "Scythe",
+		Pieces = { -- placeholder numbers, to tune
+			Helmet = 0.03,
+			Chestplate = 0.07,
+			Armwear = 0.03,
+			Leggings = 0.03,
+			Boots = 0.02,
+		}, -- 18% with the full set: cloth robes; the scythe's reach keeps foes away
+	},
+	Vanguard = {
+		Name = "Vanguard",
+		Color = Color3.fromRGB(82, 77, 92), -- heavy steel plate
+		TrimColor = Color3.fromRGB(28, 13, 8), -- dark leather straps
+		Material = Enum.Material.Metal,
+		Rarity = "Uncommon",
+		StarterFor = "Hammer",
+		Pieces = { -- placeholder numbers, to tune
+			Helmet = 0.04,
+			Chestplate = 0.09,
+			Armwear = 0.04,
+			Leggings = 0.06,
+			Boots = 0.03,
+		}, -- 26% with the full set: thick plate for the slow Hammer, which can't dodge much
+	},
 } :: { [string]: ArmorSet }
 
 -- Set ids in a fixed order (by name), e.g. for cycling through owned sets in the backpack.

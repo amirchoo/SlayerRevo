@@ -7,9 +7,11 @@
 -- Fitting, for models made to docs/model-brief.md's 5-stud character:
 --   helmet, leggings, boots keep their designed height (leggings 0.1 up); leg pieces are made
 --   at least 1.1 studs wide and centered on the rig's legs, so the leg can't poke through;
---   the chestplate keeps its top and is shortened to end at the waist; shoulder pads sit on
+--   the chestplate keeps its top and is shortened to end at the waist (unless ROBE: a long
+--   robe or coat keeps its full length, e.g. Reaper's); shoulder pads sit on
 --   top of the upper arm (wide ones nudged outward, off the torso), bracers on the forearm.
 local SET = "Woodcutter"
+local ROBE = false -- true if the chestplate is a long robe or coat that should keep its length
 
 local WAIST = 1.9 -- studs above the feet where the chestplate should end
 local LEG_WIDTH = 1.1
@@ -55,7 +57,7 @@ end
 local chest = piece("Chestplate")
 if chest then
 	local top = (chest.Position - designBase).Y + chest.Size.Y / 2
-	local height = math.min(chest.Size.Y, top - WAIST)
+	local height = if ROBE then chest.Size.Y else math.min(chest.Size.Y, top - WAIST)
 	chest.Size = Vector3.new(chest.Size.X, height, chest.Size.Z)
 	local rel = chest.Position - designBase
 	place(chest, rigBase + Vector3.new(rel.X, top - height / 2, rel.Z))
