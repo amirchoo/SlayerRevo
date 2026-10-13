@@ -1,5 +1,5 @@
 --!strict
--- Decides which weapons a player owns, and which of those are in their hotbar or stored.
+-- Decides which weapons/consumables a player owns, and which of those are in their hotbar.
 -- Weapon services hand every weapon they give a player to InventoryService.give (instead of
 -- putting it in the Backpack themselves); it goes to the Backpack if it's in the player's
 -- hotbar, otherwise to their storage folder in ServerStorage, where it can't be equipped.
@@ -19,6 +19,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
+local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local DataService = require(script.Parent.DataService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 
@@ -91,6 +92,15 @@ function InventoryService.owns(player: Player, name: string): boolean
 	return data ~= nil and data.Weapons[name] == true
 end
 
+local function ownsConsumable(player: Player, name: string): boolean
+	local data = DataService.data(player)
+	return data ~= nil and ShopConfig.consumable(name) ~= nil and (data.Consumables[name] or 0) > 0
+end
+
+local function ownsHotbarItem(player: Player, name: string): boolean
+	return InventoryService.owns(player, name) or ownsConsumable(player, name)
+end
+
 local function hotbarOf(player: Player): { string }
 	local hotbar = hotbars[player]
 	if not hotbar then
@@ -144,15 +154,19 @@ function InventoryService.give(player: Player, tool: Tool)
 	end
 end
 
--- Moves one of the player's weapons into their hotbar (if there's room) or into storage.
--- Returns whether the weapon ends up where asked.
+-- Moves one of the player's weapons/consumables into their hotbar (if there's room) or out.
+-- Returns whether the item ends up where asked.
 function InventoryService.move(player: Player, name: string, toHotbar: boolean): boolean
-	if not InventoryConfig.weapon(name) then
+	local isWeapon = InventoryConfig.weapon(name) ~= nil
+	local isConsumable = ShopConfig.consumable(name) ~= nil
+	if not isWeapon and not isConsumable then
 		return false
 	end
-	local tool = findTool(player, name)
-	if not tool then
+	local tool = if isWeapon then findTool(player, name) else nil
+	if isWeapon and not tool then
 		return false -- not theirs
+	elseif isConsumable and not ownsConsumable(player, name) then
+		return false
 	end
 	local hotbar = hotbarOf(player)
 	local index = table.find(hotbar, name)
@@ -161,20 +175,33 @@ function InventoryService.move(player: Player, name: string, toHotbar: boolean):
 			return false -- full
 		end
 		table.insert(hotbar, name)
-		tool.Parent = player:FindFirstChildOfClass("Backpack")
+		if tool then
+			tool.Parent = player:FindFirstChildOfClass("Backpack")
+		end
 	elseif not toHotbar and index then
 		table.remove(hotbar, index)
 		local character = player.Character
-		if character and tool.Parent == character then
+		if character and tool and tool.Parent == character then
 			local humanoid = character:FindFirstChildOfClass("Humanoid")
 			if humanoid then
 				humanoid:UnequipTools() -- put it away first, so its unequip cleanup runs
 			end
 		end
-		tool.Parent = storageOf(player)
+		if tool then
+			tool.Parent = storageOf(player)
+		end
 	end
 	publish(player)
 	return true
+end
+
+function InventoryService.removeFromHotbar(player: Player, name: string)
+	local hotbar = hotbarOf(player)
+	local index = table.find(hotbar, name)
+	if index then
+		table.remove(hotbar, index)
+		publish(player)
+	end
 end
 
 -- Gives the player weapon `name` to keep (saved), into their hotbar if there's room.
@@ -208,7 +235,7 @@ local function applySaved(player: Player, saved: { string }?)
 	local list = if typeof(saved) == "table" then saved else InventoryConfig.DefaultHotbar
 	local hotbar: { string } = {}
 	for _, name in list do
-		if typeof(name) == "string" and InventoryService.owns(player, name) and not table.find(hotbar, name) and #hotbar < InventoryConfig.HotbarSlots then
+		if typeof(name) == "string" and ownsHotbarItem(player, name) and not table.find(hotbar, name) and #hotbar < InventoryConfig.HotbarSlots then
 			table.insert(hotbar, name)
 		end
 	end

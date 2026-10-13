@@ -55,8 +55,9 @@ NpcConfig.List = {
 		Pants = Color3.fromRGB(50, 40, 30),
 		Lines = {
 			"Mind the sparks. This forge hasn't gone cold in twenty years.",
-			"Bring me what you carve off the monsters out there, and one day I'll turn it into something worth swinging.",
+			"I've got weapons for every fighting style. Two hundred coins each.",
 		},
+		Action = "Shop",
 	},
 	{
 		Id = "Armorer",
@@ -68,8 +69,9 @@ NpcConfig.List = {
 		Pants = Color3.fromRGB(60, 50, 45),
 		Lines = {
 			"Leather, hide, quilted cloth: every piece you wear turns a little of a blow aside.",
-			"The iron set on that stand is yours if you want it. Heavier, but it'll keep you breathing.",
+			"Full armor sets are two hundred fifty coins each.",
 		},
+		Action = "Shop",
 	},
 	{
 		Id = "Innkeeper",
@@ -93,9 +95,10 @@ NpcConfig.List = {
 		Shirt = Color3.fromRGB(90, 140, 70),
 		Pants = Color3.fromRGB(60, 50, 40),
 		Lines = {
-			"Potions, rope, rations... well, soon. The supply cart's late again.",
-			"Come back once the roads are safer and my shelves are full.",
+			"The supply cart finally made it through. Nothing fancy yet, but potions keep slayers alive.",
+			"HP potions and MP potions are stocked and ready.",
 		},
+		Action = "Shop",
 	},
 	{
 		Id = "GuildClerk",

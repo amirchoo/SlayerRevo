@@ -106,8 +106,8 @@ for setId in ArmorConfig.Sets do
 end
 table.sort(ArmorConfig.SetOrder)
 
--- The armor stand in the hub: which set it hands out, and where it stands (X/Z; it faces
--- the town center).
+-- The armor display stand in the hub: which set it shows, and where it stands (X/Z; it faces
+-- the town center). Armor is bought from the armorer, not taken from the stand.
 ArmorConfig.Stand = {
 	Set = "Iron",
 	Position = Vector2.new(-37, 12), -- in front of the armorer's shop

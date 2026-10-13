@@ -29,6 +29,7 @@ export type Data = {
 	Coins: number,
 	Skills: { [string]: { [string]: number } },
 	Weapons: { [string]: boolean }, -- owned weapons (by tool name)
+	Consumables: { [string]: number },
 	Starter: string?, -- the starter weapon picked (once per save)
 	Hotbar: { string }?,
 	Armor: { Owned: { [string]: boolean }, Worn: { [string]: string } }?,
@@ -42,7 +43,7 @@ local loadedCallbacks: { (Player, Data) -> () } = {}
 local store: DataStore? = nil
 
 local function defaults(): Data
-	return { Level = 1, XP = 0, Coins = CurrencyConfig.StartingCoins, Skills = {}, Weapons = {} }
+	return { Level = 1, XP = 0, Coins = CurrencyConfig.StartingCoins, Skills = {}, Weapons = {}, Consumables = {} }
 end
 
 -- Fills in anything missing (e.g. from an older save).
@@ -69,6 +70,13 @@ local function reconcile(raw: any): Data
 		-- A save from before weapons were owned: everyone had every weapon, so they keep them.
 		for _, info in InventoryConfig.Weapons do
 			data.Weapons[info.Name] = true
+		end
+	end
+	if typeof(raw.Consumables) == "table" then
+		for id, count in raw.Consumables do
+			if typeof(id) == "string" and typeof(count) == "number" and count > 0 then
+				data.Consumables[id] = math.floor(count)
+			end
 		end
 	end
 	if typeof(raw.Starter) == "string" then

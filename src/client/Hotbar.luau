@@ -1,7 +1,7 @@
 --!strict
 -- Our hotbar, replacing Roblox's: a row of chunky slots (HudStyle) under the health bar, one
--- per hotbar slot, each showing its weapon's model (WeaponIcon), number key, and name.
--- Number keys 1..N or clicking a slot equip that weapon; doing it again puts it away. The
+-- per hotbar slot, each showing a weapon or consumable. Number keys 1..N or clicking a slot
+-- equip that weapon or use that consumable; using an equipped weapon again puts it away. The
 -- equipped slot is outlined in gold, and a star in the corner counts the skill points spent in
 -- that weapon's tree (SkillMath). Names above Common are tinted their rarity's color, and so
 -- is the outline of an unequipped slot. The weapons and their order come from the server's
@@ -14,7 +14,9 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
+local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
+local Icons = require(ReplicatedStorage.Shared.Icons)
 local HudStyle = require(script.Parent.HudStyle)
 local WeaponIcon = require(script.Parent.WeaponIcon)
 
@@ -25,12 +27,14 @@ local SLOT_COLOR = Color3.fromRGB(58, 54, 74)
 local EMPTY_COLOR = Color3.fromRGB(42, 40, 54)
 local EQUIPPED_BORDER = Color3.fromRGB(255, 205, 70)
 local SKILL_STAR_COLOR = Color3.fromRGB(255, 215, 90)
+local SOFT_TEXT = Color3.fromRGB(190, 185, 205)
 local KEYS = {
 	Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five,
 	Enum.KeyCode.Six, Enum.KeyCode.Seven, Enum.KeyCode.Eight, Enum.KeyCode.Nine,
 }
 
 local player = Players.LocalPlayer
+local useRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ConsumableUse") :: RemoteEvent
 
 local Hotbar = {}
 
@@ -46,6 +50,21 @@ end
 local function hotbarList(): { string }
 	local value = player:GetAttribute("Hotbar")
 	return if typeof(value) == "string" and value ~= "" then string.split(value, ",") else {}
+end
+
+local function consumableCount(itemId: string): number
+	local value = player:GetAttribute("Consumables")
+	if typeof(value) ~= "string" or value == "" then
+		return 0
+	end
+	for _, part in string.split(value, ",") do
+		local split = string.split(part, "=")
+		if split[1] == itemId then
+			local count = tonumber(split[2])
+			return if count then count else 0
+		end
+	end
+	return 0
 end
 
 local function findTool(name: string): Tool?
@@ -64,12 +83,16 @@ local function equippedName(): string?
 	return if tool then tool.Name else nil
 end
 
--- Equips the weapon in slot `index`, or puts it away if it's already in hand.
+-- Equips the weapon in slot `index`, uses the consumable there, or puts away the equipped weapon.
 local function useSlot(index: number)
 	local name = hotbarList()[index]
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not name or not humanoid or humanoid.Health <= 0 then
+		return
+	end
+	if ShopConfig.consumable(name) then
+		useRemote:FireServer(name)
 		return
 	end
 	if equippedName() == name then
@@ -109,7 +132,7 @@ function Hotbar.start()
 	bar.Parent = HudStyle.holder(gui, Vector2.new(0.5, 1))
 	row = bar
 
-	type Slot = { frame: Frame, stroke: UIStroke, viewport: ViewportFrame, name: TextLabel, skill: TextLabel, shown: string? }
+	type Slot = { frame: Frame, stroke: UIStroke, viewport: ViewportFrame, icon: ImageLabel, name: TextLabel, skill: TextLabel, shown: string? }
 	local slots: { Slot } = {}
 	for index = 1, count do
 		local frame = Instance.new("Frame")
@@ -121,6 +144,8 @@ function Hotbar.start()
 		HudStyle.chunky(frame, 12, 3)
 		Instance.new("UIScale").Parent = frame
 		local viewport = WeaponIcon.viewport(frame)
+		local itemIcon = Icons.image(frame, nil, 12)
+		itemIcon.Visible = false
 		local key = HudStyle.caption(frame, tostring(index), 15)
 		key.Position = UDim2.fromOffset(6, 2)
 		key.Size = UDim2.fromOffset(14, 16)
@@ -146,7 +171,7 @@ function Hotbar.start()
 		button.Activated:Connect(function()
 			useSlot(index)
 		end)
-		slots[index] = { frame = frame, stroke = frame:FindFirstChildOfClass("UIStroke") :: UIStroke, viewport = viewport, name = name, skill = skill, shown = nil }
+		slots[index] = { frame = frame, stroke = frame:FindFirstChildOfClass("UIStroke") :: UIStroke, viewport = viewport, icon = itemIcon, name = name, skill = skill, shown = nil }
 	end
 
 	local lastEquipped: string? = nil
@@ -155,18 +180,30 @@ function Hotbar.start()
 		local equipped = equippedName()
 		local alloc = SkillMath.allocations(player)
 		for index, slot in slots do
-			local weapon = list[index]
-			if slot.shown ~= weapon then
-				slot.shown = if WeaponIcon.show(slot.viewport, weapon) then weapon else nil
+			local item = list[index]
+			local consumable = if item then ShopConfig.consumable(item) else nil
+			if consumable then
+				if slot.shown ~= item then
+					slot.viewport:ClearAllChildren()
+					Icons.set(slot.icon, consumable.Icon)
+					slot.shown = item
+				end
+				slot.viewport.Visible = false
+				slot.icon.Visible = true
+				slot.icon.ImageColor3 = if consumable.ManaPercent then Color3.fromRGB(120, 170, 255) else Color3.fromRGB(120, 235, 145)
+			elseif slot.shown ~= item then
+				slot.icon.Visible = false
+				slot.viewport.Visible = true
+				slot.shown = if WeaponIcon.show(slot.viewport, item) then item else nil
 			end
-			slot.name.Text = weapon or ""
-			local spent = if weapon then SkillMath.spent(alloc, SkillMath.treeOf(weapon)) else 0
-			slot.skill.Text = if spent > 0 then `★{spent}` else ""
-			slot.frame.BackgroundColor3 = if weapon then SLOT_COLOR else EMPTY_COLOR
-			local isEquipped = weapon ~= nil and weapon == equipped
-			local rarity = if weapon then InventoryConfig.rarity(weapon) else nil
+			slot.name.Text = if consumable then consumable.Name else item or ""
+			local spent = if item and not consumable then SkillMath.spent(alloc, SkillMath.treeOf(item)) else 0
+			slot.skill.Text = if consumable then `x{consumableCount(consumable.Id)}` elseif spent > 0 then `★{spent}` else ""
+			slot.frame.BackgroundColor3 = if item then SLOT_COLOR else EMPTY_COLOR
+			local isEquipped = item ~= nil and not consumable and item == equipped
+			local rarity = if item and not consumable then InventoryConfig.rarity(item) else nil
 			local special = rarity ~= nil and rarity ~= InventoryConfig.Rarities[1]
-			slot.name.TextColor3 = if rarity and special then rarity.Color else Color3.new(1, 1, 1)
+			slot.name.TextColor3 = if consumable then SOFT_TEXT elseif rarity and special then rarity.Color else Color3.new(1, 1, 1)
 			slot.stroke.Color = if isEquipped then EQUIPPED_BORDER elseif rarity and special then rarity.Color else HudStyle.OUTLINE
 			slot.stroke.Thickness = if isEquipped then 4 else 3
 			if isEquipped and equipped ~= lastEquipped then
@@ -187,6 +224,7 @@ function Hotbar.start()
 	end)
 
 	player:GetAttributeChangedSignal("Hotbar"):Connect(update)
+	player:GetAttributeChangedSignal("Consumables"):Connect(update)
 	player:GetAttributeChangedSignal("Skills"):Connect(update)
 	WeaponIcon.Previews.ChildAdded:Connect(function()
 		for _, slot in slots do

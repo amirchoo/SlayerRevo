@@ -1,7 +1,7 @@
 --!strict
 -- Armor: what each player owns and wears, how much damage it negates, and how it looks.
--- Players get a set from the armor stand in the hub (a ProximityPrompt), which also puts
--- the whole set on; the backpack (ArmorEquip remote) takes single pieces on and off.
+-- Armor is granted by shops, starter choice, or dev tools; the backpack (ArmorEquip remote)
+-- takes single pieces on and off.
 -- The server checks ownership; worn armor stays on through respawns.
 -- State the HUD reads, as player attributes: "Protection" (0..1), "Armor<Slot>" (the worn
 -- set's id, or nil), and "OwnsArmor<SetId>".
@@ -408,6 +408,10 @@ function ArmorService.giveSet(player: Player, setId: string)
 	publish(player)
 end
 
+function ArmorService.ownsSet(player: Player, setId: string): boolean
+	return loadoutOf(player).owned[setId] == true
+end
+
 -- Never trust the client: a real slot, and a set it owns that has a piece for that slot.
 local function onEquip(player: Player, slot: unknown, setId: unknown)
 	if typeof(slot) ~= "string" or not table.find(ArmorConfig.Slots, slot) then
@@ -437,7 +441,7 @@ local function armorFilter(target: Model, amount: number): number
 	return amount * (1 - math.clamp(protection, 0, ArmorConfig.MaxProtection))
 end
 
--- The armor stand ---------------------------------------------------------------------------
+-- The armor display stand --------------------------------------------------------------------
 
 -- R15 body proportions for the fallback mannequin (studs): size and center relative to the
 -- stand's base. Only used if a real R15 rig can't be made.
@@ -539,19 +543,6 @@ local function buildStand()
 	for _, slot in ArmorConfig.Slots do
 		dressSlot(mannequin, slot, stand.Set)
 	end
-	local body = bodyOf(mannequin)
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = `Take {set.Name} Armor`
-	prompt.ObjectText = "Armor Stand"
-	prompt.HoldDuration = 0.5
-	prompt.MaxActivationDistance = 10
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = body.UpperTorso
-	prompt.Triggered:Connect(function(player)
-		ArmorService.giveSet(player, stand.Set)
-	end)
-
 	standModel.Parent = workspace
 end
 

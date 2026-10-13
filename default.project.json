@@ -94,6 +94,12 @@
         },
         "StaffRelease": {
           "$className": "RemoteEvent"
+        },
+        "ShopBuy": {
+          "$className": "RemoteEvent"
+        },
+        "ConsumableUse": {
+          "$className": "RemoteEvent"
         }
       }
     },
