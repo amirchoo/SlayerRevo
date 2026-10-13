@@ -90,5 +90,9 @@ return {
 		Berserker = Vector2.new(800, 700),
 		Deadeye = Vector2.new(900, 700),
 		Rapidfire = Vector2.new(0, 800),
+		Necromancy = Vector2.new(100, 800),
+		Occultist = Vector2.new(200, 800),
+		GraveStrength = Vector2.new(300, 800),
+		Horde = Vector2.new(400, 800),
 	} :: { [string]: Vector2 },
 }

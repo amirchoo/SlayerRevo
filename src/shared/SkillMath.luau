@@ -228,24 +228,29 @@ function SkillMath.staminaCost(player: Player, weapon: string, base: number, kin
 	return base * math.max(multiplier, 0.3)
 end
 
--- Has `player` unlocked the Mage class (and, given an element name, that element)?
-function SkillMath.staffUnlocked(player: Player, element: string?): boolean
+-- Has `player` unlocked caster `weapon`'s class (e.g. the staff's Mage) and, given an
+-- element name, that element? (See SkillTrees.Casters.)
+function SkillMath.spellUnlocked(player: Player, weapon: string, element: string?): boolean
+	local caster = SkillTrees.Casters[weapon]
+	if not caster then
+		return false
+	end
 	local alloc = SkillMath.allocations(player)
-	if rankOf(alloc, "Staff", SkillTrees.StaffClass) == 0 then
+	if rankOf(alloc, weapon, caster.Class) == 0 then
 		return false
 	end
 	if element == nil then
 		return true
 	end
-	local unlock = SkillTrees.StaffElementUnlocks[element]
-	return unlock ~= nil and rankOf(alloc, "Staff", unlock) > 0
+	local unlock = caster.ElementUnlocks[element]
+	return unlock ~= nil and rankOf(alloc, weapon, unlock) > 0
 end
 
--- A staff spell's damage after skills, including that element's own upgrades
+-- A caster's spell damage after skills, including that element's own upgrades
 -- (e.g. Inferno for Fire).
-function SkillMath.spellDamage(player: Player, element: string, base: number, kind: "Light" | "Heavy"): number
-	local bonus = treeStat(SkillMath.allocations(player), "Staff", `{element}Damage`)
-	return math.round(SkillMath.damage(player, "Staff", base, kind) * (1 + bonus))
+function SkillMath.spellDamage(player: Player, weapon: string, element: string, base: number, kind: "Light" | "Heavy"): number
+	local bonus = treeStat(SkillMath.allocations(player), weapon, `{element}Damage`)
+	return math.round(SkillMath.damage(player, weapon, base, kind) * (1 + bonus))
 end
 
 return SkillMath

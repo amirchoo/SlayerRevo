@@ -459,13 +459,21 @@ local Axe: ComboWeapon = {
 --       Thunder: lightning strikes the aim point (within Range) after Delay, hitting a Radius
 --         around it and slowing (Slow) everything caught
 --       HealBurst: heals you and every player within Radius (MinHeal..MaxHeal)
+--       Homing: MinCount..MaxCount (by charge) missiles that each seek an enemy: your lock-on
+--         target if you have one (within Range), else the nearest enemy within Range; they
+--         fly at Speed, turning up to TurnRate degrees a second
+--   Missile (optional): "Hand" flies an undead hand instead of an orb.
 export type StaffElement = {
 	Name: string,
 	Icon: string,
 	Color: Color3,
+	Missile: "Orb" | "Hand" | nil,
 	Light: { Damage: number, Speed: number, Size: number, Heal: number?, Knockback: number?, Slow: { Factor: number, Duration: number }?, Burn: { Damage: number, Interval: number, Duration: number }?, Chain: { Count: number, Range: number, DamageScale: number }? },
 	Heavy: {
-		Kind: "FireWave" | "WaterBlast" | "Boulder" | "Thunder" | "HealBurst",
+		Kind: "FireWave" | "WaterBlast" | "Boulder" | "Thunder" | "HealBurst" | "Homing",
+		MinCount: number?,
+		MaxCount: number?,
+		TurnRate: number?,
 		MinDamage: number,
 		MaxDamage: number,
 		Range: number?,
@@ -484,9 +492,11 @@ export type StaffElement = {
 	},
 }
 
--- Staff: a caster weapon with five elements (switch with R or the touch element button).
--- Tap to fire a missile at what you're aiming at (or your lock-on target); hold to charge a
--- stronger blast. Animations from tools/sword_anims.py (Staff*); "" until published.
+-- A caster weapon (the staff, the grimoire): a set of elements (switch with R or the element
+-- bar). Tap to fire a missile at what you're aiming at (or your lock-on target); hold to charge
+-- a stronger spell. Run by StaffService and StaffClient (one for every caster). Its skill tree
+-- is a class (SkillTrees.Casters): unlock the class, then each element.
+-- Staff: four elements. Animations from tools/sword_anims.py (Staff*); "" until published.
 local Staff = {
 	ToolName = "Staff",
 	Hand = "Right",
@@ -496,6 +506,9 @@ local Staff = {
 	BlastAnimation = "73647528064933", -- StaffBlast (heavy release: Water, Earth, Lightning, Faith)
 	SlamAnimation = "", -- StaffSlam (Fire\'s heavy: the staff slammed into the ground)
 	GuardAnimation = Sword.Block.Animation,
+	-- How the hand holds it (Tool.Grip): its length along the grip part's Z.
+	Grip = CFrame.new(0, 0, -0.3) * CFrame.Angles(math.pi / 2, 0, 0),
+	AimWithHand = false, -- see the grimoire's
 	ElementKey = Enum.KeyCode.R, -- cycles the element
 	CastMana = 15, -- mana per light missile (see Mana: about 6 missiles from full)
 	ChargeMana = 40, -- mana to start charging a blast
@@ -533,6 +546,49 @@ local Staff = {
 			Light = { Damage = 10, Speed = 170, Size = 0.8, Chain = { Count = 2, Range = 12, DamageScale = 0.6 } },
 			Heavy = { Kind = "Thunder", MinDamage = 30, MaxDamage = 65, Range = 70, Radius = 10, Delay = 0.35, Slow = { Factor = 0.5, Duration = 3 } },
 		},
+	} :: { StaffElement },
+}
+
+-- Grimoire: a tome of necromancy and faith, held open in the left hand while the right casts.
+-- Necromancy throws grasping undead hands, and its charged spell looses a few of them that hunt
+-- down enemies (your lock-on target first). Faith heals allies. Animations from
+-- tools/grimoire_anims.py.
+local Grimoire = {
+	ToolName = "Grimoire",
+	Hand = "Left",
+	IdleAnimation = "129767567804443", -- GrimoireIdle
+	CastAnimation = "124629734591157", -- GrimoireCast (light)
+	ChargeAnimation = "94630732418140", -- GrimoireCharge (held while charging)
+	BlastAnimation = "101609423364698", -- GrimoireBlast (heavy release)
+	SlamAnimation = "",
+	GuardAnimation = "", -- the book raised as a shield (code-driven while "")
+	-- Held by the bottom of its spine, turned so its pages face the reader.
+	Grip = CFrame.Angles(0, 0, math.rad(-90)) * CFrame.new(0, 0, -0.3) * CFrame.Angles(math.pi / 2, 0, 0),
+	-- While casting, the head and the free (right) hand turn onto the aim on top of the
+	-- animations, and the head watches the lock-on target between casts (StaffClient).
+	AimWithHand = true,
+	ElementKey = Enum.KeyCode.R,
+	CastMana = 14,
+	ChargeMana = 40,
+	CastCooldown = 0.45,
+	CastDelay = 0.14, -- matches GrimoireCast's "Hit"
+	HoldTime = 0.2,
+	FullChargeTime = 1.3,
+	MaxHold = 3,
+	BlastDelay = 0.15, -- matches GrimoireBlast's "Hit"
+	Recovery = 0.8,
+	ChargeWalkSpeed = 8,
+	MaxRange = 140,
+	BlockAmount = 10,
+	ParryWindow = 0.22,
+	-- A real model (assets/weapons/Grimoire.rbxmx): held by the spine, the book standing upright.
+	ModelFit = { Length = 1.6, GripFrom = 0.2 },
+	Elements = {
+		{
+			Name = "Necromancy", Icon = "Necromancy", Color = Color3.fromRGB(130, 220, 120), Missile = "Hand",
+			Light = { Damage = 15, Speed = 35, Size = 1.9 },
+			Heavy = { Kind = "Homing", MinDamage = 18, MaxDamage = 32, MinCount = 2, MaxCount = 3, Range = 70, Speed = 25, Size = 2.1, TurnRate = 300 },
+		},
 		{
 			Name = "Faith", Icon = "Faith", Color = Color3.fromRGB(255, 245, 190),
 			Light = { Damage = 6, Speed = 120, Size = 1, Heal = 12 },
@@ -550,6 +606,9 @@ return {
 	flurryHits = flurryHits,
 	Axe = Axe,
 	Staff = Staff,
+	Grimoire = Grimoire,
+	-- Every caster weapon, for the systems that serve them all (StaffService, StaffClient, ManaBar).
+	Casters = { Staff, Grimoire },
 	-- Shared by every weapon that can block (sword, mace, greatsword). Hold right-click to
 	-- block; each block uses one charge, and each used charge comes back RechargeTime later.
 	Blocking = {

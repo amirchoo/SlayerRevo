@@ -40,7 +40,8 @@ local LOOKS: { [string]: Look } = {
 	StaffWater = { style = "Blunt", color = Color3.fromRGB(70, 160, 255), size = 1 },
 	StaffEarth = { style = "Blunt", color = Color3.fromRGB(170, 125, 70), size = 1.2 },
 	StaffElectric = { style = "Pierce", color = Color3.fromRGB(255, 235, 90), size = 1 },
-	StaffFaith = { style = "Pierce", color = Color3.fromRGB(255, 245, 190), size = 0.8 },
+	GrimoireFaith = { style = "Pierce", color = Color3.fromRGB(255, 245, 190), size = 0.8 },
+	GrimoireNecromancy = { style = "Slash", color = Color3.fromRGB(130, 220, 120), size = 1 },
 	Bow = { style = "Pierce", color = Color3.fromRGB(230, 220, 200), size = 0.7 },
 	DemonClaw = { style = "Slash", color = Color3.fromRGB(255, 70, 60), size = 0.9 }, -- enemies hitting players
 	Parry = { style = "Blunt", color = Color3.fromRGB(255, 235, 150), size = 1.3 }, -- a parried enemy (see BlockService)

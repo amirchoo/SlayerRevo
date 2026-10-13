@@ -77,7 +77,7 @@ STAND = (0, 0, 0)  # leg: (hip, knee, ankle) degrees
 
 
 def pose(arm=None, wrist=-60, chest=0, hips=0, lean=0, drop=0.0, larm=0, lelbow=20, lleg=STAND, rleg=STAND, blade_lean=None,
-         head_forward=True):
+         head_forward=True, head=(0, 0), larm_yaw=0):
     """One full-body pose.
     arm: right-arm direction in chest space (None = hanging). wrist: wrist flex.
     chest / hips: twist in degrees (+ = turn left). lean: chest lean (+ = back).
@@ -86,11 +86,13 @@ def pose(arm=None, wrist=-60, chest=0, hips=0, lean=0, drop=0.0, larm=0, lelbow=
     blade_lean: fixed direction for the blade's lean instead of following a swing plane
     (with wrist=0 the blade points straight along it).
     head_forward: counter-turn the head so it keeps facing forward through twists
-    (False for spins, where the head should turn with the body)."""
+    (False for spins, where the head should turn with the body).
+    head: (pitch, yaw) on top of that, in degrees (+ = look up / look left).
+    larm_yaw: turns the left arm's swing across the body (- = toward the right)."""
     return {
         "arm": arm, "wrist": wrist, "chest": chest, "hips": hips, "lean": lean, "drop": drop,
         "larm": larm, "lelbow": lelbow, "lleg": lleg, "rleg": rleg, "blade_lean": blade_lean,
-        "head_forward": head_forward,
+        "head_forward": head_forward, "head": head, "larm_yaw": larm_yaw,
     }
 
 
@@ -422,11 +424,14 @@ def joint_rotations(p):
         "LowerTorso": ry(p["hips"]),
         "UpperTorso": matmul(ry(p["chest"]), rx(p["lean"])),
         # Keep looking forward through the twist and lean (or just level the head, for spins).
-        "Head": matmul(rx(-p["lean"]), ry(-(p["chest"] + p["hips"]))) if p["head_forward"] else rx(-p["lean"]),
+        "Head": matmul(
+            matmul(rx(-p["lean"]), ry(-(p["chest"] + p["hips"]))) if p["head_forward"] else rx(-p["lean"]),
+            matmul(ry(p["head"][1]), rx(p["head"][0])),
+        ),
         "RightUpperArm": aim_arm(*p["arm"]),
         "RightLowerArm": identity(),
         "RightHand": rx(p["wrist"]),
-        "LeftUpperArm": rx(p["larm"]),
+        "LeftUpperArm": matmul(ry(p["larm_yaw"]), rx(p["larm"])),
         "LeftLowerArm": rx(p["lelbow"]),
         "LeftUpperLeg": l_hip, "LeftLowerLeg": l_knee, "LeftFoot": l_ankle,
         "RightUpperLeg": r_hip, "RightLowerLeg": r_knee, "RightFoot": r_ankle,

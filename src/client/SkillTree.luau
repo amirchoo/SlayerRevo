@@ -64,8 +64,7 @@ local GENERAL_BRANCH_WIDTH = { 13, 10, 7 } -- branch thickness into each tier
 local DRAG_CLICK_SLOP = 6 -- a press that moves further than this is a drag, not a click
 local GENERAL_BEND = 0.05 -- each tier leans this much further out, like a branch curling up
 local BRANCH_ANGLES: { [string]: number } = { Mobility = -66, Vitality = -40, Endurance = -13, Arcana = 13, Might = 40, Guard = 66 }
--- The staff's Mage tree uses the same shape, one branch per element plus Arcane.
-local STAFF_BRANCH_ANGLES: { [string]: number } = { Fire = -66, Water = -40, Earth = -13, Electric = 13, Faith = 40, Arcane = 66 }
+-- Caster class trees (the staff's Mage, the grimoire's Occultist) use the same shape, one branch per element plus Arcane.
 
 -- Weapon tree shape: root, then each tier's height; tiers with two nodes split left/right.
 local WEAPON_ROOT = Vector2.new(320, 352)
@@ -551,7 +550,7 @@ function SkillTree.start()
 	end
 
 	-- A tree drawn as branches fanning out and up from a root (the General tree, and the
-	-- staff's Mage tree): each branch climbs node by node in its own direction (`angles`, by
+	-- casters' class trees): each branch climbs node by node in its own direction (`angles`, by
 	-- branch id), with its name past its tip. Links from the root light up once `rootNode` is
 	-- learned (or always, with no root node).
 	local function radialTree(page: Frame, treeId: string, branches: { SkillTrees.Branch }, angles: { [string]: number }, rootNode: string?)
@@ -594,17 +593,18 @@ function SkillTree.start()
 		radialTree(page, "General", SkillTrees.General, BRANCH_ANGLES, nil)
 	end
 
-	-- Staff: the Mage class. The Mage node is the root; each element's branch grows from it.
-	do
-		local page = makePage("Staff", GENERAL_WORLD, GENERAL_ROOT)
-		makeNode(page, "Staff", SkillTrees.StaffClassNode, GENERAL_ROOT, "Mage")
-		radialTree(page, "Staff", SkillTrees.StaffBranches, STAFF_BRANCH_ANGLES, SkillTrees.StaffClass)
+	-- Casters (the staff, the grimoire): the class node is the root; each element's branch
+	-- grows from it.
+	for weapon, caster in SkillTrees.Casters do
+		local page = makePage(weapon, GENERAL_WORLD, GENERAL_ROOT)
+		makeNode(page, weapon, caster.ClassNode, GENERAL_ROOT, caster.ClassNode.Id)
+		radialTree(page, weapon, caster.Branches, caster.Angles, caster.Class)
 	end
 
 	-- Weapons: a trunk from the weapon that splits into two branches and ends in the masteries.
 	for _, weapon in SkillTrees.WeaponOrder do
-		if weapon == "Staff" then
-			continue -- drawn as the Mage tree, above
+		if SkillTrees.Casters[weapon] then
+			continue -- drawn as its class tree, above
 		end
 		local page = makePage(weapon)
 		local root = makeRoot(page, WEAPON_ROOT, weapon:upper())
@@ -770,13 +770,14 @@ function SkillTree.start()
 			end
 			learn.Visible = true
 		else
-			Icons.set(infoIcon, if selectedTab == "General" then "Star" elseif selectedTab == "Staff" then "Mage" else "Swords")
-			infoName.Text = if selectedTab == "General" then "General" elseif selectedTab == "Staff" then "Mage" else selectedTab
+			local caster = SkillTrees.Casters[selectedTab]
+			Icons.set(infoIcon, if selectedTab == "General" then "Star" elseif caster then iconFor(caster.ClassNode.Id, "Mage") else "Swords")
+			infoName.Text = if selectedTab == "General" then "General" elseif caster then caster.ClassNode.Name else selectedTab
 			infoTree.Text = `{SkillMath.spent(alloc, selectedTab)} points spent here`
 			infoRank.Text = ""
 			infoBody.Text = if selectedTab == "General"
 				then "Grow the branches you want. Points are shared by every tree, and spending in a branch locks its rival on the other side (Mobility ↔ Guard, Vitality ↔ Might, Endurance ↔ Arcana) until you reset.\n\nClick a skill to see it."
-				elseif selectedTab == "Staff" then "The staff's magic. Unlock the Mage class (the root) to cast at all, then unlock each element's branch to use that element, and grow its upgrades.\n\nClick a skill to see it."
+				elseif caster then `{caster.About}\n\nClick a skill to see it.`
 				else `Make the {selectedTab} hit harder and handle better. Higher tiers need points spent in this tree. The masteries at the top are a choice: take one and the other locks.\n\nClick a skill to see it.`
 			infoStatus.Text = ""
 			learn.Visible = false

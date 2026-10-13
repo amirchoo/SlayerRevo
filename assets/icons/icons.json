@@ -7,14 +7,12 @@
     "Polearms": "lorc/barbed-spear",
     "Ranged": "lorc/pocket-bow",
     "Magic": "lorc/wizard-staff",
-
     "Helmet": "lorc/visored-helm",
     "Chestplate": "delapouite/chest-armor",
     "Armwear": "delapouite/gauntlet",
     "Leggings": "delapouite/leg-armor",
     "Boots": "lorc/leather-boot",
     "Shield": "lorc/checked-shield",
-
     "Backpack": "lorc/knapsack",
     "Chest": "lorc/locked-chest",
     "Skills": "delapouite/upgrade",
@@ -24,20 +22,17 @@
     "Attack": "lorc/crossed-swords",
     "Target": "sbed/targeted",
     "Sparkles": "delapouite/sparkles",
-
     "Fire": "carl-olsen/flame",
     "Water": "sbed/water-drop",
     "Earth": "john-redman/rock",
     "Electric": "lorc/lightning-tear",
     "Faith": "lorc/holy-symbol",
-
     "Mobility": "lorc/wingfoot",
     "Vitality": "skoll/hearts",
     "Might": "lorc/muscle-up",
     "Endurance": "lorc/run",
     "Arcana": "lorc/crystal-ball",
     "Arcane": "lorc/magic-swirl",
-
     "FleetFoot": "lorc/walking-boot",
     "ExtraDash": "lorc/sprint",
     "GhostStep": "lorc/ghost",
@@ -89,6 +84,10 @@
     "Butcher": "lorc/meat-cleaver",
     "Berserker": "delapouite/enrage",
     "Deadeye": "lorc/arrow-scope",
-    "Rapidfire": "lorc/arrow-flights"
+    "Rapidfire": "lorc/arrow-flights",
+    "Necromancy": "delapouite/skeletal-hand",
+    "Occultist": "delapouite/spell-book",
+    "GraveStrength": "skoll/raise-zombie",
+    "Horde": "skoll/raise-skeleton"
   }
 }

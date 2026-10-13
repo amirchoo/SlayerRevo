@@ -2,7 +2,7 @@
 -- Mana bar: a slim blue bar (HudStyle) just above the stamina bar. Display only: reads the
 -- Mana/MaxMana attributes the server sets (see ManaService). Flashes red and wobbles when a
 -- spell is refused for lack of mana, and pops with "+N" when a skill raises max mana.
--- Shown only once the Mage class is unlocked, and then while the staff is in hand or mana is
+-- Shown only once a caster class is unlocked, and then while that caster is in hand or mana is
 -- still refilling, so it doesn't clutter the HUD for fighters who never cast.
 
 local Players = game:GetService("Players")
@@ -23,16 +23,33 @@ local EMPTY_FLASH_COLOR = Color3.fromRGB(230, 60, 60)
 local LOW_THRESHOLD = 0.25
 local FILL_TWEEN = TweenInfo.new(0.12, Enum.EasingStyle.Linear)
 local FLASH_TWEEN = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local STAFF_NAME = CombatConfig.Staff.ToolName
 
 local player = Players.LocalPlayer
 
 local ManaBar = {}
 
-local function staffInHand(): boolean
+-- The caster weapon in hand (the staff, the grimoire), if any.
+local function casterInHand(): string?
 	local character = player.Character
 	local tool = character and character:FindFirstChildOfClass("Tool")
-	return tool ~= nil and tool.Name == STAFF_NAME
+	if tool then
+		for _, caster in CombatConfig.Casters do
+			if caster.ToolName == tool.Name then
+				return caster.ToolName
+			end
+		end
+	end
+	return nil
+end
+
+-- Has any caster's class been unlocked (so the player has spells to spend mana on)?
+local function anyClassUnlocked(): boolean
+	for _, caster in CombatConfig.Casters do
+		if SkillMath.spellUnlocked(player, caster.ToolName) then
+			return true
+		end
+	end
+	return false
 end
 
 function ManaBar.start()
@@ -72,7 +89,8 @@ function ManaBar.start()
 			return
 		end
 		local ratio = math.clamp(mana / maxMana, 0, 1)
-		background.Visible = SkillMath.staffUnlocked(player) and (staffInHand() or ratio < 1)
+		local inHand = casterInHand()
+		background.Visible = if inHand then SkillMath.spellUnlocked(player, inHand) else anyClassUnlocked() and ratio < 1
 		TweenService:Create(fill, FILL_TWEEN, { Size = UDim2.fromScale(ratio, 1) }):Play()
 		fill.BackgroundColor3 = if ratio > LOW_THRESHOLD then FULL_COLOR else LOW_COLOR
 		if lastMax and maxMana > lastMax and background.Visible then

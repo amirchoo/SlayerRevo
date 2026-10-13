@@ -40,7 +40,8 @@ local SPECS: { [string]: SoundSpec } = {
 	StaffWaterHit = { Id = THUD, Pitch = 1.6, Volume = 0.7 },
 	StaffEarthHit = { Id = THUD, Pitch = 0.8, Volume = 1 },
 	StaffElectricHit = { Id = TICK, Pitch = 0.6, Volume = 1 },
-	StaffFaithHit = { Id = TICK, Pitch = 1.4, Volume = 0.7 },
+	GrimoireFaithHit = { Id = TICK, Pitch = 1.4, Volume = 0.7 },
+	GrimoireNecromancyHit = { Id = THUD, Pitch = 0.9, Volume = 0.8 },
 	BowHit = { Id = THUD, Pitch = 2.3, Volume = 0.6 },
 
 	-- Other feedback.

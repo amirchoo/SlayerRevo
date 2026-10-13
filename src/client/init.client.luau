@@ -45,7 +45,9 @@ ComboWeaponClient.new(CombatConfig.Rapier).start()
 ComboWeaponClient.new(CombatConfig.Axe).start()
 BowClient.start()
 GreatswordClient.start()
-StaffClient.start()
+for _, caster in CombatConfig.Casters do
+	StaffClient.new(caster).start()
+end
 AmmoDisplay.start()
 Crosshair.start()
 ZoneBanner.start()

@@ -47,6 +47,7 @@ InventoryConfig.Weapons = {
 	{ Name = "Spear", Class = "Polearms", Description = "Long reach. Hold for a piercing lunge." },
 	{ Name = "Bow", Class = "Ranged", Description = "Hold right-click to draw, release to fire." },
 	{ Name = "Staff", Class = "Magic", Description = "Elemental missiles; hold to charge a blast. R switches element." },
+	{ Name = "Grimoire", Class = "Magic", Description = "Necromancy and Faith: undead hands, homing swarms, and healing. R switches school." },
 } :: { WeaponInfo }
 
 -- What a new player's hotbar holds (in order); everything else starts stored.

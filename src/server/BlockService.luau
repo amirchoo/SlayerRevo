@@ -32,6 +32,7 @@ local BLOCK_AMOUNTS: { [string]: number } = {
 	[CombatConfig.Rapier.ToolName] = CombatConfig.Rapier.Block.BlockAmount,
 	[CombatConfig.Axe.ToolName] = CombatConfig.Axe.Block.BlockAmount,
 	[CombatConfig.Staff.ToolName] = CombatConfig.Staff.BlockAmount,
+	[CombatConfig.Grimoire.ToolName] = CombatConfig.Grimoire.BlockAmount,
 	[CombatConfig.Greatsword.ToolName] = CombatConfig.Greatsword.BlockAmount,
 }
 
@@ -56,6 +57,7 @@ local PARRY_WINDOWS: { [string]: number } = {
 	[CombatConfig.Rapier.ToolName] = CombatConfig.Rapier.Block.ParryWindow,
 	[CombatConfig.Axe.ToolName] = CombatConfig.Axe.Block.ParryWindow,
 	[CombatConfig.Staff.ToolName] = CombatConfig.Staff.ParryWindow,
+	[CombatConfig.Grimoire.ToolName] = CombatConfig.Grimoire.ParryWindow,
 	[CombatConfig.Greatsword.ToolName] = CombatConfig.Greatsword.ParryWindow,
 }
 

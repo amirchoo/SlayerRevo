@@ -1,7 +1,7 @@
 # Weapon models
 
 Synced to `ServerStorage.WeaponModels`. A file here named after a weapon's ToolName replaces
-that weapon's placeholder look: `Sword`, `Emberfang`, `Mace`, `Spear`, `Rapier`, `Axe`, `Greatsword`, `Bow`, `Staff` (`.rbxmx`).
+that weapon's placeholder look: `Sword`, `Emberfang`, `Mace`, `Spear`, `Rapier`, `Grimoire`, `Axe`, `Greatsword`, `Bow`, `Staff` (`.rbxmx`).
 
 Ready to import, in `assets/source/weapons/`:
 
@@ -16,6 +16,7 @@ Ready to import, in `assets/source/weapons/`:
 | Axe        | `Axe.ready.glb`         | Axe Small by Quaternius         |
 | Staff      | `Staff.ready.glb`       | Staff by Quaternius             |
 | Rapier     | `Rapier.ready.glb`      | Epee by AroniaStudios           |
+| Grimoire   | `Grimoire.ready.glb`    | Grimoire (your download)        |
 
 The `.ready.glb` files were made with `tools/weapon_glb.py` from color-only models (Studio
 would import those grey): colors baked into a texture, put in the pose the game expects

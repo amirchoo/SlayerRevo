@@ -18,7 +18,7 @@
 --     HeavyStaminaCost (fractions, negative = cheaper), BlockAmount, ParryWindow, and each
 --     weapon's own: SpinDuration (s, sword), ChargeSpeed (greatsword), QuakeRadius (mace),
 --     LungeDistance (spear), FlurryHits (extra stabs, rapier), BleedDamage (per tick, axe), DrawSpeed (bow) as fractions; the
---     staff's are listed with StaffBranches below.
+--     casters' (staff, grimoire) are listed with SkillTrees.Casters below.
 
 export type Node = {
 	Id: string,
@@ -182,32 +182,23 @@ SkillTrees.Weapons = {
 	),
 } :: { [string]: { Node } }
 
--- The staff's tree is the Mage class: drawn as branches growing from the Mage node, like the
--- General tree. Unlock Mage first (until then the staff only blocks), then each element is
--- its own branch that must be unlocked before that element can be cast, with upgrades
--- beyond. All its nodes are tier 1; the Requires chains set the order.
--- Element stats (fractions unless noted): FireDamage, WaterDamage, EarthDamage,
--- ElectricDamage (that element's spells), BurnDamage (per tick), WaterKnockback, EarthStun
--- (seconds), ElectricRadius (thunder), FaithRadius (healing burst), HealPower.
-SkillTrees.StaffClass = "Mage"
-SkillTrees.StaffClassNode = {
-	Id = "Mage",
-	Name = "Mage",
-	Description = "Unlocks the Mage class: the staff can cast spells. Unlock an element next.",
-	Tier = 1,
-	MaxRank = 1,
-	Effects = {},
-} :: Node
--- Which node unlocks each element (by its name in CombatConfig.Staff.Elements).
-SkillTrees.StaffElementUnlocks = {
-	Fire = "FireUnlock",
-	Water = "WaterUnlock",
-	Earth = "EarthUnlock",
-	Electric = "ElectricUnlock",
-	Faith = "FaithUnlock",
+-- Caster weapons (the staff, the grimoire) each have a class tree, drawn as branches growing
+-- from the class node, like the General tree. Unlock the class first (until then the weapon
+-- only blocks), then each element is its own branch that must be unlocked before that element
+-- can be cast, with upgrades beyond. All their nodes are tier 1; the Requires chains set the
+-- order. Element stats (fractions unless noted): <Element>Damage (that element's spells),
+-- BurnDamage (per tick), WaterKnockback, EarthStun (seconds), ElectricRadius (thunder),
+-- FaithRadius (healing burst), HealPower, ExtraHands (more homing hands, Necromancy).
+export type CasterTree = {
+	Class: string, -- the class node's Id
+	ClassNode: Node,
+	ElementUnlocks: { [string]: string }, -- element name (CombatConfig) -> the node that unlocks it
+	Branches: { Branch },
+	Angles: { [string]: number }, -- each branch's direction on the skill screen, by branch Id
+	About: string, -- shown in the skill screen with nothing selected
 }
 
-local function elementBranch(id: string, name: string, icon: string, unlockText: string, upgrade: Node, special: Node): Branch
+local function elementBranch(classId: string, id: string, name: string, icon: string, unlockText: string, upgrade: Node, special: Node): Branch
 	upgrade.Tier, upgrade.Requires = 1, `{id}Unlock`
 	special.Tier, special.Requires = 1, upgrade.Id
 	return {
@@ -215,49 +206,77 @@ local function elementBranch(id: string, name: string, icon: string, unlockText:
 		Name = name,
 		Icon = icon,
 		Nodes = {
-			{ Id = `{id}Unlock`, Name = name, Description = unlockText, Tier = 1, MaxRank = 1, Effects = {}, Requires = "Mage" },
+			{ Id = `{id}Unlock`, Name = name, Description = unlockText, Tier = 1, MaxRank = 1, Effects = {}, Requires = classId },
 			upgrade,
 			special,
 		},
 	}
 end
 
-SkillTrees.StaffBranches = {
-	elementBranch("Fire", "Pyromancy", "Fire", "Unlocks Fire: missiles, and a slam that sends a burning wall of flame.",
-		{ Id = "Inferno", Name = "Inferno", Description = "+10% Fire damage.", Tier = 1, MaxRank = 3, Effects = { FireDamage = 0.1 } },
-		{ Id = "Scorch", Name = "Scorch", Description = "Burns deal 1 more damage per tick.", Tier = 1, MaxRank = 2, Effects = { BurnDamage = 1 } }),
-	elementBranch("Water", "Hydromancy", "Water", "Unlocks Water: slowing missiles, and a torrent that knocks back.",
-		{ Id = "Torrent", Name = "Torrent", Description = "+10% Water damage.", Tier = 1, MaxRank = 3, Effects = { WaterDamage = 0.1 } },
-		{ Id = "Undertow", Name = "Undertow", Description = "Water knocks back 25% harder.", Tier = 1, MaxRank = 2, Effects = { WaterKnockback = 0.25 } }),
-	elementBranch("Earth", "Geomancy", "Earth", "Unlocks Earth: heavy rocks, and a thrown boulder that stuns.",
-		{ Id = "Bedrock", Name = "Bedrock", Description = "+10% Earth damage.", Tier = 1, MaxRank = 3, Effects = { EarthDamage = 0.1 } },
-		{ Id = "Tremor", Name = "Tremor", Description = "The boulder stuns 0.2 s longer.", Tier = 1, MaxRank = 2, Effects = { EarthStun = 0.2 } }),
-	elementBranch("Electric", "Electromancy", "Electric", "Unlocks Lightning: chaining bolts, and thunder that slows.",
-		{ Id = "Storm", Name = "Storm", Description = "+10% Lightning damage.", Tier = 1, MaxRank = 3, Effects = { ElectricDamage = 0.1 } },
-		{ Id = "Overload", Name = "Overload", Description = "Thunder strikes 15% wider.", Tier = 1, MaxRank = 2, Effects = { ElectricRadius = 0.15 } }),
-	elementBranch("Faith", "Faith", "Faith", "Unlocks Faith: missiles that heal allies, and a healing burst.",
-		{ Id = "Devotion", Name = "Devotion", Description = "Faith heals 10% more.", Tier = 1, MaxRank = 3, Effects = { HealPower = 0.1 } },
-		{ Id = "Sanctuary", Name = "Sanctuary", Description = "The healing burst reaches 15% further.", Tier = 1, MaxRank = 2, Effects = { FaithRadius = 0.15 } }),
-	{
+local function arcaneBranch(classId: string): Branch
+	return {
 		Id = "Arcane",
 		Name = "Arcane",
 		Icon = "Arcane",
 		Nodes = {
-			{ Id = "Efficiency", Name = "Efficiency", Description = "Spells cost 6% less mana.", Tier = 1, MaxRank = 3, Effects = { StaminaCost = -0.06 }, Requires = "Mage" },
+			{ Id = "Efficiency", Name = "Efficiency", Description = "Spells cost 6% less mana.", Tier = 1, MaxRank = 3, Effects = { StaminaCost = -0.06 }, Requires = classId },
 			{ Id = "Overcharge", Name = "Overcharge", Description = "Heavy spells charge 12% faster.", Tier = 1, MaxRank = 3, Effects = { ChargeSpeed = 0.12 }, Requires = "Efficiency" },
 			{ Id = "Spellweaver", Name = "Spellweaver", Description = "+8% heavy spell damage.", Tier = 1, MaxRank = 3, Effects = { HeavyDamage = 0.08 }, Requires = "Overcharge" },
 		},
-	},
-} :: { Branch }
-
--- The staff's nodes as one list (for the rules), Mage first.
-local staffNodes: { Node } = { SkillTrees.StaffClassNode }
-for _, branch in SkillTrees.StaffBranches do
-	for _, node in branch.Nodes do
-		table.insert(staffNodes, node)
-	end
+	}
 end
-SkillTrees.Weapons.Staff = staffNodes
+
+SkillTrees.Casters = {
+	Staff = {
+		Class = "Mage",
+		ClassNode = { Id = "Mage", Name = "Mage", Description = "Unlocks the Mage class: the staff can cast spells. Unlock an element next.", Tier = 1, MaxRank = 1, Effects = {} },
+		ElementUnlocks = { Fire = "FireUnlock", Water = "WaterUnlock", Earth = "EarthUnlock", Electric = "ElectricUnlock" },
+		Branches = {
+			elementBranch("Mage", "Fire", "Pyromancy", "Fire", "Unlocks Fire: missiles, and a slam that sends a burning wall of flame.",
+				{ Id = "Inferno", Name = "Inferno", Description = "+10% Fire damage.", Tier = 1, MaxRank = 3, Effects = { FireDamage = 0.1 } },
+				{ Id = "Scorch", Name = "Scorch", Description = "Burns deal 1 more damage per tick.", Tier = 1, MaxRank = 2, Effects = { BurnDamage = 1 } }),
+			elementBranch("Mage", "Water", "Hydromancy", "Water", "Unlocks Water: slowing missiles, and a torrent that knocks back.",
+				{ Id = "Torrent", Name = "Torrent", Description = "+10% Water damage.", Tier = 1, MaxRank = 3, Effects = { WaterDamage = 0.1 } },
+				{ Id = "Undertow", Name = "Undertow", Description = "Water knocks back 25% harder.", Tier = 1, MaxRank = 2, Effects = { WaterKnockback = 0.25 } }),
+			elementBranch("Mage", "Earth", "Geomancy", "Earth", "Unlocks Earth: heavy rocks, and a thrown boulder that stuns.",
+				{ Id = "Bedrock", Name = "Bedrock", Description = "+10% Earth damage.", Tier = 1, MaxRank = 3, Effects = { EarthDamage = 0.1 } },
+				{ Id = "Tremor", Name = "Tremor", Description = "The boulder stuns 0.2 s longer.", Tier = 1, MaxRank = 2, Effects = { EarthStun = 0.2 } }),
+			elementBranch("Mage", "Electric", "Electromancy", "Electric", "Unlocks Lightning: chaining bolts, and thunder that slows.",
+				{ Id = "Storm", Name = "Storm", Description = "+10% Lightning damage.", Tier = 1, MaxRank = 3, Effects = { ElectricDamage = 0.1 } },
+				{ Id = "Overload", Name = "Overload", Description = "Thunder strikes 15% wider.", Tier = 1, MaxRank = 2, Effects = { ElectricRadius = 0.15 } }),
+			arcaneBranch("Mage"),
+		},
+		Angles = { Fire = -60, Water = -30, Earth = 0, Electric = 30, Arcane = 60 },
+		About = "The staff's magic. Unlock the Mage class (the root) to cast at all, then unlock each element's branch to use that element, and grow its upgrades.",
+	},
+	Grimoire = {
+		Class = "Occultist",
+		ClassNode = { Id = "Occultist", Name = "Occultist", Description = "Unlocks the Occultist class: the grimoire can cast spells. Unlock a school next.", Tier = 1, MaxRank = 1, Effects = {} },
+		ElementUnlocks = { Necromancy = "NecromancyUnlock", Faith = "FaithUnlock" },
+		Branches = {
+			elementBranch("Occultist", "Necromancy", "Necromancy", "Necromancy", "Unlocks Necromancy: grasping undead hands, and a swarm of them that hunts down enemies.",
+				{ Id = "GraveStrength", Name = "Grave Strength", Description = "+10% Necromancy damage.", Tier = 1, MaxRank = 3, Effects = { NecromancyDamage = 0.1 } },
+				{ Id = "Horde", Name = "Horde", Description = "The charged spell looses 1 more hand.", Tier = 1, MaxRank = 2, Effects = { ExtraHands = 1 } }),
+			elementBranch("Occultist", "Faith", "Faith", "Faith", "Unlocks Faith: missiles that heal allies, and a healing burst.",
+				{ Id = "Devotion", Name = "Devotion", Description = "Faith heals 10% more.", Tier = 1, MaxRank = 3, Effects = { HealPower = 0.1 } },
+				{ Id = "Sanctuary", Name = "Sanctuary", Description = "The healing burst reaches 15% further.", Tier = 1, MaxRank = 2, Effects = { FaithRadius = 0.15 } }),
+			arcaneBranch("Occultist"),
+		},
+		Angles = { Necromancy = -40, Faith = 40, Arcane = 0 },
+		About = "The grimoire's magic. Unlock the Occultist class (the root) to cast at all, then unlock Necromancy or Faith to use it, and grow its upgrades.",
+	},
+} :: { [string]: CasterTree }
+
+-- Each caster's nodes as one list (for the rules), its class first.
+for weapon, caster in SkillTrees.Casters do
+	local nodes: { Node } = { caster.ClassNode }
+	for _, branch in caster.Branches do
+		for _, node in branch.Nodes do
+			table.insert(nodes, node)
+		end
+	end
+	SkillTrees.Weapons[weapon] = nodes
+end
 
 -- Weapons with no tree of their own use another's (points spent there count for both).
 SkillTrees.SharedTrees = {
@@ -265,6 +284,6 @@ SkillTrees.SharedTrees = {
 } :: { [string]: string }
 
 -- Tabs in the skill screen, in order ("General" first, then each weapon).
-SkillTrees.WeaponOrder = { "Sword", "Rapier", "Greatsword", "Axe", "Mace", "Spear", "Bow", "Staff" }
+SkillTrees.WeaponOrder = { "Sword", "Rapier", "Greatsword", "Axe", "Mace", "Spear", "Bow", "Staff", "Grimoire" }
 
 return SkillTrees

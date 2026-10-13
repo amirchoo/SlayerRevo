@@ -8,7 +8,7 @@ local IconAtlas = require(script.Parent.IconAtlas)
 
 local Icons = {}
 
-Icons.IMAGE = "rbxassetid://128397769160652" -- assets/icons/atlas.png, uploaded
+Icons.IMAGE = "rbxassetid://112301804387715" -- assets/icons/atlas.png, uploaded
 
 function Icons.has(name: string?): boolean
 	return name ~= nil and IconAtlas.Cells[name] ~= nil
