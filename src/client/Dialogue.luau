@@ -5,6 +5,8 @@
 -- picked yet the starter choice: a card per weapon (with its starter armor set), then a
 -- confirm step, then the StarterChoose remote. The server checks and grants the pick.
 -- Shop NPCs (Action "Shop") open the shop panel after their lines.
+-- The drill master (Action "Training") runs the training camp's drills again after his
+-- (TutorialAction "Replay"; the server checks you're beside him). Not while already training.
 -- Closes with its X, when the lines run out, or when you walk away.
 
 local Players = game:GetService("Players")
@@ -17,6 +19,7 @@ local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 local NpcConfig = require(ReplicatedStorage.Shared.Config.NpcConfig)
 local Starter = require(ReplicatedStorage.Shared.Starter)
 local HudStyle = require(script.Parent.HudStyle)
+local Gamepad = require(script.Parent.Gamepad)
 local Panels = require(script.Parent.Panels)
 local ShopPanel = require(script.Parent.ShopPanel)
 local WeaponIcon = require(script.Parent.WeaponIcon)
@@ -33,6 +36,7 @@ local CARD_GAP = 14
 local CARDS_WIDTH = 940 -- the row of starter cards never gets wider than this
 
 local chooseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("StarterChoose") :: RemoteEvent
+local trainingRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("TutorialAction") :: RemoteEvent
 
 local player = Players.LocalPlayer
 
@@ -67,6 +71,12 @@ end
 local function hasPicked(): boolean
 	local value = player:GetAttribute("Starter")
 	return typeof(value) == "string" and value ~= ""
+end
+
+-- In the training camp right now (TutorialService's "TutorialStep")?
+local function training(): boolean
+	local step = player:GetAttribute("TutorialStep")
+	return typeof(step) == "string" and step ~= ""
 end
 
 function Dialogue.start()
@@ -202,6 +212,9 @@ function Dialogue.start()
 		if open then
 			Panels.opened("Dialogue")
 			HudStyle.pop(box, 0.9)
+			Gamepad.focus(box, function()
+				setOpen(false)
+			end, advance)
 			distanceWatch = RunService.Heartbeat:Connect(function()
 				local character = player.Character
 				local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -215,6 +228,7 @@ function Dialogue.start()
 			confirmRow.Visible = false
 			current = nil
 			Panels.closed("Dialogue")
+			Gamepad.unfocus(box)
 			if distanceWatch then
 				distanceWatch:Disconnect()
 				distanceWatch = nil
@@ -286,9 +300,14 @@ function Dialogue.start()
 		lineIndex += 1
 		if lineIndex <= #lines then
 			say(lines[lineIndex])
-			hint.Text = if lineIndex == #lines then "click to finish" else "click to continue"
+			hint.Text = if lineIndex < #lines then "click to continue"
+				elseif current.Action == "Training" and not training() then "click to train again"
+				else "click to finish"
 		elseif current.Action == "StarterPick" and not hasPicked() then
 			showChoices()
+		elseif current.Action == "Training" and not training() then
+			setOpen(false)
+			trainingRemote:FireServer("Replay")
 		elseif current.Action == "Shop" and npcPosition then
 			local position = npcPosition
 			local sellerId = current.Id

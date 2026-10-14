@@ -38,6 +38,7 @@ local AnimalService = require(script.AnimalService)
 local VillagerService = require(script.VillagerService)
 local CookingService = require(script.CookingService)
 local LeaderboardService = require(script.LeaderboardService)
+local TutorialService = require(script.TutorialService)
 
 HealthService.start()
 AvatarService.start() -- everyone gets the blocky body armor is made for
@@ -80,6 +81,7 @@ VillagerService.start() -- after the town (they walk on it)
 CookingService.start() -- the campfire's Cook prompt
 LeaderboardService.start() -- the trophy board by the guild
 StarterService.start()
+TutorialService.start() -- after StarterService (a new player's pick starts their training)
 CurrencyService.start()
 ConsumableService.start()
 ShopService.start()

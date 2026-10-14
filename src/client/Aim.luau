@@ -1,12 +1,13 @@
 --!strict
 -- Where a ranged attack (bow, staff) should go: straight at the lock-on target if there is
--- one; otherwise at whatever the mouse points at, or the screen centre on touch screens
--- (where the crosshair is).
+-- one; otherwise at whatever the mouse points at, or the screen centre on touch screens and
+-- controllers (where the crosshair is).
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
 local LockOn = require(script.Parent.LockOn)
+local Gamepad = require(script.Parent.Gamepad)
 
 local AIM_DISTANCE = 1000
 
@@ -22,7 +23,8 @@ function Aim.point(ignore: { Instance }?): Vector3
 	end
 
 	local camera = workspace.CurrentCamera
-	local screenPoint = if UserInputService.MouseEnabled then UserInputService:GetMouseLocation() else camera.ViewportSize / 2
+	local useMouse = UserInputService.MouseEnabled and not Gamepad.active()
+	local screenPoint = if useMouse then UserInputService:GetMouseLocation() else camera.ViewportSize / 2
 	local ray = camera:ViewportPointToRay(screenPoint.X, screenPoint.Y)
 	local exclude: { Instance } = { camera }
 	if player.Character then

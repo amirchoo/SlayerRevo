@@ -13,6 +13,7 @@ local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local Icons = require(ReplicatedStorage.Shared.Icons)
 local HudStyle = require(script.Parent.HudStyle)
+local Gamepad = require(script.Parent.Gamepad)
 local Panels = require(script.Parent.Panels)
 local WeaponIcon = require(script.Parent.WeaponIcon)
 
@@ -141,8 +142,7 @@ function ShopPanel.start()
 	local fit = Instance.new("UIScale")
 	fit.Parent = holder
 	local function refit()
-		local screen = workspace.CurrentCamera.ViewportSize
-		fit.Scale = math.min(1, (screen.X - 40) / PANEL_SIZE.X, (screen.Y - 40) / PANEL_SIZE.Y)
+		fit.Scale = HudStyle.panelScale(PANEL_SIZE)
 	end
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(refit)
 	refit()
@@ -235,6 +235,9 @@ function ShopPanel.start()
 		if open then
 			Panels.opened("WeaponShop")
 			HudStyle.pop(panel, 0.9)
+			Gamepad.focus(panel, function()
+				setOpen(false)
+			end)
 			distanceWatch = RunService.Heartbeat:Connect(function()
 				local character = player.Character
 				local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -244,6 +247,7 @@ function ShopPanel.start()
 			end)
 		else
 			Panels.closed("WeaponShop")
+			Gamepad.unfocus(panel)
 			if distanceWatch then
 				distanceWatch:Disconnect()
 				distanceWatch = nil

@@ -1,16 +1,17 @@
 --!strict
 -- The one place combat input comes from, so every device fights the same way. Weapons and
 -- the dash listen to these events instead of reading the mouse or keyboard themselves:
---   Attack (held): left mouse button, or the touch Attack button
---   Block (held): right mouse button, or the touch Block button
---   Dash: the dash key (V), or the touch Dash button
---   Lock: the lock-on key (Q), or the touch Lock button (toggles the lock-on)
+--   Attack (held): left mouse button, R2 / RT on a controller, or the touch Attack button
+--   Block (held): right mouse button, L2 / LT, or the touch Block button
+--   Dash: the dash key (V), Circle / B, or the touch Dash button
+--   Lock: the lock-on key (Q), R3 (click the right stick), or the touch Lock button (toggles the lock-on)
 -- The touch buttons (TouchControls) call press/release directly.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
+local Gamepad = require(script.Parent.Gamepad)
 
 export type Action = "Attack" | "Block" | "Dash" | "Lock"
 
@@ -30,6 +31,15 @@ CombatInput.Dash = dash.Event
 CombatInput.Lock = lock.Event
 
 local held: { [string]: boolean } = {}
+
+-- Controller buttons for each action.
+local GAMEPAD: { [Enum.KeyCode]: Action } = {
+	[Enum.KeyCode.ButtonR2] = "Attack",
+	[Enum.KeyCode.ButtonL2] = "Block",
+	[Enum.KeyCode.ButtonB] = "Dash",
+	[Enum.KeyCode.ButtonR3] = "Lock",
+}
+CombatInput.GamepadButtons = GAMEPAD
 
 function CombatInput.press(action: Action)
 	if action == "Dash" then
@@ -79,6 +89,8 @@ function CombatInput.start()
 			CombatInput.press("Dash")
 		elseif input.KeyCode == CombatConfig.LockOn.Key then
 			CombatInput.press("Lock")
+		elseif GAMEPAD[input.KeyCode] and not Gamepad.inMenu() then
+			CombatInput.press(GAMEPAD[input.KeyCode])
 		end
 	end)
 	-- Releases count even over a button, so nothing gets stuck held.
@@ -87,6 +99,8 @@ function CombatInput.start()
 			CombatInput.release("Attack")
 		elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
 			CombatInput.release("Block")
+		elseif GAMEPAD[input.KeyCode] then
+			CombatInput.release(GAMEPAD[input.KeyCode])
 		end
 	end)
 end

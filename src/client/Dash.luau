@@ -1,7 +1,8 @@
 --!strict
 -- Dash: press DASH.Key (V) for a quick burst of speed in the direction you're moving (or
 -- facing, if standing still). Up to DASH.MaxCharges are stored (more with skills); spent
--- charges refill one at a time, each taking DASH.RechargeTime (less with skills). A meter above the left of the health bar (a
+-- charges refill one at a time, each taking DASH.RechargeTime (less with skills; almost none
+-- in the training camp, TutorialConfig.DashRecharge). A meter above the left of the health bar (a
 -- lightning badge and one bar per charge) shows each charge, with the one refilling filling
 -- up as it charges; bars pop when they refill and squish when spent.
 -- Each client simulates its own character's movement, so the dash runs here and
@@ -16,7 +17,9 @@ local UserInputService = game:GetService("UserInputService")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
+local TutorialConfig = require(ReplicatedStorage.Shared.Config.TutorialConfig)
 local HudStyle = require(script.Parent.HudStyle)
+local Gamepad = require(script.Parent.Gamepad)
 local DamageNumbers = require(script.Parent.DamageNumbers)
 local CombatInput = require(script.Parent.CombatInput)
 local Push = require(script.Parent.Push)
@@ -39,12 +42,13 @@ local dodgedRemote = remotes:WaitForChild("Dodged") :: RemoteEvent
 
 local Dash = {}
 
--- Dash charges and recharge time, with the player's skill bonuses (matches DashService).
+-- Dash charges and recharge time, with the player's skill bonuses and the training camp's
+-- fast recharge (matches DashService).
 local function maxCharges(): number
 	return DASH.MaxCharges + SkillMath.general(player, "DashCharges")
 end
 local function rechargeTime(): number
-	return DASH.RechargeTime * (1 - SkillMath.general(player, "DashRecharge"))
+	return TutorialConfig.dashRecharge(player, DASH.RechargeTime * (1 - SkillMath.general(player, "DashRecharge")))
 end
 
 local charges = DASH.MaxCharges
@@ -81,6 +85,7 @@ local function createMeter()
 	-- A lightning badge, with the key under it.
 	badge = HudStyle.badge(row, BADGE_SIZE, BADGE_COLOR, "Dash")
 	local key = HudStyle.caption(badge :: Frame, DASH.Key.Name, 14)
+	Gamepad.hint(key, DASH.Key.Name, Enum.KeyCode.ButtonB)
 	key.AnchorPoint = Vector2.new(0.5, 0.5)
 	key.Position = UDim2.new(0.5, 0, 1, 0)
 	key.Size = UDim2.fromOffset(20, 14)

@@ -15,6 +15,7 @@ local MapConfig = require(ReplicatedStorage.Shared.Config.MapConfig)
 local SafeZone = require(ReplicatedStorage.Shared.SafeZone)
 local TrainingArea = require(ReplicatedStorage.Shared.TrainingArea)
 local HudStyle = require(script.Parent.HudStyle)
+local Gamepad = require(script.Parent.Gamepad)
 local Panels = require(script.Parent.Panels)
 
 local COLORS = {
@@ -199,6 +200,10 @@ local function buildMinimap(gui: ScreenGui, open: () -> ())
 
 	-- The key that opens the world map, on the minimap's lower left (not on touch screens).
 	local keyHint = HudStyle.badge(frame, 30, COLORS.Frame, MapConfig.OpenKey.Name)
+	local keyText = keyHint:FindFirstChildOfClass("TextLabel")
+	if keyText then
+		Gamepad.hint(keyText, MapConfig.OpenKey.Name, Enum.KeyCode.DPadLeft)
+	end
 	keyHint.AnchorPoint = Vector2.new(0.5, 0.5)
 	keyHint.Position = UDim2.fromOffset(size * 0.15, size * 0.85)
 	keyHint.ZIndex = 7
@@ -379,6 +384,7 @@ function Map.start()
 			worldMap.Visible = false
 			minimap.Visible = true
 			Panels.closed("Map")
+			Gamepad.unfocus(worldMap)
 		end
 	end
 	local function open()
@@ -387,6 +393,7 @@ function Map.start()
 			worldMap.Visible = true
 			minimap.Visible = false
 			HudStyle.pop(worldMap:FindFirstChild("Panel") :: Frame, 0.9)
+			Gamepad.focus(worldMap, close)
 		end
 	end
 
@@ -395,6 +402,14 @@ function Map.start()
 	Panels.register("Map", close)
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if input.KeyCode == Enum.KeyCode.DPadLeft and (worldMap.Visible or not Gamepad.inMenu()) then
+			if worldMap.Visible then -- the map's button on a controller
+				close()
+			else
+				open()
+			end
+			return
+		end
 		if gameProcessed then
 			return
 		end

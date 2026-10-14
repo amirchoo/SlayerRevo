@@ -27,6 +27,7 @@ local SkillTree = require(script.SkillTree)
 local ProgressionHud = require(script.ProgressionHud)
 local HitFeel = require(script.HitFeel)
 local DamageFeedback = require(script.DamageFeedback)
+local Gamepad = require(script.Gamepad)
 local CombatInput = require(script.CombatInput)
 local TouchControls = require(script.TouchControls)
 local LockOn = require(script.LockOn)
@@ -42,8 +43,11 @@ local VillagerChat = require(script.VillagerChat)
 local VillagerAnimator = require(script.VillagerAnimator)
 local CookingPanel = require(script.CookingPanel)
 local CookingPose = require(script.CookingPose)
+local TutorialClient = require(script.TutorialClient)
+local Nameplates = require(script.Nameplates)
 
-CombatInput.start() -- mouse/keyboard; the touch buttons feed it too
+Gamepad.start() -- first: the rest asks it whether a controller is in use
+CombatInput.start() -- mouse/keyboard and controller; the touch buttons feed it too
 TouchControls.start()
 LockOn.start()
 HealthBar.start()
@@ -83,6 +87,7 @@ Dialogue.start()
 SkillTree.start()
 ProgressionHud.start()
 task.spawn(EnemyHealthBars.start) -- waits for the Enemies folder
+Nameplates.start()
 task.spawn(AnimalAnimator.start) -- waits for the Animals folder
 task.spawn(LootClient.start) -- waits for the Loot folder
 DayNight.start()
@@ -93,4 +98,5 @@ CookingPanel.start()
 CookingPose.start()
 HitFeel.start()
 DamageFeedback.start()
+TutorialClient.start() -- before the intro, which hides it with the rest of the HUD
 Intro.start() -- last: it hides the rest of the HUD while a new player's intro plays

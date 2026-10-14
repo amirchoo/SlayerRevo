@@ -27,6 +27,7 @@ local SkillTrees = require(ReplicatedStorage.Shared.Config.SkillTrees)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local Icons = require(ReplicatedStorage.Shared.Icons)
 local HudStyle = require(script.Parent.HudStyle)
+local Gamepad = require(script.Parent.Gamepad)
 local Panels = require(script.Parent.Panels)
 local WeaponIcon = require(script.Parent.WeaponIcon)
 
@@ -157,6 +158,7 @@ function SkillTree.start()
 	icon.AnchorPoint = Vector2.new(0, 0.5)
 	icon.Position = UDim2.new(0, 20, 0.5, 76)
 	local keyHint = HudStyle.caption(icon, OPEN_KEY.Name, 16)
+	Gamepad.hint(keyHint, OPEN_KEY.Name, Enum.KeyCode.DPadRight)
 	keyHint.AnchorPoint = Vector2.new(0.5, 0.5)
 	keyHint.Position = UDim2.new(0.5, 0, 1, 0)
 	keyHint.Size = UDim2.fromOffset(20, 16)
@@ -492,7 +494,7 @@ function SkillTree.start()
 	-- to match, so the panel still covers the screen), then put each tree back in place.
 	local function refit()
 		local screen = workspace.CurrentCamera.ViewportSize
-		local scale = math.min(1, screen.X / MIN_SIZE.X, screen.Y / MIN_SIZE.Y)
+		local scale = math.min(if HudStyle.isConsole() then 1.5 else 1, screen.X / MIN_SIZE.X, screen.Y / MIN_SIZE.Y) -- bigger on a TV
 		fit.Scale = scale
 		holder.Size = UDim2.fromScale(1 / scale, 1 / scale)
 		for _, info in pageInfo do
@@ -1219,6 +1221,9 @@ function SkillTree.start()
 		table.clear(running)
 		if open then
 			Panels.opened("SkillTree")
+			Gamepad.focus(panel, function()
+				setOpen(false)
+			end)
 			refresh()
 			blur.Enabled = true
 			TweenService:Create(blur, BLUR_TWEEN, { Size = BLUR_SIZE }):Play()
@@ -1229,6 +1234,7 @@ function SkillTree.start()
 			end
 		else
 			Panels.closed("SkillTree")
+			Gamepad.unfocus(panel)
 			panel.Visible = false
 			if instant then
 				book.Visible = false
@@ -1296,7 +1302,9 @@ function SkillTree.start()
 		setOpen(false)
 	end)
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if not gameProcessed and input.KeyCode == OPEN_KEY then
+		if input.KeyCode == Enum.KeyCode.DPadRight and (isOpen or not Gamepad.inMenu()) then
+			toggle() -- the skills button on a controller
+		elseif not gameProcessed and input.KeyCode == OPEN_KEY then
 			toggle()
 		end
 	end)

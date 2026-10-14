@@ -1,6 +1,8 @@
 --!strict
--- The backpack: press InventoryConfig.OpenKey (B) or ArmorConfig.PanelKey (G), or click the
--- backpack icon on the left of the screen. Laid out like a game inventory screen, in the
+-- The backpack: press InventoryConfig.OpenKey (B) or ArmorConfig.PanelKey (G), the View
+-- button on a controller, or click the backpack icon on the left of the screen. On a
+-- controller the D-pad moves between its buttons (selecting a tile shows its details, like
+-- hovering), Cross / A clicks, Circle / B closes. Laid out like a game inventory screen, in the
 -- cartoon HUD style (HudStyle), with the world blurred behind it:
 --   left:  title, your health, category tabs, and a grid of weapon/consumable/material slots.
 --          Ones in your hotbar are highlighted with their hotbar number. Clicking an item moves
@@ -30,6 +32,7 @@ local MaterialConfig = require(ReplicatedStorage.Shared.Config.MaterialConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local Panels = require(script.Parent.Panels)
 local HudStyle = require(script.Parent.HudStyle)
+local Gamepad = require(script.Parent.Gamepad)
 local Icons = require(ReplicatedStorage.Shared.Icons)
 local WeaponIcon = require(script.Parent.WeaponIcon)
 
@@ -235,6 +238,7 @@ function Backpack.start()
 	icon.AnchorPoint = Vector2.new(0, 0.5)
 	icon.Position = UDim2.new(0, 16, 0.5, 0)
 	local keyHint = HudStyle.caption(icon, InventoryConfig.OpenKey.Name, 16)
+	Gamepad.hint(keyHint, InventoryConfig.OpenKey.Name, Enum.KeyCode.ButtonSelect)
 	keyHint.AnchorPoint = Vector2.new(0.5, 0.5)
 	keyHint.Position = UDim2.new(0.5, 0, 1, 0)
 	keyHint.Size = UDim2.fromOffset(20, 16)
@@ -255,8 +259,7 @@ function Backpack.start()
 	local fit = Instance.new("UIScale")
 	fit.Parent = holder
 	local function refit()
-		local screen = workspace.CurrentCamera.ViewportSize
-		fit.Scale = math.min(1, (screen.X - 40) / PANEL_SIZE.X, (screen.Y - 40) / PANEL_SIZE.Y)
+		fit.Scale = HudStyle.panelScale(PANEL_SIZE)
 	end
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(refit)
 	refit()
@@ -511,16 +514,20 @@ function Backpack.start()
 				HudStyle.pop(frame, 0.88)
 			end
 		end)
-		button.MouseEnter:Connect(function()
+		local function hover()
 			hovered = tile.item
 			updateItems()
-		end)
-		button.MouseLeave:Connect(function()
+		end
+		local function unhover()
 			if hovered == tile.item then
 				hovered = nil
 				updateItems()
 			end
-		end)
+		end
+		button.MouseEnter:Connect(hover)
+		button.MouseLeave:Connect(unhover)
+		button.SelectionGained:Connect(hover) -- a controller's selection works like the mouse
+		button.SelectionLost:Connect(unhover)
 	end
 	local detail = text(panel, "", 15, SOFT_TEXT)
 	detail.Position = UDim2.fromOffset(GRID_ORIGIN.X, GRID_ORIGIN.Y + (GRID_SLOTS // GRID_COLUMNS) * (TILE + TILE_GAP))
@@ -877,8 +884,12 @@ function Backpack.start()
 		panel.Visible = open
 		if open then
 			Panels.opened("Backpack") -- closes the skills screen, hides the hotbar
+			Gamepad.focus(panel, function()
+				setOpen(false)
+			end)
 		else
 			Panels.closed("Backpack")
+			Gamepad.unfocus(panel)
 		end
 		if open then
 			updateTabs()
@@ -936,6 +947,10 @@ function Backpack.start()
 		setOpen(false)
 	end)
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if input.KeyCode == Enum.KeyCode.ButtonSelect then
+			toggle() -- (even while a menu has the controller)
+			return
+		end
 		if gameProcessed then
 			return
 		end

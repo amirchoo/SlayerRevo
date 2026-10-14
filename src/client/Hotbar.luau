@@ -6,7 +6,8 @@
 -- The Primary weapon sits in the big ring in the middle, under a red gem; the others in
 -- metal-framed squares on a stone panel, with a navy band across the top naming the weapon in
 -- hand. Number keys or clicking a slot equip that weapon or use that potion; using an equipped
--- weapon again puts it away. The equipped slot glows gold, and a star in the corner counts
+-- weapon again puts it away. On a controller, L1/R1 (LB/RB) cycle through the weapons and
+-- D-pad Up/Down use the two potions. The equipped slot glows gold, and a star in the corner counts
 -- the skill points spent in that weapon's tree (SkillMath). Names above Common are tinted
 -- their rarity's color. The slots come from the server's "Hotbar" player attribute (see
 -- InventoryService; an empty slot is blank); the tools themselves are in the Backpack.
@@ -23,6 +24,7 @@ local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local Icons = require(ReplicatedStorage.Shared.Icons)
 local HudStyle = require(script.Parent.HudStyle)
 local WeaponIcon = require(script.Parent.WeaponIcon)
+local Gamepad = require(script.Parent.Gamepad)
 
 -- The bar's layout, in pixels from its top-left corner (it's WIDTH x HEIGHT, bottom-centered).
 local WIDTH, HEIGHT = 440, 112
@@ -193,6 +195,7 @@ type Slot = {
 	glow: UIStroke, -- the inner edge, gold when equipped
 	viewport: ViewportFrame,
 	icon: ImageLabel,
+	key: TextLabel, -- its number key
 	name: TextLabel,
 	skill: TextLabel,
 	empty: TextLabel, -- the slot's category, while it's empty
@@ -237,7 +240,7 @@ local function fillWell(well: Frame, index: number, keyPosition: UDim2, emptyTex
 	button.Activated:Connect(function()
 		useSlot(index)
 	end)
-	return { scale = scale, glow = glow, viewport = viewport, icon = itemIcon, name = name, skill = skill, empty = empty, shown = nil, modelShown = false }
+	return { scale = scale, glow = glow, viewport = viewport, icon = itemIcon, key = key, name = name, skill = skill, empty = empty, shown = nil, modelShown = false }
 end
 
 -- A square slot: a riveted metal frame around a dark well, centered at (x, PANEL_Y).
@@ -427,6 +430,47 @@ function Hotbar.start()
 		lastEquipped = equipped
 	end
 
+	-- Controller: the bumpers step through the weapon slots that hold something (from the one
+	-- in hand), and the D-pad uses the potions.
+	local weaponSlots = #InventoryConfig.WeaponSlots
+	local function cycle(step: number)
+		local list = hotbarList()
+		local filled: { number } = {}
+		for index = 1, weaponSlots do
+			if list[index] and list[index] ~= "" then
+				table.insert(filled, index)
+			end
+		end
+		if #filled == 0 then
+			return
+		end
+		local equipped = equippedName()
+		local at = if equipped then table.find(list, equipped) else nil
+		local position = if at then table.find(filled, at) else nil
+		local target = if position then filled[(position - 1 + step) % #filled + 1] else filled[if step > 0 then 1 else #filled]
+		if target ~= at then
+			useSlot(target)
+		end
+	end
+	local POTION_BUTTONS = { [Enum.KeyCode.DPadUp] = weaponSlots + 1, [Enum.KeyCode.DPadDown] = weaponSlots + 2 }
+	for index, slot in slots do
+		local button: Enum.KeyCode? = nil
+		for keyCode, potion in POTION_BUTTONS do
+			if potion == index then
+				button = keyCode
+			end
+		end
+		if button then
+			Gamepad.hint(slot.key, tostring(index), button)
+		else
+			-- Weapons have no button of their own on a controller (the bumpers cycle them).
+			slot.key.Visible = not Gamepad.active()
+			Gamepad.Changed:Connect(function(active)
+				slot.key.Visible = not active
+			end)
+		end
+	end
+
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed or not root.Visible then
 			return
@@ -434,6 +478,12 @@ function Hotbar.start()
 		local index = table.find(KEYS, input.KeyCode)
 		if index and index <= count then
 			useSlot(index)
+		elseif input.KeyCode == Enum.KeyCode.ButtonR1 then
+			cycle(1)
+		elseif input.KeyCode == Enum.KeyCode.ButtonL1 then
+			cycle(-1)
+		elseif POTION_BUTTONS[input.KeyCode] and not Gamepad.inMenu() and POTION_BUTTONS[input.KeyCode] <= count then
+			useSlot(POTION_BUTTONS[input.KeyCode])
 		end
 	end)
 

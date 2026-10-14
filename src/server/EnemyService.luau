@@ -4,6 +4,10 @@
 -- rest circle), give up if dragged too far from camp, and re-form at a new camp once all are
 -- dead. Single enemies (SpawnPoints, the Training Grounds) chase the nearest player and
 -- respawn where they stood. Every attack has a short wind-up, so players can dodge.
+-- Sparring enemies (the training camp, spawnSparring) belong to one player: they fight only
+-- that player, even in the safe zone, only that player can hurt them, they give no XP or
+-- coins, and they never respawn. A puppet (spawnPuppet) is one with no AI at all: its owner
+-- (TutorialService) moves it and resolves its attacks.
 -- Looks: the enemy's Model from ServerStorage.EnemyModels (assets/enemies) if it's there,
 -- an R15 character (with a Humanoid and HumanoidRootPart, e.g. made with Avatar Auto Setup);
 -- otherwise a plain R15 body in the enemy's color.
@@ -41,6 +45,8 @@ local spawnPointOf: { [Model]: Vector2 } = {}
 local typeOf: { [Model]: EnemyType } = {}
 -- Enemies spawned with spawnOnce: when they die, the body is cleared away and nothing respawns.
 local oneOff: { [Model]: boolean } = {}
+-- Sparring enemies: the one player each fights (and the only one who can hurt it).
+local ownerOf: { [Model]: Player } = {}
 
 local function groundCFrame(spawnPoint: Vector2): CFrame
 	local params = RaycastParams.new()
@@ -84,6 +90,20 @@ local function findNearestCharacter(position: Vector3, maxDistance: number): (Mo
 		end
 	end
 	return nearest, nearestRoot, nearestDistance
+end
+
+-- A sparring enemy's target: its owner's character if alive and within `maxDistance`
+-- (anywhere, the safe zone included).
+local function ownerTarget(owner: Player, position: Vector3, maxDistance: number): (Model?, BasePart?, number)
+	local character = owner.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if character and root and root:IsA("BasePart") and HealthService.isAlive(character) then
+		local distance = (root.Position - position).Magnitude
+		if distance <= maxDistance then
+			return character, root, distance
+		end
+	end
+	return nil, nil, maxDistance
 end
 
 -- A pack of enemies that roam, hunt and leash together (see EnemyConfig.Pack).
@@ -229,7 +249,13 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 			end
 		else
 			humanoid.WalkSpeed = kind.WalkSpeed * EnemyEffects.speedFactor(enemy) -- slowed by Water, etc.
-			local target, targetRoot, distance = findNearestCharacter(root.Position, kind.AggroRange)
+			local owner = ownerOf[enemy]
+			local target, targetRoot, distance
+			if owner then
+				target, targetRoot, distance = ownerTarget(owner, root.Position, kind.AggroRange)
+			else
+				target, targetRoot, distance = findNearestCharacter(root.Position, kind.AggroRange)
+			end
 			if target and targetRoot then
 				if distance > kind.AttackRange then
 					humanoid:MoveTo(targetRoot.Position)
@@ -291,7 +317,7 @@ local function plainBody(kind: EnemyType): Model?
 	return result :: Model
 end
 
-local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?, once: boolean?): Model?
+local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?, once: boolean?, owner: Player?, puppet: boolean?): Model?
 	local enemy = modelFromTemplate(kind) or plainBody(kind)
 	if not enemy then
 		return nil
@@ -319,7 +345,15 @@ local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?
 	enemy.Parent = enemiesFolder
 	root:SetNetworkOwner(nil) -- server simulates enemy movement
 
-	if pack then
+	if owner then
+		ownerOf[enemy] = owner
+		oneOff[enemy] = true
+		enemy.Destroying:Once(function()
+			ownerOf[enemy] = nil
+			oneOff[enemy] = nil
+			typeOf[enemy] = nil
+		end)
+	elseif pack then
 		packOf[enemy] = pack
 		table.insert(pack.members, enemy)
 	elseif once then
@@ -333,7 +367,14 @@ local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?
 	enemy:SetAttribute("XPReward", kind.XP) -- ProgressionService gives it to whoever defeats it
 	enemy:SetAttribute("CoinReward", kind.Coins or 0) -- CurrencyService gives it to whoever defeats it
 	enemy:SetAttribute("Level", kind.Level) -- shown over its head when locked on (EnemyHealthBars)
-	task.spawn(runAI, enemy, humanoid, root, spawnCFrame.Position, kind)
+	if owner then
+		enemy:SetAttribute("XPReward", 0)
+		enemy:SetAttribute("CoinReward", 0)
+		enemy:SetAttribute("SparringOwner", owner.UserId) -- its bar shows in town, for its owner only
+	end
+	if not puppet then
+		task.spawn(runAI, enemy, humanoid, root, spawnCFrame.Position, kind)
+	end
 	return enemy
 end
 
@@ -574,11 +615,26 @@ function EnemyService.spawnOnce(spawnPoint: Vector2, kind: EnemyType): Model?
 	return spawnEnemy(spawnPoint, kind, nil, true)
 end
 
+-- A sparring enemy for `owner` (see the top): chases and attacks only them. Never respawns.
+-- Yields while the model loads.
+function EnemyService.spawnSparring(spawnPoint: Vector2, kind: EnemyType, owner: Player): Model?
+	return spawnEnemy(spawnPoint, kind, nil, true, owner)
+end
+
+-- Like spawnSparring, but with no AI: the caller moves it and runs its attacks.
+function EnemyService.spawnPuppet(spawnPoint: Vector2, kind: EnemyType, owner: Player): Model?
+	return spawnEnemy(spawnPoint, kind, nil, true, owner, true)
+end
+
 function EnemyService.start()
 	enemiesFolder.Parent = workspace
 
 	-- A pack member that's hit makes its pack turn on whoever hit it.
 	HealthService.addDamageFilter(function(target: Model, amount: number, source: Player?)
+		local owner = ownerOf[target]
+		if owner and source ~= owner then
+			return 0 -- someone else's sparring partner
+		end
 		local pack = packOf[target]
 		if pack and source and source.Character and not pack.target then
 			pack.hurtBy = source.Character
@@ -589,6 +645,7 @@ function EnemyService.start()
 	HealthService.Died:Connect(function(model: Model)
 		if oneOff[model] then
 			oneOff[model] = nil
+			ownerOf[model] = nil
 			task.delay(typeOf[model].RespawnDelay, function() -- leave the body a moment, like the others
 				if model.Parent then
 					model:Destroy()

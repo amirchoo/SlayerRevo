@@ -1,6 +1,6 @@
 --!strict
 -- Spawns the townsfolk in NpcConfig: anchored R15 figures standing on whatever's under them
--- (plaza, road, ground), each with a name and title over their head and a "Talk" prompt.
+-- (plaza, road, ground), each with a "Talk" prompt (client Nameplates draws their name and title).
 -- Talking is shown by the client (Dialogue), which finds the NPC from the prompt's "NpcId"
 -- attribute; NPCs have no Health attribute, so they can't be hurt.
 
@@ -10,7 +10,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local NpcConfig = require(ReplicatedStorage.Shared.Config.NpcConfig)
 
 local SKIN = Color3.fromRGB(234, 184, 146)
-local TITLE_COLOR = Color3.fromRGB(250, 220, 150)
 
 local NpcService = {}
 
@@ -51,7 +50,7 @@ local function spawnNpc(npc: NpcConfig.Npc)
 	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
 	humanoid.DisplayName = npc.Name
 	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
-	humanoid.NameDisplayDistance = 40
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None -- the client draws name and title (Nameplates)
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
 	root.Anchored = true
 
@@ -59,25 +58,6 @@ local function spawnNpc(npc: NpcConfig.Npc)
 	local facing = Vector3.new(npc.Facing.X, 0, npc.Facing.Y)
 	local base = if facing.Magnitude > 0.01 then CFrame.lookAt(ground, ground + facing) else CFrame.new(ground)
 	model:PivotTo(base * CFrame.new(0, humanoid.HipHeight + root.Size.Y / 2, 0))
-
-	-- The title, just under the name Roblox draws.
-	local head = model:FindFirstChild("Head") :: BasePart?
-	if head then
-		local gui = Instance.new("BillboardGui")
-		gui.Size = UDim2.fromOffset(160, 20)
-		gui.StudsOffset = Vector3.new(0, 1.7, 0)
-		gui.MaxDistance = 40
-		gui.Parent = head
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.GothamBold
-		label.TextSize = 14
-		label.TextColor3 = TITLE_COLOR
-		label.TextStrokeTransparency = 0.4
-		label.Text = npc.Title
-		label.Parent = gui
-	end
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Talk"

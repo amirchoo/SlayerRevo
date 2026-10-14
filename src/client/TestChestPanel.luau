@@ -17,6 +17,7 @@ local ShieldConfig = require(ReplicatedStorage.Shared.Config.ShieldConfig)
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 local Icons = require(ReplicatedStorage.Shared.Icons)
 local HudStyle = require(script.Parent.HudStyle)
+local Gamepad = require(script.Parent.Gamepad)
 local Panels = require(script.Parent.Panels)
 local WeaponIcon = require(script.Parent.WeaponIcon)
 
@@ -143,8 +144,7 @@ function TestChestPanel.start()
 	local fit = Instance.new("UIScale")
 	fit.Parent = holder
 	local function refit()
-		local screen = workspace.CurrentCamera.ViewportSize
-		fit.Scale = math.min(1, (screen.X - 40) / PANEL_SIZE.X, (screen.Y - 40) / PANEL_SIZE.Y)
+		fit.Scale = HudStyle.panelScale(PANEL_SIZE)
 	end
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(refit)
 	refit()
@@ -390,6 +390,9 @@ function TestChestPanel.start()
 			Panels.opened("TestChest")
 			refreshList()
 			HudStyle.pop(panel, 0.92)
+			Gamepad.focus(panel, function()
+				setOpen(false)
+			end)
 			distanceWatch = RunService.Heartbeat:Connect(function()
 				local character = player.Character
 				local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -399,6 +402,7 @@ function TestChestPanel.start()
 			end)
 		else
 			Panels.closed("TestChest")
+			Gamepad.unfocus(panel)
 			if distanceWatch then
 				distanceWatch:Disconnect()
 				distanceWatch = nil

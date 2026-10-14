@@ -2,6 +2,7 @@
 -- Shared look for the chunky, cartoonish HUD pieces (dash and block meters): thick dark
 -- outlines, rounded corners, a glossy top highlight, the FredokaOne font, and a bouncy pop.
 
+local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
@@ -141,14 +142,33 @@ function HudStyle.maxGain(bar: GuiObject, amount: number, color: Color3)
 end
 
 -- HUD scale: the HUD is laid out for a 1280x720 screen and shrinks on smaller ones, so it
--- never covers the game; never grows past 1. Phones (a short side under PHONE_SIZE) get their
--- own scale, kept readable on the small screen.
+-- never covers the game; never grows past 1 on computers. Phones (a short side under
+-- PHONE_SIZE) get their own scale, kept readable on the small screen. Consoles (played on a TV
+-- from the sofa) grow it with the screen instead, well past 1, so it can be read from afar.
 local REFERENCE_SCREEN = Vector2.new(1280, 720)
 local MIN_HUD_SCALE = 0.55
 local PHONE_SIZE = 500
 local PHONE_FACTOR = 1.02 -- phones: the fitted scale times this (20% bigger than it was)...
 local PHONE_RANGE = Vector2.new(0.43, 0.72) -- ...kept within this
+local CONSOLE_FACTOR = 1.15 -- consoles: the fitted scale times this (1.7 on a 1080p screen)...
+local CONSOLE_RANGE = Vector2.new(1, 1.9) -- ...kept within this
+local CONSOLE_PANEL_MAX = 1.6 -- how big menus may grow on consoles (they still fit the screen)
 local hudScales: { UIScale } = {}
+
+-- Whether this is a console (or another TV-style "ten-foot" screen).
+function HudStyle.isConsole(): boolean
+	return GuiService:IsTenFootInterface()
+end
+
+-- The scale for a menu panel `size` pixels big: shrunk to fit small screens (keeping
+-- `margin` pixels clear, default 40), never past 1, except on consoles where it grows (up to
+-- CONSOLE_PANEL_MAX) to be readable on a TV.
+function HudStyle.panelScale(size: Vector2, margin: number?): number
+	local screen = workspace.CurrentCamera.ViewportSize
+	local clear = margin or 40
+	local fits = math.min((screen.X - clear) / size.X, (screen.Y - clear) / size.Y)
+	return math.max(0.1, math.min(if HudStyle.isConsole() then CONSOLE_PANEL_MAX else 1, fits))
+end
 
 function HudStyle.isPhone(): boolean
 	local screen = workspace.CurrentCamera.ViewportSize
@@ -161,6 +181,9 @@ local function hudScale(): number
 		return 1 -- the camera isn't ready yet
 	end
 	local fit = math.min(screen.X / REFERENCE_SCREEN.X, screen.Y / REFERENCE_SCREEN.Y)
+	if HudStyle.isConsole() then
+		return math.clamp(fit * CONSOLE_FACTOR, CONSOLE_RANGE.X, CONSOLE_RANGE.Y)
+	end
 	if HudStyle.isPhone() then
 		return math.clamp(fit * PHONE_FACTOR, PHONE_RANGE.X, PHONE_RANGE.Y)
 	end

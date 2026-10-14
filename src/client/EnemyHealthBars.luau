@@ -1,6 +1,7 @@
 --!strict
 -- A small health bar over enemies (workspace.Enemies) and wild animals (workspace.Animals);
--- nothing inside the town (the safe zone) gets one. So a pack doesn't turn into a stack of
+-- nothing inside the town (the safe zone) gets one, except your own training-camp sparring
+-- partners ("SparringOwner"; other players' never show). So a pack doesn't turn into a stack of
 -- bars, only a few show at once: the one you're locked on to (with its name, level and health
 -- numbers), plus up to MAX_OTHERS more, bar only, picked from the nearest that are hurt or (for
 -- enemies, not animals) close to you.
@@ -222,7 +223,7 @@ local function watch(folderName: string)
 end
 
 -- Chooses which bars show: the locked target's in full, then the nearest few others that are
--- hurt or close, bar only. None in town, and none past MAX_DISTANCE.
+-- hurt or close, bar only. None in town (but your sparring partners), and none past MAX_DISTANCE.
 local function pick()
 	local character = player.Character
 	local me = character and character:FindFirstChild("HumanoidRootPart")
@@ -234,7 +235,9 @@ local function pick()
 		local dying = bar.dyingSince ~= nil and os.clock() - bar.dyingSince < FADE_TWEEN.Time
 		local alive = bar.dyingSince == nil
 		local hasHealth = enemy:GetAttribute("MaxHealth") ~= nil -- tame town animals have none
-		local allowed = hasHealth and distance <= MAX_DISTANCE and not SafeZone.contains(bar.root.Position)
+		local owner = enemy:GetAttribute("SparringOwner") -- the training camp's: shown in town, to their owner only
+		local inPlace = if owner ~= nil then owner == player.UserId else not SafeZone.contains(bar.root.Position)
+		local allowed = hasHealth and distance <= MAX_DISTANCE and inPlace
 		local full = allowed and enemy == locked and (alive or dying)
 		bar.name.Visible = full
 		bar.amount.Visible = full

@@ -55,8 +55,9 @@ function StarterService.start()
 	RemoteGuard.connect(chooseRemote, onChoose)
 
 	-- Studio only: ServerStorage.StarterDevTools:Invoke(player, "new" | "restore") puts a
-	-- player's save in a brand-new player's state (no weapons, no pick) to test the starter
-	-- flow, or gives every weapon back with the pick cleared. Never exists in live servers.
+	-- player's save in a brand-new player's state (no weapons, no pick, training not done) to
+	-- test the starter flow and the training camp, or gives every weapon back with the pick
+	-- cleared. Never exists in live servers.
 	if RunService:IsStudio() then
 		local dev = Instance.new("BindableFunction")
 		dev.Name = "StarterDevTools"
@@ -66,6 +67,8 @@ function StarterService.start()
 				return "data not loaded"
 			end
 			data.Starter = nil
+			data.Tutorial = nil
+			data.TutorialStep = nil
 			table.clear(data.Weapons)
 			if action == "restore" then
 				for _, info in InventoryConfig.Weapons do

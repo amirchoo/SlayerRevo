@@ -1,12 +1,15 @@
 --!strict
 -- Minecraft-style "+" crosshair that replaces the mouse cursor while a weapon is equipped.
--- It sits exactly at the mouse position, which is where the bow aims (see BowClient).
+-- It sits exactly at the mouse position, which is where the bow aims (see BowClient); with a
+-- controller it sits in the middle of the screen, where controller aim goes (see Aim).
 -- The normal cursor comes back when no tool is out or the Roblox menu is open.
 
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+
+local Gamepad = require(script.Parent.Gamepad)
 
 local LENGTH = 20 -- pixels, end to end
 local THICKNESS = 2
@@ -65,12 +68,13 @@ function Crosshair.start()
 	local holder = createCrosshair()
 
 	RunService.RenderStepped:Connect(function()
-		local show = weaponEquipped() and UserInputService.MouseEnabled and not GuiService.MenuIsOpen
+		local pad = Gamepad.active()
+		local show = weaponEquipped() and (UserInputService.MouseEnabled or pad) and not GuiService.MenuIsOpen
 		holder.Visible = show
-		UserInputService.MouseIconEnabled = not show
+		UserInputService.MouseIconEnabled = not show and not pad
 		if show then
-			local mouse = UserInputService:GetMouseLocation()
-			holder.Position = UDim2.fromOffset(math.round(mouse.X), math.round(mouse.Y))
+			local at = if pad then workspace.CurrentCamera.ViewportSize / 2 else UserInputService:GetMouseLocation()
+			holder.Position = UDim2.fromOffset(math.round(at.X), math.round(at.Y))
 		end
 	end)
 end

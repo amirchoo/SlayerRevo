@@ -22,7 +22,7 @@ local HudStyle = require(script.Parent.HudStyle)
 
 local LOCK = CombatConfig.LockOn
 local RETICLE_COLOR = Color3.fromRGB(255, 210, 90)
-local TARGET_FOLDERS = { "Enemies", "Animals", "TrainingGround" } -- where lockable things live in workspace
+local TARGET_FOLDERS = { "Enemies", "Animals", "TrainingGround", "TrainingCamp" } -- where lockable things live in workspace
 
 local player = Players.LocalPlayer
 
@@ -68,7 +68,8 @@ local function findTarget(except: Model?): Model?
 		local folder = workspace:FindFirstChild(folderName)
 		if folder then
 			for _, model in folder:GetDescendants() do
-				if model:IsA("Model") and model ~= except and model:GetAttribute("Health") ~= nil and isAlive(model) then
+				local owner = model:GetAttribute("SparringOwner") -- the training camp's: only your own
+				if model:IsA("Model") and model ~= except and model:GetAttribute("Health") ~= nil and isAlive(model) and (owner == nil or owner == player.UserId) then
 					local center = centerOf(model)
 					if center then
 						local offset = center - root.Position
@@ -94,7 +95,7 @@ function LockOn.start()
 	-- The reticle: a gold ring with a turning diamond, over the target (only you see it).
 	local reticle = Instance.new("BillboardGui")
 	reticle.Name = "LockOnReticle"
-	reticle.Size = UDim2.fromOffset(54, 54)
+	reticle.Size = UDim2.fromOffset(30, 30) -- small, so it doesn't hide small enemies
 	reticle.AlwaysOnTop = true
 	reticle.LightInfluence = 0
 	reticle.Enabled = false
@@ -111,7 +112,7 @@ function LockOn.start()
 	ringCorner.Parent = ring
 	local ringStroke = Instance.new("UIStroke")
 	ringStroke.Color = RETICLE_COLOR
-	ringStroke.Thickness = 3
+	ringStroke.Thickness = 2
 	ringStroke.Parent = ring
 	local diamond = Instance.new("Frame")
 	diamond.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -122,7 +123,7 @@ function LockOn.start()
 	diamond.Parent = reticle
 	local diamondStroke = Instance.new("UIStroke")
 	diamondStroke.Color = RETICLE_COLOR
-	diamondStroke.Thickness = 2.5
+	diamondStroke.Thickness = 1.5
 	diamondStroke.Parent = diamond
 	local reticleScale = Instance.new("UIScale")
 	reticleScale.Parent = ring

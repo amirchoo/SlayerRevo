@@ -29,6 +29,7 @@ local Aim = require(script.Parent.Aim)
 local SkillTrees = require(ReplicatedStorage.Shared.Config.SkillTrees)
 local CombatInput = require(script.Parent.CombatInput)
 local HudStyle = require(script.Parent.HudStyle)
+local Gamepad = require(script.Parent.Gamepad)
 local LockOn = require(script.Parent.LockOn)
 
 type Caster = typeof(CombatConfig.Staff)
@@ -586,6 +587,11 @@ function StaffClient.new(STAFF: Caster)
 			table.insert(elementIcons, { name = element.Name, frame = badge })
 		end
 		local hint = HudStyle.caption(bar, `[{STAFF.ElementKey.Name}] switch element`, 12)
+		local function hintText(active: boolean)
+			hint.Text = if active then "[Triangle / Y] switch element" else `[{STAFF.ElementKey.Name}] switch element`
+		end
+		hintText(Gamepad.active())
+		Gamepad.Changed:Connect(hintText)
 		elementHint = hint
 		hint.AnchorPoint = Vector2.new(0.5, 0)
 		hint.Position = UDim2.new(0.5, 0, 0, ELEMENT_ICON_SIZE + 2)
@@ -701,7 +707,7 @@ function StaffClient.new(STAFF: Caster)
 			end
 		end)
 		UserInputService.InputBegan:Connect(function(input, gameProcessed)
-			if not gameProcessed and input.KeyCode == STAFF.ElementKey and equipped then
+			if not gameProcessed and (input.KeyCode == STAFF.ElementKey or input.KeyCode == Enum.KeyCode.ButtonY) and equipped then
 				cycleElement()
 			end
 		end)

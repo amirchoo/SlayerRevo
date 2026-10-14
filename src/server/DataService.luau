@@ -1,6 +1,6 @@
 --!strict
 -- Saves each player's progress in a DataStore: level, XP, skill trees, owned weapons, the
--- starter pick, hotbar, armor, shield, and materials.
+-- starter pick, tutorial progress, hotbar, armor, shield, and materials.
 -- Session-locked: while a server has a player's data loaded it marks the save as its own, so
 -- a second server (e.g. after a quick rejoin) waits instead of loading stale data and
 -- overwriting newer progress later. A lock older than LOCK_TIMEOUT is assumed abandoned
@@ -32,6 +32,8 @@ export type Data = {
 	Consumables: { [string]: number },
 	Materials: { [string]: number }, -- gathered materials (MaterialConfig), by Id
 	Starter: string?, -- the starter weapon picked (once per save)
+	Tutorial: boolean?, -- finished the training camp (TutorialService)
+	TutorialStep: string?, -- the training step to pick up from, until it's finished
 	Hotbar: { string }?,
 	Armor: { Owned: { [string]: boolean }, Worn: { [string]: string } }?,
 	Shield: { Owned: { [string]: boolean }, Worn: string? }?,
@@ -90,6 +92,12 @@ local function reconcile(raw: any): Data
 	end
 	if typeof(raw.Starter) == "string" then
 		data.Starter = raw.Starter
+	end
+	if raw.Tutorial == true then
+		data.Tutorial = true
+	end
+	if typeof(raw.TutorialStep) == "string" then
+		data.TutorialStep = raw.TutorialStep
 	end
 	if typeof(raw.Hotbar) == "table" then
 		data.Hotbar = raw.Hotbar

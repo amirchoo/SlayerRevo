@@ -74,6 +74,12 @@
         "StarterChoose": {
           "$className": "RemoteEvent"
         },
+        "TutorialAction": {
+          "$className": "RemoteEvent"
+        },
+        "TutorialEvent": {
+          "$className": "RemoteEvent"
+        },
         "DashStart": {
           "$className": "RemoteEvent"
         },

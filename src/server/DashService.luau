@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
+local TutorialConfig = require(ReplicatedStorage.Shared.Config.TutorialConfig)
 local HealthService = require(script.Parent.HealthService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 
@@ -26,10 +27,11 @@ type DashState = { charges: number, updated: number, lastDash: number, invulnera
 local states: { [Player]: DashState } = {}
 
 -- The player's dash charges, recharge time, and i-frames, with their skill bonuses
--- (see SkillTrees); the client's dash meter works these out the same way.
+-- (see SkillTrees), and nearly instant recharges in the training camp (TutorialConfig); the
+-- client's dash meter works these out the same way.
 local function dashStats(player: Player): (number, number, number)
 	local charges = DASH.MaxCharges + SkillMath.general(player, "DashCharges")
-	local recharge = DASH.RechargeTime * (1 - SkillMath.general(player, "DashRecharge"))
+	local recharge = TutorialConfig.dashRecharge(player, DASH.RechargeTime * (1 - SkillMath.general(player, "DashRecharge")))
 	local iframes = DASH.IFrameTime + SkillMath.general(player, "DashIFrames")
 	return charges, recharge, iframes
 end
@@ -67,6 +69,13 @@ local function dodgeFilter(target: Model, amount: number): number
 		return 0
 	end
 	return amount
+end
+
+-- When (os.clock) the player last dashed, or 0 if they haven't (the training camp's dodge drill
+-- asks: a dash out of reach never reaches the damage filter).
+function DashService.lastDash(player: Player): number
+	local state = states[player]
+	return if state then state.lastDash else 0
 end
 
 function DashService.start()

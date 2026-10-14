@@ -4,6 +4,8 @@
 -- Positions are X/Z on the ground; Facing is the direction they look.
 -- Action "StarterPick": after their lines, a player who hasn't picked a starter weapon is
 -- offered the choice (see shared/Starter); ChosenLines replace Lines once they have.
+-- Action "Training": after their lines, the drills start again (TutorialService, with the
+-- weapon in hand; the player is taken into a sparring circle).
 
 export type Npc = {
 	Id: string,
@@ -112,6 +114,23 @@ NpcConfig.List = {
 			"The Hunters' Guild keeps track of every beast that threatens this town.",
 			"The quest board will fill up soon. Until then, the hunting grounds to the north need thinning.",
 		},
+	},
+	{
+		-- Runs the training camp in the training yard (TutorialService, TutorialConfig); the
+		-- camp's lines are TutorialConfig's, these are for talking to him any other time, which
+		-- runs the drills again.
+		Id = "DrillMaster",
+		Name = "Hode",
+		Title = "Drill Master",
+		Position = Vector2.new(-106, -87),
+		Facing = Vector2.new(1, 0),
+		Shirt = Color3.fromRGB(140, 45, 40),
+		Pants = Color3.fromRGB(50, 45, 40),
+		Lines = {
+			"Every slayer in this town learned to fight in my yard. Some of them even listened.",
+			"Rusty? Say the word and we'll run the drills again, with whatever weapon you're holding.",
+		},
+		Action = "Training",
 	},
 	{
 		Id = "Guard",

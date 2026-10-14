@@ -19,6 +19,7 @@ local CookingConfig = require(ReplicatedStorage.Shared.Config.CookingConfig)
 local MaterialConfig = require(ReplicatedStorage.Shared.Config.MaterialConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local HudStyle = require(script.Parent.HudStyle)
+local Gamepad = require(script.Parent.Gamepad)
 local Panels = require(script.Parent.Panels)
 local WeaponIcon = require(script.Parent.WeaponIcon)
 
@@ -123,7 +124,7 @@ function CookingPanel.start()
 	fit.Parent = holder
 	local function refit()
 		local screen = workspace.CurrentCamera.ViewportSize
-		fit.Scale = math.min(1, (screen.Y - 40) / PANEL_SIZE.Y, (screen.X * 0.5) / PANEL_SIZE.X)
+		fit.Scale = math.min(HudStyle.panelScale(PANEL_SIZE), (screen.X * 0.5) / PANEL_SIZE.X) -- the left half shows the fire
 	end
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(refit)
 	refit()
@@ -320,6 +321,8 @@ function CookingPanel.start()
 		return CFrame.lookAt(position, focus) * CFrame.Angles(0, -math.rad(look.Turn), 0)
 	end
 
+	local close: (tellServer: boolean) -> ()
+
 	local function open()
 		if isOpen then
 			return
@@ -346,14 +349,18 @@ function CookingPanel.start()
 		refresh()
 		gui.Enabled = true
 		HudStyle.pop(panel, 0.9)
+		Gamepad.focus(panel, function()
+			task.spawn(close, true)
+		end, cookButton)
 	end
 
-	local function close(tellServer: boolean)
+	close = function(tellServer: boolean)
 		if not isOpen then
 			return
 		end
 		isOpen = false
 		gui.Enabled = false
+		Gamepad.unfocus(panel)
 		if tellServer then
 			cookingRemote:FireServer("close")
 		end

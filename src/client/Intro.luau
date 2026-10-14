@@ -57,6 +57,13 @@ local STAT_TWEEN = TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirecti
 
 local Intro = {}
 
+local playing = false
+
+-- Whether the intro is on screen (the training camp's cutscene waits for it to end).
+function Intro.isPlaying(): boolean
+	return playing
+end
+
 local function hasPicked(): boolean
 	local value = player:GetAttribute("Starter")
 	return typeof(value) == "string" and value ~= ""
@@ -801,6 +808,7 @@ function Intro.start()
 		black(false, IntroConfig.FadeTime)
 		gui.Enabled = false
 		running = false
+		playing = false
 	end
 
 	local function run()
@@ -808,6 +816,7 @@ function Intro.start()
 			return
 		end
 		running, inHall, sending = true, false, false
+		playing = true
 		black(true, 0)
 		titleCard.Visible = false
 		hallUi.Visible = false
