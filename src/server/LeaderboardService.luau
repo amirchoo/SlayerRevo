@@ -8,7 +8,7 @@
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 
-local STORE_NAME = "HunterLevels_v1"
+local STORE_NAME = "HunterLevels_v2" -- v2: fresh board, with the player data reset
 local BOARD_SIZE = 10
 local INTERVAL = 90 -- seconds between writing players' scores and re-reading the top 10
 local XP_SCALE = 1e7 -- score = level * XP_SCALE + XP, so XP only breaks ties

@@ -18,7 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CurrencyConfig = require(ReplicatedStorage.Shared.Config.CurrencyConfig)
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
 
-local STORE_NAME = "PlayerData_v1"
+local STORE_NAME = "PlayerData_v2" -- v2: everyone starts over (v1 still holds the old saves; switch back to restore them)
 local AUTOSAVE_INTERVAL = 120
 local LOCK_TIMEOUT = 600 -- seconds before another server's lock counts as abandoned
 local LOAD_ATTEMPTS = 6
