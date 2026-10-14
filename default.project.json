@@ -101,6 +101,21 @@
         "CoinGained": {
           "$className": "RemoteEvent"
         },
+        "QuestBoardOpen": {
+          "$className": "RemoteEvent"
+        },
+        "QuestStart": {
+          "$className": "RemoteEvent"
+        },
+        "QuestCancel": {
+          "$className": "RemoteEvent"
+        },
+        "QuestTrack": {
+          "$className": "RemoteEvent"
+        },
+        "MapTeleport": {
+          "$className": "RemoteEvent"
+        },
         "StaffElement": {
           "$className": "RemoteEvent"
         },

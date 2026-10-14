@@ -31,6 +31,7 @@ export type Data = {
 	Weapons: { [string]: boolean }, -- owned weapons (by tool name)
 	Consumables: { [string]: number },
 	Materials: { [string]: number }, -- gathered materials (MaterialConfig), by Id
+	Quests: { Active: { [string]: { [string]: number } }, Tracking: string?, Progress: number, ProgressByTarget: { [string]: number }, Completed: { [string]: boolean } },
 	Starter: string?, -- the starter weapon picked (once per save)
 	Tutorial: boolean?, -- finished the training camp (TutorialService)
 	TutorialStep: string?, -- the training step to pick up from, until it's finished
@@ -47,7 +48,7 @@ local loadedCallbacks: { (Player, Data) -> () } = {}
 local store: DataStore? = nil
 
 local function defaults(): Data
-	return { Level = 1, XP = 0, Coins = CurrencyConfig.StartingCoins, Skills = {}, Weapons = {}, Consumables = {}, Materials = {} }
+	return { Level = 1, XP = 0, Coins = CurrencyConfig.StartingCoins, Skills = {}, Weapons = {}, Consumables = {}, Materials = {}, Quests = { Active = {}, Progress = 0, ProgressByTarget = {}, Completed = {} } }
 end
 
 -- Fills in anything missing (e.g. from an older save).
@@ -87,6 +88,52 @@ local function reconcile(raw: any): Data
 		for id, count in raw.Materials do
 			if typeof(id) == "string" and typeof(count) == "number" and count > 0 then
 				data.Materials[id] = math.floor(count)
+			end
+		end
+	end
+	if typeof(raw.Quests) == "table" then
+		if typeof(raw.Quests.Active) == "string" then
+			local progress: { [string]: number } = {}
+			if typeof(raw.Quests.ProgressByTarget) == "table" then
+				for key, count in raw.Quests.ProgressByTarget do
+					if typeof(key) == "string" and typeof(count) == "number" and count > 0 then
+						progress[key] = math.floor(count)
+					end
+				end
+			end
+			data.Quests.Active[raw.Quests.Active] = progress
+			data.Quests.Tracking = raw.Quests.Active
+		elseif typeof(raw.Quests.Active) == "table" then
+			for questId, progressRaw in raw.Quests.Active do
+				if typeof(questId) == "string" and typeof(progressRaw) == "table" then
+					local progress: { [string]: number } = {}
+					for key, count in progressRaw do
+						if typeof(key) == "string" and typeof(count) == "number" and count > 0 then
+							progress[key] = math.floor(count)
+						end
+					end
+					data.Quests.Active[questId] = progress
+				end
+			end
+		end
+		if typeof(raw.Quests.Tracking) == "string" then
+			data.Quests.Tracking = raw.Quests.Tracking
+		end
+		if typeof(raw.Quests.Progress) == "number" then
+			data.Quests.Progress = math.max(0, math.floor(raw.Quests.Progress))
+		end
+		if typeof(raw.Quests.ProgressByTarget) == "table" then
+			for key, count in raw.Quests.ProgressByTarget do
+				if typeof(key) == "string" and typeof(count) == "number" and count > 0 then
+					data.Quests.ProgressByTarget[key] = math.floor(count)
+				end
+			end
+		end
+		if typeof(raw.Quests.Completed) == "table" then
+			for id, completed in raw.Quests.Completed do
+				if typeof(id) == "string" and completed == true then
+					data.Quests.Completed[id] = true
+				end
 			end
 		end
 	end

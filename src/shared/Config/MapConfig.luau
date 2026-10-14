@@ -18,6 +18,7 @@ MapConfig.WorldMin = Vector2.new(-1024, -1024)
 MapConfig.WorldMax = Vector2.new(1024, 1024)
 
 MapConfig.OpenKey = Enum.KeyCode.M
+MapConfig.TownWaypoint = { Id = "BeginningTown", Name = "Beginning Town", Position = Vector2.new(0, 16) }
 
 MapConfig.Minimap = {
 	Size = 190, -- pixels across (before HUD scaling)

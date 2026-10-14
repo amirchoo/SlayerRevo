@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local MapConfig = require(ReplicatedStorage.Shared.Config.MapConfig)
+local QuestConfig = require(ReplicatedStorage.Shared.Config.QuestConfig)
 local SafeZone = require(ReplicatedStorage.Shared.SafeZone)
 local TrainingArea = require(ReplicatedStorage.Shared.TrainingArea)
 local HudStyle = require(script.Parent.HudStyle)
@@ -26,6 +27,8 @@ local COLORS = {
 	Town = Color3.fromRGB(255, 225, 120),
 	Area = Color3.fromRGB(255, 160, 130),
 	Ruin = Color3.fromRGB(245, 240, 230),
+	Quest = Color3.fromRGB(255, 210, 70),
+	Waypoint = Color3.fromRGB(120, 235, 145),
 	Dim = Color3.fromRGB(10, 10, 15),
 }
 local LABEL_HEIGHT = { town = 0.034, area = 0.03, ruin = 0.022 } -- of the map's height
@@ -33,6 +36,7 @@ local NEAR_LABEL = 70 -- studs from a ruin's label that count as being there
 local MAP_SCREEN_FRACTION = 0.86 -- of the screen's height
 
 local player = Players.LocalPlayer
+local teleportRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("MapTeleport") :: RemoteEvent
 
 local Map = {}
 
@@ -56,6 +60,77 @@ local function rootOf(target: Player): BasePart?
 	local character = target.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	return if root and root:IsA("BasePart") then root else nil
+end
+
+local function progressFor(target: QuestConfig.Target): number
+	local detail = player:GetAttribute("QuestProgressDetail")
+	if typeof(detail) ~= "string" or detail == "" then
+		return 0
+	end
+	local key = QuestConfig.targetKey(target)
+	for _, part in string.split(detail, ",") do
+		local split = string.split(part, "=")
+		if split[1] == key then
+			local value = tonumber(split[2])
+			return if value then value else 0
+		end
+	end
+	return 0
+end
+
+local function trackedTarget(): QuestConfig.Target?
+	local active = player:GetAttribute("QuestActive")
+	local quest = if typeof(active) == "string" then QuestConfig.quest(active) else nil
+	if not quest then
+		return nil
+	end
+	for _, target in quest.Targets do
+		if progressFor(target) < target.Count then
+			return target
+		end
+	end
+	return nil
+end
+
+local function targetRoot(model: Instance): BasePart?
+	if not model:IsA("Model") then
+		return nil
+	end
+	local health = model:GetAttribute("Health")
+	if typeof(health) ~= "number" or health <= 0 then
+		return nil
+	end
+	local root = model:FindFirstChild("HumanoidRootPart")
+	return if root and root:IsA("BasePart") then root else nil
+end
+
+local function questTargetPosition(from: Vector3?): Vector2?
+	local target = trackedTarget()
+	if not target then
+		return nil
+	end
+	local folder = workspace:FindFirstChild(if target.Kind == "Enemy" then "Enemies" else "Animals")
+	local nearest: BasePart? = nil
+	local nearestDistance = math.huge
+	if folder then
+		for _, model in folder:GetChildren() do
+			local id = if target.Kind == "Enemy" then model:GetAttribute("EnemyId") else model:GetAttribute("Animal")
+			local root = if id == target.Id then targetRoot(model) else nil
+			if root then
+				local distance = if from then (root.Position - from).Magnitude else 0
+				if distance < nearestDistance then
+					nearest = root
+					nearestDistance = distance
+				end
+			end
+		end
+	end
+	if nearest then
+		return flat(nearest.Position)
+	end
+	local active = player:GetAttribute("QuestActive")
+	local quest = if typeof(active) == "string" then QuestConfig.quest(active) else nil
+	return quest and quest.TargetPosition or nil
 end
 
 -- What the place you're standing in is called.
@@ -122,6 +197,21 @@ local function dot(parent: Instance, size: number, color: Color3): Frame
 	return frame
 end
 
+local function mapButton(parent: Instance, size: number, color: Color3, text: string): TextButton
+	local button = Instance.new("TextButton")
+	button.AnchorPoint = Vector2.new(0.5, 0.5)
+	button.Size = UDim2.fromOffset(size, size)
+	button.BackgroundColor3 = color
+	button.Font = HudStyle.FONT
+	button.TextSize = math.floor(size * 0.58)
+	button.Text = text
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.ZIndex = 7
+	button.Parent = parent
+	HudStyle.chunky(button, size // 2, 3)
+	return button
+end
+
 -- Keeps one dot per other player in `parent`, placed by `place(dot, worldXZ)`.
 local function playerDots(parent: Instance, size: number): (place: (Frame, Vector2) -> ()) -> ()
 	local dots: { [Player]: Frame } = {}
@@ -186,6 +276,8 @@ local function buildMinimap(gui: ScreenGui, open: () -> ())
 
 	local you = arrow(window, 22)
 	you.Position = UDim2.fromScale(0.5, 0.5)
+	local questMarker = mapButton(window, 24, COLORS.Quest, "!")
+	questMarker.Visible = false
 
 	local north = HudStyle.caption(frame, "N", 18)
 	north.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -246,6 +338,18 @@ local function buildMinimap(gui: ScreenGui, open: () -> ())
 			end
 			marker.Position = UDim2.fromOffset(size / 2 + offset.X, size / 2 + offset.Y)
 		end)
+		local questAt = questTargetPosition(root.Position)
+		if questAt then
+			local offset = (questAt - flat(root.Position)) * pixelsPerStud
+			local limit = size / 2 - 12
+			if offset.Magnitude > limit then
+				offset = offset.Unit * limit
+			end
+			questMarker.Visible = true
+			questMarker.Position = UDim2.fromOffset(size / 2 + offset.X, size / 2 + offset.Y)
+		else
+			questMarker.Visible = false
+		end
 		local now = os.clock()
 		if now - lastPlaceCheck > 0.5 then
 			lastPlaceCheck = now
@@ -340,6 +444,73 @@ local function buildWorldMap(gui: ScreenGui, close: () -> ()): Frame
 	local updateOthers = playerDots(others, 12)
 	local you = arrow(map, 26)
 
+	local questMarker = mapButton(map, 32, COLORS.Quest, "!")
+	questMarker.Visible = false
+	local questLabel = HudStyle.caption(map, "Quest", 14)
+	questLabel.AnchorPoint = Vector2.new(0.5, 0)
+	questLabel.Size = UDim2.fromOffset(120, 18)
+	questLabel.TextColor3 = COLORS.Quest
+	questLabel.ZIndex = 7
+	questLabel.Visible = false
+
+	local townSpot = uv(MapConfig.TownWaypoint.Position)
+	local townButton = mapButton(map, 28, COLORS.Waypoint, "T")
+	townButton.Position = UDim2.fromScale(townSpot.X, townSpot.Y)
+	local townLabel = HudStyle.caption(map, "Teleport", 13)
+	townLabel.AnchorPoint = Vector2.new(0.5, 0)
+	townLabel.Position = UDim2.fromScale(townSpot.X, townSpot.Y + 0.018)
+	townLabel.Size = UDim2.fromOffset(90, 18)
+	townLabel.TextColor3 = COLORS.Waypoint
+	townLabel.ZIndex = 7
+
+	local confirm = Instance.new("Frame")
+	confirm.AnchorPoint = Vector2.new(0.5, 0.5)
+	confirm.Position = UDim2.fromScale(0.5, 0.5)
+	confirm.Size = UDim2.fromOffset(360, 160)
+	confirm.BackgroundColor3 = Color3.fromRGB(30, 28, 42)
+	confirm.Visible = false
+	confirm.ZIndex = 20
+	confirm.Parent = panel
+	HudStyle.chunky(confirm, 18, 4)
+	local confirmText = HudStyle.caption(confirm, "Teleport to Beginning Town?", 20)
+	confirmText.Position = UDim2.fromOffset(24, 22)
+	confirmText.Size = UDim2.new(1, -48, 0, 32)
+	confirmText.TextXAlignment = Enum.TextXAlignment.Center
+	local yes = Instance.new("TextButton")
+	yes.Position = UDim2.fromOffset(52, 92)
+	yes.Size = UDim2.fromOffset(110, 42)
+	yes.BackgroundColor3 = Color3.fromRGB(80, 190, 110)
+	yes.Font = HudStyle.FONT
+	yes.TextSize = 18
+	yes.TextColor3 = Color3.new(1, 1, 1)
+	yes.Text = "Yes"
+	yes.ZIndex = 21
+	yes.Parent = confirm
+	HudStyle.chunky(yes, 12, 3)
+	local no = Instance.new("TextButton")
+	no.Position = UDim2.fromOffset(198, 92)
+	no.Size = UDim2.fromOffset(110, 42)
+	no.BackgroundColor3 = Color3.fromRGB(120, 68, 62)
+	no.Font = HudStyle.FONT
+	no.TextSize = 18
+	no.TextColor3 = Color3.new(1, 1, 1)
+	no.Text = "No"
+	no.ZIndex = 21
+	no.Parent = confirm
+	HudStyle.chunky(no, 12, 3)
+	townButton.Activated:Connect(function()
+		confirm.Visible = true
+		HudStyle.pop(confirm, 0.92)
+	end)
+	no.Activated:Connect(function()
+		confirm.Visible = false
+	end)
+	yes.Activated:Connect(function()
+		teleportRemote:FireServer(MapConfig.TownWaypoint.Id)
+		confirm.Visible = false
+		close()
+	end)
+
 	RunService.RenderStepped:Connect(function()
 		if not screen.Visible then
 			return
@@ -357,6 +528,17 @@ local function buildWorldMap(gui: ScreenGui, close: () -> ()): Frame
 			local spot = uv(at)
 			marker.Position = UDim2.fromScale(spot.X, spot.Y)
 		end)
+		local questPos = questTargetPosition(root and root.Position or nil)
+		if questPos then
+			local spot = uv(questPos)
+			questMarker.Visible = true
+			questMarker.Position = UDim2.fromScale(spot.X, spot.Y)
+			questLabel.Visible = true
+			questLabel.Position = UDim2.fromScale(spot.X, spot.Y + 0.022)
+		else
+			questMarker.Visible = false
+			questLabel.Visible = false
+		end
 	end)
 	return screen
 end

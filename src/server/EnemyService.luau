@@ -317,6 +317,15 @@ local function plainBody(kind: EnemyType): Model?
 	return result :: Model
 end
 
+local function idOf(kind: EnemyType): string
+	for id, value in EnemyConfig do
+		if typeof(id) == "string" and value == kind then
+			return id
+		end
+	end
+	return kind.DisplayName
+end
+
 local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?, once: boolean?, owner: Player?, puppet: boolean?): Model?
 	local enemy = modelFromTemplate(kind) or plainBody(kind)
 	if not enemy then
@@ -366,6 +375,7 @@ local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?
 	HealthService.register(enemy, kind.MaxHealth)
 	enemy:SetAttribute("XPReward", kind.XP) -- ProgressionService gives it to whoever defeats it
 	enemy:SetAttribute("CoinReward", kind.Coins or 0) -- CurrencyService gives it to whoever defeats it
+	enemy:SetAttribute("EnemyId", idOf(kind)) -- QuestService counts kills by config id
 	enemy:SetAttribute("Level", kind.Level) -- shown over its head when locked on (EnemyHealthBars)
 	if owner then
 		enemy:SetAttribute("XPReward", 0)
