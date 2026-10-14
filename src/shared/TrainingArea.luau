@@ -4,7 +4,9 @@
 
 local TrainingArea = {}
 
-TrainingArea.CENTER = Vector3.new(800, 100, 0) -- center of the floor's top surface
+-- Past the east edge of the land (it ends about 1300 studs out, beyond the mountains), so the
+-- arena floats over open sky instead of cutting into the hills.
+TrainingArea.CENTER = Vector3.new(1700, 150, 0) -- center of the floor's top surface
 TrainingArea.HALF_SIZE = 60 -- studs from the center to each edge (a 120 x 120 arena)
 
 function TrainingArea.contains(position: Vector3): boolean

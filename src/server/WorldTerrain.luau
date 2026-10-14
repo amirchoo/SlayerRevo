@@ -17,7 +17,8 @@ local RESOLUTION = 4
 local CHUNK = 64 -- studs per side of one WriteVoxels call
 local Y_MIN = -16
 local Y_MAX = 176
-local EDGE = 1024 -- sculpt this far from the center (a little past WorldConfig.HalfSize)
+-- Sculpt this far from the center: past the mountains' far side (whole chunks).
+local EDGE = math.ceil((WorldConfig.HalfSize + WorldConfig.Mountains.Back) / CHUNK) * CHUNK
 
 local G = WorldConfig.GroundY
 local SEED = WorldConfig.Seed

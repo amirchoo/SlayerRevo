@@ -45,6 +45,17 @@ end
 
 function RemoteGuard.connect(remote: RemoteEvent, handler: (Player, ...any) -> ()): RBXScriptConnection
 	local perSecond = NetworkConfig.PerSecond[remote.Name] or NetworkConfig.DefaultPerSecond
+	-- Two remotes with one name (e.g. a stale copy saved in the place) silently split the
+	-- server and client onto different ones; the extra has to be deleted in Studio.
+	local sameName = 0
+	for _, sibling in (remote.Parent :: Instance):GetChildren() do
+		if sibling.Name == remote.Name then
+			sameName += 1
+		end
+	end
+	if sameName > 1 then
+		warn(`[RemoteGuard] {sameName} remotes named {remote.Name}; delete the extras in Studio or requests may be lost`)
+	end
 	return remote.OnServerEvent:Connect(function(player: Player, ...)
 		if allow(player, remote, perSecond) then
 			handler(player, ...)

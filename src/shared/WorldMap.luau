@@ -86,9 +86,13 @@ function WorldMap.wildWeight(p: Vector2): number
 	return smoothstep(WorldConfig.HubFlat, WorldConfig.HubBlend, WorldMap.squareDistance(p))
 end
 
--- 0 inland, rising to 1 at the map edge.
+-- 0 inland, rising to 1 at the map edge (the ridge), and falling back to 0 beyond it.
 function WorldMap.mountainWeight(p: Vector2): number
-	return smoothstep(WorldConfig.Mountains.Start, WorldConfig.HalfSize, WorldMap.squareDistance(p))
+	local distance = WorldMap.squareDistance(p)
+	local mountains = WorldConfig.Mountains
+	local rise = smoothstep(mountains.Start, WorldConfig.HalfSize, distance)
+	local fall = smoothstep(WorldConfig.HalfSize + mountains.Back, WorldConfig.HalfSize, distance)
+	return rise * fall
 end
 
 -- The clearing `p` is in (within its radius), if any.

@@ -291,7 +291,13 @@ local function buildBridges()
 	end
 end
 
-function WorldBuilder.build()
+-- Builds the forest, ruins and plain dressing into workspace.World. A World already saved in
+-- the place is kept as it is (so hand edits made in Studio's edit mode stay), unless `replace`
+-- is true: tools/generate_terrain.lua rebuilds it from WorldConfig.
+function WorldBuilder.build(replace: boolean?)
+	if not replace and workspace:FindFirstChild("World") then
+		return
+	end
 	groundParams.FilterDescendantsInstances = { workspace.Terrain }
 	local saved = workspace:FindFirstChild("World")
 	if saved then

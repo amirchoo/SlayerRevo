@@ -197,6 +197,7 @@ type Slot = {
 	skill: TextLabel,
 	empty: TextLabel, -- the slot's category, while it's empty
 	shown: string?,
+	modelShown: boolean, -- the shown consumable's model is in the viewport (else its icon is used)
 }
 
 -- Fills a slot's dark well with its contents and a click target.
@@ -236,7 +237,7 @@ local function fillWell(well: Frame, index: number, keyPosition: UDim2, emptyTex
 	button.Activated:Connect(function()
 		useSlot(index)
 	end)
-	return { scale = scale, glow = glow, viewport = viewport, icon = itemIcon, name = name, skill = skill, empty = empty, shown = nil }
+	return { scale = scale, glow = glow, viewport = viewport, icon = itemIcon, name = name, skill = skill, empty = empty, shown = nil, modelShown = false }
 end
 
 -- A square slot: a riveted metal frame around a dark well, centered at (x, PANEL_Y).
@@ -390,12 +391,12 @@ function Hotbar.start()
 			local consumable = if item then ShopConfig.consumable(item) else nil
 			if consumable then
 				if slot.shown ~= item then
-					slot.viewport:ClearAllChildren()
+					slot.modelShown = WeaponIcon.showItem(slot.viewport, consumable.Model)
 					Icons.set(slot.icon, consumable.Icon)
 					slot.shown = item
 				end
-				slot.viewport.Visible = false
-				slot.icon.Visible = true
+				slot.viewport.Visible = slot.modelShown
+				slot.icon.Visible = not slot.modelShown
 				slot.icon.ImageColor3 = if consumable.ManaPercent then Color3.fromRGB(120, 170, 255) else Color3.fromRGB(120, 235, 145)
 			elseif slot.shown ~= item then
 				slot.icon.Visible = false

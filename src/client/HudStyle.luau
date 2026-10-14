@@ -141,13 +141,13 @@ function HudStyle.maxGain(bar: GuiObject, amount: number, color: Color3)
 end
 
 -- HUD scale: the HUD is laid out for a 1280x720 screen and shrinks on smaller ones, so it
--- never covers the game; never grows past 1. Phones (a short side under PHONE_SIZE) shrink
--- it further, so the small screen isn't crowded.
+-- never covers the game; never grows past 1. Phones (a short side under PHONE_SIZE) get their
+-- own scale, kept readable on the small screen.
 local REFERENCE_SCREEN = Vector2.new(1280, 720)
 local MIN_HUD_SCALE = 0.55
 local PHONE_SIZE = 500
-local PHONE_FACTOR = 0.85 -- extra shrink on phones...
-local PHONE_RANGE = Vector2.new(0.36, 0.6) -- ...kept within this
+local PHONE_FACTOR = 1.02 -- phones: the fitted scale times this (20% bigger than it was)...
+local PHONE_RANGE = Vector2.new(0.43, 0.72) -- ...kept within this
 local hudScales: { UIScale } = {}
 
 function HudStyle.isPhone(): boolean

@@ -57,6 +57,20 @@ local SPECS: { [string]: SoundSpec } = {
 	ParryHit = { Id = BOOM, Pitch = 2.2, Volume = 0.6 }, -- a parried hit (heard by everyone nearby)
 	ChargeLevel = { Id = TICK, Pitch = 1, Volume = 0.8 }, -- greatsword charge level reached (pitch rises per level)
 	Heartbeat = { Id = THUD, Pitch = 0.5, Volume = 0.6 }, -- thumps while your health is low
+
+	-- Town and wildlife (Pro Sound Effects and other free Creator Store sounds).
+	BirdsDay = { Id = "rbxassetid://9112742473", Pitch = 1, Volume = 0.35 }, -- loop: daytime birdsong over town
+	CricketsNight = { Id = "rbxassetid://9112764040", Pitch = 1, Volume = 0.3 }, -- loop: crickets after dark
+	FireCrackle = { Id = "rbxassetid://9112780438", Pitch = 1, Volume = 0.6 }, -- loop: campfire and forge
+	AnvilClang = { Id = "rbxassetid://9113445305", Pitch = 1, Volume = 0.45 }, -- the blacksmith at work
+	AnvilClang2 = { Id = "rbxassetid://9113447116", Pitch = 1, Volume = 0.45 },
+	AnvilClang3 = { Id = "rbxassetid://9113447467", Pitch = 1, Volume = 0.45 },
+	BellToll = { Id = "rbxassetid://9113804436", Pitch = 1, Volume = 0.5 }, -- the bell tower at dawn and dusk
+	WingFlaps = { Id = "rbxassetid://9113444620", Pitch = 1.3, Volume = 0.4 }, -- town birds taking off
+	ChickenCluck = { Id = "rbxassetid://77584650945481", Pitch = 1, Volume = 0.5 },
+	CowMoo = { Id = "rbxassetid://138223429", Pitch = 1, Volume = 0.5 },
+	Sizzle = { Id = "rbxassetid://6383276435", Pitch = 1, Volume = 0.6 }, -- meat cooking on the campfire
+	Eat = { Id = "", Pitch = 1, Volume = 0.6 }, -- eating cooked meat (no sound picked yet)
 }
 
 local Sounds = {}

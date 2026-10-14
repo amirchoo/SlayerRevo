@@ -1,5 +1,7 @@
 --!strict
--- Persisted consumable inventory. Shops grant counts; players use items later from Backpack.
+-- Persisted consumable inventory. Shops (and cooking) grant counts; players use items later
+-- from the hotbar. Food (an item with EatTime) heals gradually while it's eaten, one meal at
+-- a time (the "Eating" character attribute is set meanwhile, for the client's effects).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,7 +15,11 @@ local RemoteGuard = require(script.Parent.RemoteGuard)
 
 local useRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ConsumableUse") :: RemoteEvent
 
+local EAT_TICKS = 10 -- heals per meal (spread over its EatTime)
+
 local ConsumableService = {}
+
+local eating: { [Player]: boolean } = {}
 
 local function serialize(counts: { [string]: number }): string
 	local parts: { string } = {}
@@ -47,11 +53,36 @@ function ConsumableService.grant(player: Player, itemId: string, amount: number)
 	publish(player)
 end
 
+-- Heals `item.Heal` over its EatTime, in steps, stopping if the eater dies.
+local function eat(player: Player, character: Model, item: ShopConfig.Item)
+	eating[player] = true
+	character:SetAttribute("Eating", item.Id)
+	local step = (item.Heal or 0) / EAT_TICKS
+	for _ = 1, EAT_TICKS do
+		task.wait((item.EatTime or 0) / EAT_TICKS)
+		if player.Character ~= character or not HealthService.isAlive(character) then
+			break
+		end
+		HealthService.heal(character, step)
+	end
+	character:SetAttribute("Eating", nil)
+	eating[player] = nil
+end
+
 local function apply(player: Player, item: ShopConfig.Item): boolean
 	local used = false
 	local character = player.Character
 	if not character or not HealthService.isAlive(character) then
 		return false
+	end
+	if item.EatTime then
+		-- Food: only when hurt and not already eating.
+		local health, maxHealth = HealthService.getHealth(character)
+		if eating[player] or not health or not maxHealth or health >= maxHealth then
+			return false
+		end
+		task.spawn(eat, player, character, item)
+		return true
 	end
 	if item.Heal and character then
 		used = HealthService.heal(character, item.Heal) > 0 or used
@@ -94,6 +125,9 @@ function ConsumableService.start()
 		publish(player)
 	end)
 	Players.PlayerAdded:Connect(publish)
+	Players.PlayerRemoving:Connect(function(player)
+		eating[player] = nil
+	end)
 	for _, player in Players:GetPlayers() do
 		publish(player)
 	end

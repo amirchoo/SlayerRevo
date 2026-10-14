@@ -1,29 +1,26 @@
 --!strict
--- The starter pick (see shared/Starter): once per save, a player standing at the guide
--- chooses a starter weapon (StarterChoose remote) and gets it, with its starter armor set
--- put on. The pick is saved as the data's Starter and published as the "Starter" attribute
--- ("" until chosen), which the guide's dialogue reads.
+-- The starter pick (see shared/Starter): once per save, a player chooses a starter weapon
+-- (StarterChoose remote: from the new-player intro's Hall of Oaths, or the guide's dialogue)
+-- and gets it, drawn, with its starter armor set put on (never a shield). The pick is saved
+-- as the data's Starter and published as the "Starter" attribute ("" until chosen), which
+-- the intro and the guide's dialogue read.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local InventoryConfig = require(ReplicatedStorage.Shared.Config.InventoryConfig)
-local NpcConfig = require(ReplicatedStorage.Shared.Config.NpcConfig)
 local Starter = require(ReplicatedStorage.Shared.Starter)
 local ArmorService = require(script.Parent.ArmorService)
 local DataService = require(script.Parent.DataService)
 local InventoryService = require(script.Parent.InventoryService)
-local NpcService = require(script.Parent.NpcService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 
 local chooseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("StarterChoose") :: RemoteEvent
 
-local GUIDE = "Guide" -- the NpcConfig entry who hands out the starter pick
-
 local StarterService = {}
 
--- Never trust the client: a real choice, not picked before, and standing at the guide.
+-- Never trust the client: a real choice, and not picked before.
 local function onChoose(player: Player, weapon: unknown)
 	if typeof(weapon) ~= "string" then
 		return
@@ -33,21 +30,22 @@ local function onChoose(player: Player, weapon: unknown)
 	if not choice or not data or data.Starter ~= nil then
 		return
 	end
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	local guide = NpcService.position(GUIDE)
-	if not (root and root:IsA("BasePart") and guide) then
-		return
-	end
-	local flat = Vector3.new(root.Position.X - guide.X, 0, root.Position.Z - guide.Z)
-	if flat.Magnitude > NpcConfig.CloseDistance then
-		return
-	end
 
 	data.Starter = choice.Weapon
-	player:SetAttribute("Starter", choice.Weapon)
-	InventoryService.grant(player, choice.Weapon)
+	if InventoryService.owns(player, choice.Weapon) then
+		InventoryService.move(player, choice.Weapon, true) -- an older save: into the hotbar
+	else
+		InventoryService.grant(player, choice.Weapon)
+	end
 	ArmorService.giveSet(player, choice.ArmorSet)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	local tool = backpack and backpack:FindFirstChild(choice.Weapon)
+	if humanoid and tool and tool:IsA("Tool") then
+		humanoid:EquipTool(tool)
+	end
+	player:SetAttribute("Starter", choice.Weapon) -- last: the intro ends when it changes
 end
 
 function StarterService.start()

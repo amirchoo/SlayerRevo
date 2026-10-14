@@ -284,6 +284,8 @@ function ShopPanel.start()
 		HudStyle.chunky(iconFrame, 10, 2)
 		if item.Weapon then
 			WeaponIcon.show(WeaponIcon.viewport(iconFrame), item.Weapon)
+		elseif item.Model and WeaponIcon.showItem(WeaponIcon.viewport(iconFrame), item.Model) then
+			-- the item's model is shown
 		else
 			local icon = Icons.image(iconFrame, item.Icon, 12)
 			icon.ImageColor3 = if item.ArmorSet then Color3.fromRGB(150, 205, 255) elseif item.ManaPercent then Color3.fromRGB(120, 170, 255) else Color3.fromRGB(120, 235, 145)

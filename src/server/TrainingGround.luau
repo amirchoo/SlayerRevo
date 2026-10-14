@@ -171,7 +171,11 @@ local function buildPad(position: Vector3, text: string, destination: CFrame)
 			return
 		end
 		lastTeleport[player] = now
-		character:PivotTo(destination)
+		-- Load the far side first, so they don't land before the floor has streamed in.
+		pcall(player.RequestStreamAroundAsync, player, destination.Position, 5)
+		if player.Character == character then
+			character:PivotTo(destination)
+		end
 	end)
 end
 

@@ -25,14 +25,23 @@ local Dialogue = require(script.Dialogue)
 local Hotbar = require(script.Hotbar)
 local SkillTree = require(script.SkillTree)
 local ProgressionHud = require(script.ProgressionHud)
-local EnemyHealthBars = require(script.EnemyHealthBars)
 local HitFeel = require(script.HitFeel)
 local DamageFeedback = require(script.DamageFeedback)
 local CombatInput = require(script.CombatInput)
 local TouchControls = require(script.TouchControls)
 local LockOn = require(script.LockOn)
+local EnemyHealthBars = require(script.EnemyHealthBars)
 local Map = require(script.Map)
 local MannequinPoses = require(script.MannequinPoses)
+local Intro = require(script.Intro)
+local AnimalAnimator = require(script.AnimalAnimator)
+local LootClient = require(script.LootClient)
+local DayNight = require(script.DayNight)
+local TownAmbience = require(script.TownAmbience)
+local VillagerChat = require(script.VillagerChat)
+local VillagerAnimator = require(script.VillagerAnimator)
+local CookingPanel = require(script.CookingPanel)
+local CookingPose = require(script.CookingPose)
 
 CombatInput.start() -- mouse/keyboard; the touch buttons feed it too
 TouchControls.start()
@@ -74,5 +83,14 @@ Dialogue.start()
 SkillTree.start()
 ProgressionHud.start()
 task.spawn(EnemyHealthBars.start) -- waits for the Enemies folder
+task.spawn(AnimalAnimator.start) -- waits for the Animals folder
+task.spawn(LootClient.start) -- waits for the Loot folder
+DayNight.start()
+TownAmbience.start()
+task.spawn(VillagerChat.start) -- waits for the Villagers folder
+task.spawn(VillagerAnimator.start) -- waits for the Villagers folder
+CookingPanel.start()
+CookingPose.start()
 HitFeel.start()
 DamageFeedback.start()
+Intro.start() -- last: it hides the rest of the HUD while a new player's intro plays

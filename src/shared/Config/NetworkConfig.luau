@@ -30,5 +30,6 @@ return {
 		StaffRelease = 12,
 		ShopBuy = 5,
 		ConsumableUse = 8,
+		Cooking = 6,
 	} :: { [string]: number },
 }

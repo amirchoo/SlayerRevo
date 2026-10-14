@@ -3,7 +3,8 @@
 -- diagonally up and right (held by its grip, like an item icon) and framed to fill it.
 -- The models are the look-only copies the server publishes in ReplicatedStorage.WeaponPreviews
 -- (see InventoryService), so stored weapons can be shown too. showModel frames any other
--- model the same way (the backpack's armor and shield tiles).
+-- model the same way (the backpack's armor and shield tiles), and showItem the item models
+-- (potions) in ReplicatedStorage.ItemModels.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -79,6 +80,30 @@ function WeaponIcon.showModel(viewport: ViewportFrame, source: Model, turn: CFra
 	local model = source:Clone()
 	model:PivotTo(turn * model:GetPivot())
 	frame(viewport, model)
+end
+
+local ITEM_TURN = CFrame.Angles(math.rad(10), math.rad(25), 0) -- upright, a little turned and tipped forward
+local GLASS_TRANSPARENCY = 0.6
+
+-- Shows item model `name` (from ReplicatedStorage.ItemModels, e.g. a potion) in `viewport`,
+-- standing upright with its glass see-through; returns false (leaving it empty) if there's no
+-- such model, so the caller can show the item's icon instead.
+function WeaponIcon.showItem(viewport: ViewportFrame, name: string?): boolean
+	viewport:ClearAllChildren()
+	local folder = ReplicatedStorage:FindFirstChild("ItemModels")
+	local source = if name and folder then folder:FindFirstChild(name) else nil
+	if not source or not source:IsA("Model") then
+		return false
+	end
+	local model = source:Clone()
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") and string.find(string.lower(part.Name), "glass") then
+			part.Transparency = GLASS_TRANSPARENCY
+		end
+	end
+	model:PivotTo(ITEM_TURN * model:GetPivot())
+	frame(viewport, model)
+	return true
 end
 
 return WeaponIcon

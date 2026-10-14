@@ -1,0 +1,39 @@
+<roblox version="4">
+<Item class="Model" referent="RBX1"><Properties>
+<string name="Name">CookedCowMeat</string>
+</Properties>
+<Item class="Part" referent="RBX2"><Properties>
+<string name="Name">Steak</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<CoordinateFrame name="CFrame"><X>0.0000</X><Y>0.0000</Y><Z>0.1600</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4286398500</Color3uint8>
+<token name="Material">272</token>
+<token name="TopSurface">0</token><token name="BottomSurface">0</token>
+<Vector3 name="size"><X>1.6000</X><Y>1.1000</Y><Z>0.3200</Z></Vector3>
+</Properties>
+</Item>
+<Item class="Part" referent="RBX3"><Properties>
+<string name="Name">Fat</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<CoordinateFrame name="CFrame"><X>0.0000</X><Y>0.6400</Y><Z>0.1600</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4292255832</Color3uint8>
+<token name="Material">272</token>
+<token name="TopSurface">0</token><token name="BottomSurface">0</token>
+<Vector3 name="size"><X>1.6000</X><Y>0.1800</Y><Z>0.3200</Z></Vector3>
+</Properties>
+</Item>
+<Item class="Part" referent="RBX4"><Properties>
+<string name="Name">Bone</string>
+<bool name="Anchored">true</bool>
+<bool name="CanCollide">false</bool>
+<CoordinateFrame name="CFrame"><X>0.4000</X><Y>-0.1000</Y><Z>0.1800</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+<Color3uint8 name="Color3uint8">4294044376</Color3uint8>
+<token name="Material">272</token>
+<token name="TopSurface">0</token><token name="BottomSurface">0</token>
+<Vector3 name="size"><X>0.3000</X><Y>0.3000</Y><Z>0.3600</Z></Vector3>
+</Properties>
+</Item>
+</Item>
+</roblox>

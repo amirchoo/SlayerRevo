@@ -43,6 +43,27 @@ LightingConfig.SunRays = { Intensity = 0.04, Spread = 0.5 }
 -- Soft clouds drifting over the land (Terrain.Clouds).
 LightingConfig.Clouds = { Cover = 0.62, Density = 0.45, Color = Color3.fromRGB(255, 255, 255) }
 
+-- Day and night (the client's DayCycle turns the clock; every player sees the same time).
+-- A full day takes DayMinutes + NightMinutes of real time: the sun is up from Dawn to Dusk
+-- (hours), and the night between runs faster. At night the light shifts toward the Night
+-- values (a moonlit blue, kept bright enough to play in), and lamps and windows light up.
+LightingConfig.DayCycle = {
+	DayMinutes = 14,
+	NightMinutes = 6,
+	Dawn = 6,
+	Dusk = 18.5,
+	Fade = 1, -- hours the light takes to shift at dawn and dusk
+	LightsOn = 0.35, -- how far into the night (0..1) lamps and windows switch on
+	Night = {
+		Brightness = 1.2,
+		Ambient = Color3.fromRGB(70, 80, 115),
+		OutdoorAmbient = Color3.fromRGB(95, 110, 150),
+		ColorShift_Top = Color3.fromRGB(150, 170, 230),
+		ExposureCompensation = 0.25,
+	},
+	WindowGlow = Color3.fromRGB(255, 190, 110), -- windows at night
+}
+
 -- The sky kept (by name, in Lighting); any other Sky is removed.
 LightingConfig.Sky = "Sky"
 

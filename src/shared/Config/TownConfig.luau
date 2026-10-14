@@ -8,13 +8,15 @@
 -- Props use their model from TownAssets when there is one (see TownBuilder's PROP_MODELS).
 -- NPCs stand where NpcConfig puts them (in front of their buildings).
 --
--- Districts: plaza and fountain in the middle; forge row and training yard (north-west);
--- market lane and stable (north-east); farm (south-west); tavern yard with the campfire
--- (south-east); the Hunters' Guild at the end of the south road.
+-- Districts: plaza and knight statue in the middle, with the bell tower off its north-east
+-- corner; forge row and training yard (north-west); market lane and stable (north-east); farm
+-- and windmill (south-west); tavern yard with the cooking campfire (south-east); the Hunters'
+-- Guild and its trophy board at the end of the south road; watchtowers either side of the arch.
+-- Decor is the small scenery between it all (bushes, planters, washing lines, flags, clutter).
 
 export type Building = {
 	Name: string,
-	Kind: "house" | "forge" | "stall" | "hall",
+	Kind: "house" | "forge" | "stall" | "hall" | "watchtower" | "belltower" | "windmill",
 	Position: Vector2,
 	Facing: Vector2,
 	Size: Vector3, -- width, wall height (per story), depth: the footprint (and part-built size)
@@ -23,7 +25,7 @@ export type Building = {
 	Roof: Color3?,
 	Walls: Color3?,
 	Sign: string?, -- text on a board over the door
-	Chimney: boolean?,
+	Chimney: boolean?, -- smoke rises from it (from the model's highest point, for an Asset)
 	Awning: Color3?, -- stalls
 	Asset: string?,
 }
@@ -31,13 +33,13 @@ export type Building = {
 export type Prop = {
 	Kind: "bench" | "barrel" | "crate" | "anvil" | "well" | "flowers" | "cart" | "hay" | "questboard" | "signpost"
 		| "dummy" | "target" | "rack" | "campfire" | "table" | "itembox" | "stable" | "supplies" | "tent"
-		| "crops" | "pond",
+		| "crops" | "pond" | "trophies" | "bush" | "planter" | "laundry" | "flag" | "woodpile" | "sacks",
 	Position: Vector2,
 	Facing: Vector2?,
 	Text: string?, -- signposts
 	Scale: number?, -- model props: times the model's own size
 	Size: Vector2?, -- crops: the bed size; pond: X is its diameter
-	Color: Color3?, -- model props: recolors colored cloth (stall canopies)
+	Color: Color3?, -- model props: recolors colored cloth (stall canopies); flags: the cloth
 }
 
 local ROOF_RED = Color3.fromRGB(150, 60, 45)
@@ -59,12 +61,20 @@ local TownConfig = {}
 
 TownConfig.Name = "Beginning Town"
 
--- Houses use the House_1 model at this Scale (about 19 wide, 24 deep, 30 tall).
+-- Houses use the House_1 model at this Scale (about 19 wide, 24 deep, 30 tall); a few use the
+-- smaller Houses_SecondAge_1_Level2 model instead (fitted to the same footprint), for variety.
 local HOUSE = 9
 local HOUSE_SIZE = Vector3.new(20, 10, 24)
+local COTTAGE = "Houses_SecondAge_1_Level2"
+local FLAG_GREEN = Color3.fromRGB(70, 110, 60)
+local FLAG_RED = Color3.fromRGB(160, 50, 45)
+local FLAG_BLUE = Color3.fromRGB(50, 80, 150)
+local FLAG_GOLD = Color3.fromRGB(200, 150, 50)
 
 TownConfig.PlazaSize = 72
-TownConfig.FountainSize = 20
+-- The knight statue in the plaza's middle (assets/town/KnightStatue, plain Parts made by
+-- tools/box_glb.py), facing the spawn to the south.
+TownConfig.PlazaStatue = { Asset = "KnightStatue", Scale = 1.2, Facing = Vector2.new(0, 1) }
 TownConfig.Spawn = Vector2.new(0, 16)
 TownConfig.RoadWidth = 14
 TownConfig.EdgeHalfSize = 140 -- the fence ring: a square this far from the center on each side
@@ -86,23 +96,30 @@ TownConfig.Buildings = {
 	-- West road: the forge row.
 	{ Name = "Blacksmith", Kind = "forge", Position = Vector2.new(-62, -22), Facing = Vector2.new(0, 1), Size = Vector3.new(26, 12, 20), Roof = ROOF_SLATE, Sign = "Blacksmith", Chimney = true, Asset = "Blacksmith" },
 	{ Name = "Armorer", Kind = "house", Position = Vector2.new(-100, -24), Facing = Vector2.new(0, 1), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_BROWN, Walls = WALL_STONE, Sign = "Armorer", Asset = "House_1" },
-	{ Name = "House", Kind = "house", Position = Vector2.new(-62, 24), Facing = Vector2.new(0, -1), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_RED, Walls = WALL_CREAM, Asset = "House_1" },
-	{ Name = "House", Kind = "house", Position = Vector2.new(-100, 24), Facing = Vector2.new(0, -1), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_TEAL, Walls = WALL_SKY, Asset = "House_1" },
+	{ Name = "House", Kind = "house", Position = Vector2.new(-62, 24), Facing = Vector2.new(0, -1), Size = HOUSE_SIZE, Roof = ROOF_RED, Walls = WALL_CREAM, Asset = COTTAGE },
+	{ Name = "House", Kind = "house", Position = Vector2.new(-100, 24), Facing = Vector2.new(0, -1), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_TEAL, Walls = WALL_SKY, Chimney = true, Asset = "House_1" },
 	-- East road: the inn and shops.
-	{ Name = "The Sleeping Boar", Kind = "house", Position = Vector2.new(62, -26), Facing = Vector2.new(0, 1), Size = Vector3.new(23, 10, 28), Scale = 10.5, Roof = ROOF_RED, Walls = WALL_BUTTER, Sign = "The Sleeping Boar", Asset = "House_1" },
-	{ Name = "House", Kind = "house", Position = Vector2.new(100, -24), Facing = Vector2.new(0, 1), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_GREEN, Walls = WALL_SAGE, Asset = "House_1" },
+	{ Name = "The Sleeping Boar", Kind = "house", Position = Vector2.new(62, -26), Facing = Vector2.new(0, 1), Size = Vector3.new(23, 10, 28), Scale = 10.5, Roof = ROOF_RED, Walls = WALL_BUTTER, Sign = "The Sleeping Boar", Chimney = true, Asset = "House_1" },
+	{ Name = "House", Kind = "house", Position = Vector2.new(100, -24), Facing = Vector2.new(0, 1), Size = HOUSE_SIZE, Roof = ROOF_GREEN, Walls = WALL_SAGE, Asset = COTTAGE },
 	{ Name = "Item Shop", Kind = "stall", Position = Vector2.new(58, 23), Facing = Vector2.new(0, -1), Size = Vector3.new(17, 9, 21), Scale = 8, Awning = Color3.fromRGB(50, 110, 160), Roof = Color3.fromRGB(50, 110, 160), Walls = WALL_WHITE, Sign = "Item Shop", Asset = "House_1" },
 	{ Name = "Provisions", Kind = "stall", Position = Vector2.new(90, 23), Facing = Vector2.new(0, -1), Size = Vector3.new(17, 9, 21), Scale = 8, Awning = Color3.fromRGB(170, 120, 50), Roof = ROOF_GOLD, Walls = WALL_CREAM, Sign = "Provisions", Asset = "House_1" },
-	{ Name = "House", Kind = "house", Position = Vector2.new(122, 24), Facing = Vector2.new(0, -1), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_SLATE, Walls = WALL_ROSE, Asset = "House_1" },
+	{ Name = "House", Kind = "house", Position = Vector2.new(122, 24), Facing = Vector2.new(0, -1), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_SLATE, Walls = WALL_ROSE, Chimney = true, Asset = "House_1" },
 	-- North road, toward the arch.
-	{ Name = "House", Kind = "house", Position = Vector2.new(-24, -66), Facing = Vector2.new(1, 0), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_GOLD, Walls = WALL_ROSE, Asset = "House_1" },
-	{ Name = "House", Kind = "house", Position = Vector2.new(-24, -104), Facing = Vector2.new(1, 0), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_SLATE, Walls = WALL_WHITE, Asset = "House_1" },
+	{ Name = "House", Kind = "house", Position = Vector2.new(-24, -66), Facing = Vector2.new(1, 0), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_GOLD, Walls = WALL_ROSE, Chimney = true, Asset = "House_1" },
+	{ Name = "House", Kind = "house", Position = Vector2.new(-24, -104), Facing = Vector2.new(1, 0), Size = HOUSE_SIZE, Roof = ROOF_SLATE, Walls = WALL_WHITE, Asset = COTTAGE },
 	{ Name = "House", Kind = "house", Position = Vector2.new(24, -66), Facing = Vector2.new(-1, 0), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_RED, Walls = WALL_SAGE, Asset = "House_1" },
-	{ Name = "House", Kind = "house", Position = Vector2.new(24, -104), Facing = Vector2.new(-1, 0), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_BROWN, Walls = WALL_BUTTER, Asset = "House_1" },
+	{ Name = "House", Kind = "house", Position = Vector2.new(24, -104), Facing = Vector2.new(-1, 0), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_BROWN, Walls = WALL_BUTTER, Chimney = true, Asset = "House_1" },
 	-- South road, up to the guild.
-	{ Name = "House", Kind = "house", Position = Vector2.new(-24, 64), Facing = Vector2.new(1, 0), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_GREEN, Walls = WALL_CREAM, Asset = "House_1" },
-	{ Name = "House", Kind = "house", Position = Vector2.new(24, 64), Facing = Vector2.new(-1, 0), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_TEAL, Walls = WALL_ROSE, Asset = "House_1" },
-	{ Name = "Hunters' Guild", Kind = "hall", Position = Vector2.new(0, 118), Facing = Vector2.new(0, -1), Size = Vector3.new(26, 14, 32), Scale = 12, Roof = ROOF_GREEN, Walls = WALL_STONE, Sign = "Hunters' Guild", Chimney = true, Asset = "House_1" },
+	{ Name = "House", Kind = "house", Position = Vector2.new(-24, 64), Facing = Vector2.new(1, 0), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_GREEN, Walls = WALL_CREAM, Chimney = true, Asset = "House_1" },
+	{ Name = "House", Kind = "house", Position = Vector2.new(24, 64), Facing = Vector2.new(-1, 0), Size = HOUSE_SIZE, Roof = ROOF_TEAL, Walls = WALL_ROSE, Asset = COTTAGE },
+	-- The Fantasy Inn model (by Quaternius), fitted to a 30-stud square; its own colors (Roof
+	-- and Walls only color the part-built hall used when the model is missing).
+	{ Name = "Hunters' Guild", Kind = "hall", Position = Vector2.new(0, 118), Facing = Vector2.new(0, -1), Size = Vector3.new(30, 14, 30), Roof = ROOF_GREEN, Walls = WALL_STONE, Sign = "Hunters' Guild", Asset = "FantasyInn" },
+	-- Landmarks: part-built until a model of that Asset name is added to assets/town.
+	{ Name = "Bell Tower", Kind = "belltower", Position = Vector2.new(46, -48), Facing = Vector2.new(-1, 1), Size = Vector3.new(9, 30, 9), Roof = ROOF_SLATE, Asset = "BellTower" },
+	{ Name = "Watchtower", Kind = "watchtower", Position = Vector2.new(-26, -128), Facing = Vector2.new(0, -1), Size = Vector3.new(8, 20, 8), Roof = ROOF_BROWN, Asset = "Watchtower" },
+	{ Name = "Watchtower", Kind = "watchtower", Position = Vector2.new(26, -128), Facing = Vector2.new(0, -1), Size = Vector3.new(8, 20, 8), Roof = ROOF_BROWN, Asset = "Watchtower" },
+	{ Name = "Windmill", Kind = "windmill", Position = Vector2.new(-128, 108), Facing = Vector2.new(1, 0), Size = Vector3.new(10, 20, 10), Roof = ROOF_RED, Asset = "Windmill" },
 } :: { Building }
 
 TownConfig.Props = {
@@ -113,7 +130,6 @@ TownConfig.Props = {
 	{ Kind = "flowers", Position = Vector2.new(30, -30) },
 	{ Kind = "flowers", Position = Vector2.new(30, 30) },
 	{ Kind = "flowers", Position = Vector2.new(-30, 30) },
-	{ Kind = "signpost", Position = Vector2.new(3, 10.5), Facing = Vector2.new(0, 1), Text = "Start here: talk to Elder Maren" },
 	{ Kind = "itembox", Position = Vector2.new(-26, 22), Facing = Vector2.new(1, 0), Scale = 1.5 },
 	{ Kind = "well", Position = Vector2.new(-22, -46) },
 	-- Forge yard.
@@ -160,7 +176,7 @@ TownConfig.Props = {
 	{ Kind = "hay", Position = Vector2.new(-84, 121) },
 	{ Kind = "barrel", Position = Vector2.new(-100, 118) },
 	-- Tavern yard (south-east): the campfire, tables and benches.
-	{ Kind = "campfire", Position = Vector2.new(84, 86), Scale = 1.3 },
+	{ Kind = "campfire", Position = Vector2.new(84, 86) }, -- the cooking fire, its pot on a tripod (CookingConfig)
 	{ Kind = "table", Position = Vector2.new(58, 62), Facing = Vector2.new(1, 0) },
 	{ Kind = "table", Position = Vector2.new(110, 62), Facing = Vector2.new(1, 0) },
 	{ Kind = "table", Position = Vector2.new(58, 110), Facing = Vector2.new(1, 0) },
@@ -170,6 +186,8 @@ TownConfig.Props = {
 	{ Kind = "supplies", Position = Vector2.new(124, 100), Facing = Vector2.new(-1, 0) },
 	-- Guild.
 	{ Kind = "questboard", Position = Vector2.new(-14, 96), Facing = Vector2.new(0, -1) },
+	-- The trophy board: orc heads over the top hunters by level (LeaderboardService fills it).
+	{ Kind = "trophies", Position = Vector2.new(30, 94), Facing = Vector2.new(0, -1) },
 	{ Kind = "flowers", Position = Vector2.new(-18, 100) },
 	{ Kind = "flowers", Position = Vector2.new(18, 100) },
 	-- By the arch.
@@ -177,6 +195,50 @@ TownConfig.Props = {
 	{ Kind = "hay", Position = Vector2.new(-17, -148) },
 	{ Kind = "barrel", Position = Vector2.new(-14, -132) },
 } :: { Prop }
+
+-- Small scenery between the buildings, built after the Props.
+TownConfig.Decor = {
+	-- Flags at the plaza corners and the guild door (their cloth sways in the wind).
+	{ Kind = "flag", Position = Vector2.new(-34, -34), Facing = Vector2.new(-1, -1), Color = FLAG_GREEN },
+	{ Kind = "flag", Position = Vector2.new(34, -34), Facing = Vector2.new(1, -1), Color = FLAG_GOLD },
+	{ Kind = "flag", Position = Vector2.new(34, 34), Facing = Vector2.new(1, 1), Color = FLAG_GREEN },
+	{ Kind = "flag", Position = Vector2.new(-34, 34), Facing = Vector2.new(-1, 1), Color = FLAG_GOLD },
+	{ Kind = "flag", Position = Vector2.new(-22, 108), Facing = Vector2.new(0, -1), Color = FLAG_RED },
+	{ Kind = "flag", Position = Vector2.new(22, 108), Facing = Vector2.new(0, -1), Color = FLAG_BLUE },
+	-- Bushes.
+	{ Kind = "bush", Position = Vector2.new(-44, -30) },
+	{ Kind = "bush", Position = Vector2.new(44, -30) },
+	{ Kind = "bush", Position = Vector2.new(44, 30) },
+	{ Kind = "bush", Position = Vector2.new(-44, 30) },
+	{ Kind = "bush", Position = Vector2.new(-134, -30) },
+	{ Kind = "bush", Position = Vector2.new(-134, 30) },
+	{ Kind = "bush", Position = Vector2.new(134, -34) },
+	{ Kind = "bush", Position = Vector2.new(-30, 136) },
+	{ Kind = "bush", Position = Vector2.new(30, 136) },
+	{ Kind = "bush", Position = Vector2.new(-48, -80) },
+	{ Kind = "bush", Position = Vector2.new(-48, -120) },
+	-- Flower planters.
+	{ Kind = "planter", Position = Vector2.new(-42, -42), Facing = Vector2.new(1, -1) },
+	{ Kind = "planter", Position = Vector2.new(42, 42), Facing = Vector2.new(-1, 1) },
+	-- Washing lines between the houses.
+	{ Kind = "laundry", Position = Vector2.new(-46, 53), Facing = Vector2.new(1, 0) },
+	{ Kind = "laundry", Position = Vector2.new(46, 70), Facing = Vector2.new(1, 0) },
+	-- Clutter.
+	{ Kind = "woodpile", Position = Vector2.new(-82, -38), Facing = Vector2.new(0, 1) },
+	{ Kind = "sacks", Position = Vector2.new(105, 32), Facing = Vector2.new(0, -1) },
+	{ Kind = "sacks", Position = Vector2.new(122, -77), Facing = Vector2.new(-1, 0) },
+	{ Kind = "cart", Position = Vector2.new(46, -112), Facing = Vector2.new(0, 1) },
+	{ Kind = "crate", Position = Vector2.new(38, -120) },
+	{ Kind = "crate", Position = Vector2.new(130, -58) },
+	{ Kind = "barrel", Position = Vector2.new(-44, -52) },
+	{ Kind = "barrel", Position = Vector2.new(44, 96) },
+	{ Kind = "barrel", Position = Vector2.new(46, 99) },
+	{ Kind = "hay", Position = Vector2.new(-50, 104) },
+	{ Kind = "hay", Position = Vector2.new(-52, 108) },
+} :: { Prop }
+
+-- Where flocks of little town birds peck about (TownAmbience): they fly off when you come close.
+TownConfig.BirdSpots = { Vector2.new(-18, -24), Vector2.new(20, 24), Vector2.new(-90, 112), Vector2.new(80, 62), Vector2.new(-3, 70) }
 
 -- Trees inside the fence (fixed spots) and how many to scatter outside it.
 TownConfig.Trees = {

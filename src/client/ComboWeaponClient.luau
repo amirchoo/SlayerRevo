@@ -4,7 +4,8 @@
 -- plays the next swing, and pausing too long (or finishing the last swing) starts it over.
 -- The server decides what's hit and how hard (see WeaponService). Holding right-click raises
 -- a guard and tells the server we're blocking (see BlockService). With a shield worn and a
--- one-handed weapon, the guard raises the shield instead (ShieldConfig.GuardAnimation).
+-- one-handed weapon, the idle and guard are the weapon's shield stance instead
+-- (ShieldConfig.Stances); the attacks stay the same.
 -- Weapons with a heavy attack tell a tap from a hold: a quick tap (released within
 -- Heavy.HoldTime) is a normal combo swing, while holding starts the heavy:
 --   Spin: spins until release. The server runs the spin's hits and can end it early (time
@@ -97,6 +98,7 @@ end
 
 type Tracks = {
 	idle: AnimationTrack?,
+	shieldIdle: AnimationTrack?, -- a one-handed weapon's idle with a shield worn
 	guard: AnimationTrack?,
 	shieldGuard: AnimationTrack?, -- a one-handed weapon's guard with a shield worn
 	heavy: AnimationTrack?, -- spin loop, a quake's or thrust's wind-up, or the whole reap
@@ -115,7 +117,13 @@ function ComboWeaponClient.new(config: ComboWeapon)
 
 	local idleAnimation = makeAnimation(config.IdleAnimation)
 	local guardAnimation = makeAnimation(config.Block.Animation)
-	local shieldGuardAnimation = if ShieldConfig.canUseWith(config.ToolName) then makeAnimation(ShieldConfig.GuardAnimation) else nil
+	local shieldIdleAnimation: Animation? = nil
+	local shieldGuardAnimation: Animation? = nil
+	if ShieldConfig.canUseWith(config.ToolName) then
+		local stance = ShieldConfig.Stances[config.ToolName]
+		shieldIdleAnimation = if stance then makeAnimation(stance.Idle) else nil
+		shieldGuardAnimation = makeAnimation(if stance and stance.Guard ~= "" then stance.Guard else ShieldConfig.GuardAnimation)
+	end
 	local heavy = config.Heavy
 	local heavyAnimation: Animation? = nil
 	local heavySlamAnimation: Animation? = nil
@@ -166,6 +174,12 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			idle.Priority = Enum.AnimationPriority.Idle
 			idle.Looped = true
 			tracks.idle = idle
+		end
+		if shieldIdleAnimation then
+			local shieldIdle = animator:LoadAnimation(shieldIdleAnimation)
+			shieldIdle.Priority = Enum.AnimationPriority.Idle
+			shieldIdle.Looped = true
+			tracks.shieldIdle = shieldIdle
 		end
 		for index, animation in swingAnimations do
 			local track = animator:LoadAnimation(animation)
@@ -218,6 +232,36 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		local character = player.Character
 		local tool = character and character:FindFirstChildOfClass("Tool")
 		return if tool and tool.Name == config.ToolName then tool else nil
+	end
+
+	local function shielded(): boolean
+		return typeof(player:GetAttribute("Shield")) == "string"
+	end
+
+	-- Loops the idle that fits (the shield stance's while a shield is worn) and stops the other.
+	local function playIdle()
+		local tracks = currentTracks()
+		if not tracks then
+			return
+		end
+		local idle = if shielded() and tracks.shieldIdle then tracks.shieldIdle else tracks.idle
+		for _, track in { tracks.idle, tracks.shieldIdle } :: { AnimationTrack? } do
+			if track and track ~= idle and track.IsPlaying then
+				track:Stop(0.2)
+			end
+		end
+		if idle and not idle.IsPlaying then
+			idle:Play(0.2)
+		end
+	end
+
+	local function stopIdle()
+		local tracks = currentTracks()
+		for _, track in { tracks and tracks.idle, tracks and tracks.shieldIdle } :: { AnimationTrack? } do
+			if track then
+				track:Stop(0.2)
+			end
+		end
 	end
 
 	-- Moves always end at the character's normal speed (never a speed saved mid-move: a heavy
@@ -338,8 +382,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		setTrails(tool, false)
 
 		local tracks = currentTracks()
-		local shielded = typeof(player:GetAttribute("Shield")) == "string"
-		local guardTrack = tracks and (if shielded and tracks.shieldGuard then tracks.shieldGuard else tracks.guard)
+		local guardTrack = tracks and (if shielded() and tracks.shieldGuard then tracks.shieldGuard else tracks.guard)
 		if guardTrack then
 			guardTrack:Play(0.1)
 		else
@@ -875,10 +918,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			if config.DualWield then
 				HandGrip.attachLocal(child, character, HandGrip.opposite(config.Hand :: HandGrip.Hand), offhandWeldName, HandGrip.OFFHAND_NAME)
 			end
-			local tracks = currentTracks()
-			if tracks and tracks.idle then
-				tracks.idle:Play(0.2)
-			end
+			playIdle()
 			local humanoid = character:FindFirstChildOfClass("Humanoid")
 			if config.WalkSpeed and humanoid then
 				humanoid.WalkSpeed = config.WalkSpeed
@@ -898,10 +938,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 				HandGrip.detach(child, localWeldName)
 				HandGrip.detach(child, `Local{offhandWeldName}`, HandGrip.OFFHAND_NAME)
 				comboStep = 0
-				local tracks = currentTracks()
-				if tracks and tracks.idle then
-					tracks.idle:Stop(0.2)
-				end
+				stopIdle()
 				stopSwings(0.1)
 				local character = player.Character
 				local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -918,7 +955,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		-- Load the animations up front so the first swing doesn't stall.
 		task.spawn(function()
 			local preload: { Instance } = {}
-			for _, animation in { idleAnimation, guardAnimation, heavyAnimation, heavySlamAnimation } do
+			for _, animation in { idleAnimation, shieldIdleAnimation, guardAnimation, shieldGuardAnimation, heavyAnimation, heavySlamAnimation } :: { Animation? } do
 				if animation then
 					table.insert(preload, animation)
 				end
@@ -935,6 +972,12 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		CombatInput.AttackEnded:Connect(onAttackEnded)
 		CombatInput.BlockBegan:Connect(onBlockBegan)
 		CombatInput.BlockEnded:Connect(onBlockEnded)
+		-- Putting a shield on or taking it off with the weapon out swaps the idle.
+		player:GetAttributeChangedSignal("Shield"):Connect(function()
+			if equippedTool() then
+				playIdle()
+			end
+		end)
 
 		local function onCharacterAdded(character: Model)
 			-- A respawn clears any block, spin, or combo in progress (the server resets too).

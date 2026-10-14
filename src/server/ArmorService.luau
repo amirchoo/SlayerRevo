@@ -10,7 +10,7 @@
 -- worn: one Accessory, or a Model holding several, e.g. a pair of boots (see
 -- assets/armor/README.md), stretched to the wearer's body parts. Otherwise a
 -- placeholder built from plain parts is welded over the R15 body parts, sized to each part
--- so it fits any avatar. The stand shows the set on a wooden R15 mannequin.
+-- so it fits any avatar. ArmorService.mannequin dresses a wooden R15 mannequin in a set (the training stands use it).
 -- Look-only copies of every piece go in ReplicatedStorage.ArmorPreviews, for the backpack.
 
 local Players = game:GetService("Players")
@@ -588,10 +588,10 @@ local function armorFilter(target: Model, amount: number): number
 	return amount * (1 - math.clamp(protection, 0, ArmorConfig.MaxProtection))
 end
 
--- The armor display stand --------------------------------------------------------------------
+-- Mannequins ----------------------------------------------------------------------------------
 
 -- R15 body proportions for the fallback mannequin (studs): size and center relative to the
--- stand's base. Only used if a real R15 rig can't be made.
+-- mannequin's feet. Only used if a real R15 rig can't be made.
 local MANNEQUIN: { { name: string, size: Vector3, position: Vector3 } } = {
 	{ name = "Head", size = Vector3.new(1.2, 1.2, 1.2), position = Vector3.new(0, 5.85, 0) },
 	{ name = "UpperTorso", size = Vector3.new(2, 1.6, 1), position = Vector3.new(0, 4.45, 0) },
@@ -666,34 +666,6 @@ function ArmorService.mannequin(feet: CFrame, setId: string?): Model
 		dressSlot(mannequin, slot, setId)
 	end
 	return mannequin
-end
-
-local function buildStand()
-	local stand = ArmorConfig.Stand
-	assert(ArmorConfig.Sets[stand.Set], `Unknown armor set {stand.Set} for the armor stand`)
-
-	-- Find the ground under the stand.
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Include
-	local include: { Instance } = { workspace.Terrain }
-	for _, name in { "Baseplate", "Town" } do
-		local ground = workspace:FindFirstChild(name)
-		if ground then
-			table.insert(include, ground)
-		end
-	end
-	params.FilterDescendantsInstances = include
-	local top = Vector3.new(stand.Position.X, 500, stand.Position.Y)
-	local hit = workspace:Raycast(top, Vector3.new(0, -1000, 0), params)
-	local base = Vector3.new(stand.Position.X, if hit then hit.Position.Y else 0, stand.Position.Y)
-	local facing = Vector3.new(-base.X, 0, -base.Z) -- toward the town center
-	local origin = if facing.Magnitude > 0.1 then CFrame.lookAt(base, base + facing) else CFrame.new(base)
-
-	local standModel = Instance.new("Model")
-	standModel.Name = "ArmorStand"
-	anchoredPart("Pedestal", Vector3.new(4, 0.5, 3), origin * CFrame.new(0, 0.25, 0), Color3.fromRGB(100, 100, 105), Enum.Material.Slate, standModel)
-	ArmorService.mannequin(origin * CFrame.new(0, 0.5, 0), stand.Set).Parent = standModel
-	standModel.Parent = workspace
 end
 
 -- Armor previews -----------------------------------------------------------------------------
@@ -805,7 +777,6 @@ function ArmorService.start()
 	RemoteGuard.connect(equipRemote, onEquip)
 	HealthService.addDamageFilter(armorFilter)
 	publishPreviews()
-	task.spawn(buildStand) -- making the R15 mannequin waits on Roblox, so don't hold up the rest
 end
 
 return ArmorService

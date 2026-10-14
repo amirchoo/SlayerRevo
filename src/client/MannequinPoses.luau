@@ -1,7 +1,8 @@
 --!strict
 -- Freezes each display mannequin tagged "PosedMannequin" (the Training Grounds' armor stands,
 -- see TrainingStands) in its pose: its "PoseAnimation", stopped "PoseAt" of the way through
--- (0..1). Played here on each client, where a frozen track's time can be set reliably.
+-- (0..1); or, with "PoseLoop" set, looping it at normal speed (the Hall of Oaths' statues).
+-- Played here on each client, where a frozen track's time can be set reliably.
 
 local CollectionService = game:GetService("CollectionService")
 
@@ -26,6 +27,11 @@ local function pose(mannequin: Instance)
 	animation.AnimationId = if string.match(id, "^%d+$") then `rbxassetid://{id}` else id
 	local track = (animator :: Animator):LoadAnimation(animation)
 	track.Priority = Enum.AnimationPriority.Action
+	if mannequin:GetAttribute("PoseLoop") == true then
+		track.Looped = true
+		track:Play(0)
+		return
+	end
 	track:Play(0, 1, 0) -- no fade, stopped where it's put
 	local waited = 0
 	while track.Length == 0 and waited < LOAD_TIMEOUT do

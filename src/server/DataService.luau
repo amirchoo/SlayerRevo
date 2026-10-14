@@ -1,6 +1,6 @@
 --!strict
 -- Saves each player's progress in a DataStore: level, XP, skill trees, owned weapons, the
--- starter pick, hotbar, armor, and shield.
+-- starter pick, hotbar, armor, shield, and materials.
 -- Session-locked: while a server has a player's data loaded it marks the save as its own, so
 -- a second server (e.g. after a quick rejoin) waits instead of loading stale data and
 -- overwriting newer progress later. A lock older than LOCK_TIMEOUT is assumed abandoned
@@ -30,6 +30,7 @@ export type Data = {
 	Skills: { [string]: { [string]: number } },
 	Weapons: { [string]: boolean }, -- owned weapons (by tool name)
 	Consumables: { [string]: number },
+	Materials: { [string]: number }, -- gathered materials (MaterialConfig), by Id
 	Starter: string?, -- the starter weapon picked (once per save)
 	Hotbar: { string }?,
 	Armor: { Owned: { [string]: boolean }, Worn: { [string]: string } }?,
@@ -44,7 +45,7 @@ local loadedCallbacks: { (Player, Data) -> () } = {}
 local store: DataStore? = nil
 
 local function defaults(): Data
-	return { Level = 1, XP = 0, Coins = CurrencyConfig.StartingCoins, Skills = {}, Weapons = {}, Consumables = {} }
+	return { Level = 1, XP = 0, Coins = CurrencyConfig.StartingCoins, Skills = {}, Weapons = {}, Consumables = {}, Materials = {} }
 end
 
 -- Fills in anything missing (e.g. from an older save).
@@ -77,6 +78,13 @@ local function reconcile(raw: any): Data
 		for id, count in raw.Consumables do
 			if typeof(id) == "string" and typeof(count) == "number" and count > 0 then
 				data.Consumables[id] = math.floor(count)
+			end
+		end
+	end
+	if typeof(raw.Materials) == "table" then
+		for id, count in raw.Materials do
+			if typeof(id) == "string" and typeof(count) == "number" and count > 0 then
+				data.Materials[id] = math.floor(count)
 			end
 		end
 	end

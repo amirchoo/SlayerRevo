@@ -1,6 +1,6 @@
 """Prepares a color-only weapon model (GLB or OBJ+MTL) for Studio's Import 3D.
 
-    python3 tools/weapon_glb.py SOURCE OUT.glb [--drop MATERIAL] [--turn-y DEGREES] [--turn-x DEGREES]
+    python3 tools/weapon_glb.py SOURCE OUT.glb [--drop MATERIAL] [--split MATERIAL] [--turn-y DEGREES] [--turn-x DEGREES]
                                 [--turn-z DEGREES] [--info]
 
 Studio's importer drops plain material colors (a multi-color model comes in grey). This
@@ -11,6 +11,7 @@ The game fits weapon models along their own axes (src/server/WeaponModels.luau),
 output should be in this pose: length along Y with the handle at -Y, thinnest side along Z.
 Use --info to see the model's extent per axis, and --turn-* (applied in X, Y, Z order) to
 get it there. --drop leaves a material out (e.g. a bow's string, which the game draws itself).
+--split writes a material as its own mesh (e.g. a potion's glass, which the game makes see-through).
 """
 import json
 import math
@@ -154,21 +155,27 @@ def png(width, height, pixels):
             + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
 
 
-def write_glb(groups, out_path):
+def write_glb(groups, out_path, split=()):
+    """Writes one mesh of every group, plus one more per material named in `split` (all
+    sharing the palette), so Studio imports those as their own MeshParts, named after them."""
     count = len(groups)
     side = 1
     while side * side < count:
         side += 1
     size = side * PALETTE_BLOCK
     pixels = [[(0, 0, 0)] * size for _ in range(size)]
-    positions, normals, uvs = [], [], []
-    for index, (_, color, tris) in enumerate(groups):
+    stem = Path(out_path).stem.split(".")[0]
+    parts = {stem: ([], [], [])}
+    for name in split:
+        parts[name[:1].upper() + name[1:]] = ([], [], [])
+    for index, (name, color, tris) in enumerate(groups):
         bx, by = index % side, index // side
         rgb = tuple(round(linear_to_srgb(c) * 255) for c in color)
         for y in range(by * PALETTE_BLOCK, (by + 1) * PALETTE_BLOCK):
             for x in range(bx * PALETTE_BLOCK, (bx + 1) * PALETTE_BLOCK):
                 pixels[y][x] = rgb
         uv = ((bx + 0.5) / side, (by + 0.5) / side)
+        positions, normals, uvs = parts[name[:1].upper() + name[1:] if name in split else stem]
         for a, b, c in tris:
             e1 = [b[i] - a[i] for i in range(3)]
             e2 = [c[i] - a[i] for i in range(3)]
@@ -180,44 +187,54 @@ def write_glb(groups, out_path):
                 normals.append(n)
                 uvs.append(uv)
 
-    image = png(size, size, pixels)
-    pos_bytes = b"".join(struct.pack("<fff", *p) for p in positions)
-    nrm_bytes = b"".join(struct.pack("<fff", *n) for n in normals)
-    uv_bytes = b"".join(struct.pack("<ff", *u) for u in uvs)
-
     def pad(b):
         return b + b"\x00" * (-len(b) % 4)
 
-    chunks = [pad(pos_bytes), pad(nrm_bytes), pad(uv_bytes), pad(image)]
-    offsets, total = [], 0
-    for c in chunks:
-        offsets.append(total)
-        total += len(c)
-    lo = [min(p[i] for p in positions) for i in range(3)]
-    hi = [max(p[i] for p in positions) for i in range(3)]
-    n = len(positions)
+    chunks, views, accessors, meshes, nodes = [], [], [], [], []
+    total = 0
+
+    def add_chunk(data, target=None):
+        nonlocal total
+        view = {"buffer": 0, "byteOffset": total, "byteLength": len(data)}
+        if target:
+            view["target"] = target
+        chunks.append(pad(data))
+        total += len(chunks[-1])
+        views.append(view)
+        return len(views) - 1
+
+    image_view = add_chunk(png(size, size, pixels))
+    triangles = 0
+    for part_name, (positions, normals, uvs) in parts.items():
+        if not positions:
+            continue
+        n = len(positions)
+        triangles += n // 3
+        lo = [min(p[i] for p in positions) for i in range(3)]
+        hi = [max(p[i] for p in positions) for i in range(3)]
+        first = len(accessors)
+        accessors.append({"bufferView": add_chunk(b"".join(struct.pack("<fff", *p) for p in positions), 34962),
+                          "componentType": 5126, "count": n, "type": "VEC3", "min": lo, "max": hi})
+        accessors.append({"bufferView": add_chunk(b"".join(struct.pack("<fff", *v) for v in normals), 34962),
+                          "componentType": 5126, "count": n, "type": "VEC3"})
+        accessors.append({"bufferView": add_chunk(b"".join(struct.pack("<ff", *u) for u in uvs), 34962),
+                          "componentType": 5126, "count": n, "type": "VEC2"})
+        meshes.append({"primitives": [{"attributes": {"POSITION": first, "NORMAL": first + 1, "TEXCOORD_0": first + 2}, "material": 0}]})
+        nodes.append({"name": part_name, "mesh": len(meshes) - 1})
+
     gltf = {
         "asset": {"version": "2.0", "generator": "SlayerRevo weapon_glb.py"},
         "scene": 0,
-        "scenes": [{"nodes": [0]}],
-        "nodes": [{"name": Path(out_path).stem.split(".")[0], "mesh": 0}],
-        "meshes": [{"primitives": [{"attributes": {"POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2}, "material": 0}]}],
+        "scenes": [{"nodes": list(range(len(nodes)))}],
+        "nodes": nodes,
+        "meshes": meshes,
         "materials": [{"name": "Palette", "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 0.8}}],
         "textures": [{"source": 0, "sampler": 0}],
         "samplers": [{"magFilter": 9728, "minFilter": 9728}],
-        "images": [{"bufferView": 3, "mimeType": "image/png"}],
+        "images": [{"bufferView": image_view, "mimeType": "image/png"}],
         "buffers": [{"byteLength": total}],
-        "bufferViews": [
-            {"buffer": 0, "byteOffset": offsets[0], "byteLength": len(pos_bytes), "target": 34962},
-            {"buffer": 0, "byteOffset": offsets[1], "byteLength": len(nrm_bytes), "target": 34962},
-            {"buffer": 0, "byteOffset": offsets[2], "byteLength": len(uv_bytes), "target": 34962},
-            {"buffer": 0, "byteOffset": offsets[3], "byteLength": len(image)},
-        ],
-        "accessors": [
-            {"bufferView": 0, "componentType": 5126, "count": n, "type": "VEC3", "min": lo, "max": hi},
-            {"bufferView": 1, "componentType": 5126, "count": n, "type": "VEC3"},
-            {"bufferView": 2, "componentType": 5126, "count": n, "type": "VEC2"},
-        ],
+        "bufferViews": views,
+        "accessors": accessors,
     }
     json_bytes = json.dumps(gltf, separators=(",", ":")).encode()
     json_bytes += b" " * (-len(json_bytes) % 4)
@@ -226,7 +243,7 @@ def write_glb(groups, out_path):
            + struct.pack("<I", len(json_bytes)) + b"JSON" + json_bytes
            + struct.pack("<I", len(body)) + b"BIN\x00" + body)
     Path(out_path).write_bytes(glb)
-    return n // 3
+    return triangles
 
 
 def describe(groups):
@@ -254,11 +271,14 @@ def main(argv):
     if len(args) < 2:
         sys.exit(__doc__)
     source, out = args[0], args[1]
-    drop, turns, info = set(), [], False
+    drop, split, turns, info = set(), set(), [], False
     i = 2
     while i < len(args):
         if args[i] == "--drop":
             drop.add(args[i + 1])
+            i += 2
+        elif args[i] == "--split":
+            split.add(args[i + 1])
             i += 2
         elif args[i] in ("--turn-x", "--turn-y", "--turn-z"):
             turns.append((args[i][-1], float(args[i + 1])))
@@ -282,7 +302,7 @@ def main(argv):
               for name, color, tris in groups]
     describe(groups)
     if not info:
-        print(f"wrote {out}: {write_glb(groups, out)} triangles, {len(groups)} colors")
+        print(f"wrote {out}: {write_glb(groups, out, split)} triangles, {len(groups)} colors")
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
--- Studio Command Bar snippet: builds Beginning Town into the place in edit mode, exactly as
--- the game builds it in play (src/server/TownBuilder.luau from TownConfig), replacing the
--- old copy. Run it after changing the town's code or config so edit mode matches play, then
--- save the place. (The game rebuilds the town at start either way; this is only so you can
--- see it while editing.) Townsfolk aren't included: they only exist in play.
+-- Studio Command Bar snippet: rebuilds Beginning Town in edit mode from the code
+-- (src/server/TownBuilder.luau, from TownConfig), replacing the copy saved in the place. The
+-- game plays with the saved copy (hand edits and all), so run this after changing the town's
+-- code or config, then save the place. WARNING: it throws away any hand edits to
+-- workspace.Town. Townsfolk aren't included: they only exist in play.
 -- Studio caches required modules between runs, so this builds from fresh copies of
 -- TownBuilder and ReplicatedStorage.Shared (swapped in for the build, then put back).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,7 +11,7 @@ local fresh = shared:Clone()
 shared.Parent = nil
 fresh.Parent = ReplicatedStorage
 local ok, err = pcall(function()
-	require(game:GetService("ServerScriptService").Server.TownBuilder:Clone()).build()
+	require(game:GetService("ServerScriptService").Server.TownBuilder:Clone()).build(true)
 end)
 fresh:Destroy()
 shared.Parent = ReplicatedStorage

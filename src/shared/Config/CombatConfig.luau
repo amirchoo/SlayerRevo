@@ -1038,9 +1038,11 @@ return {
 		Range = 60, -- studs: how far away a target can be picked
 		BreakRange = 90, -- studs: the lock lets go past this
 		MaxAngle = 75, -- degrees from the centre of the view a target can be picked
-		CameraDistance = 13, -- studs behind you
-		CameraHeight = 4.5,
-		CameraShoulder = 4.5, -- studs over your right shoulder, so you're off to the left of the view and don't block the target
+		CameraDistance = 12, -- studs behind you
+		CameraHeight = 6.5, -- studs above your middle: just over your shoulder, looking down past your head
+		CameraShoulder = 6, -- studs over your right shoulder, so you're off to the left of the view and don't block the target
+		CameraFocusHeight = 0.5, -- studs above the target's middle the camera aims at
+		CameraFocusShift = 0.45, -- the aim is moved right by this much of CameraShoulder (less = target further right of you)
 		CameraSmoothing = 9, -- higher = the camera catches up faster
 	},
 	-- Getting hurt, on your own screen (see DamageFeedback): a red flash and camera shake per

@@ -9,11 +9,13 @@ export type Item = {
 	Name: string,
 	Category: string,
 	Description: string,
-	Icon: string?,
-	Seller: string,
+	Icon: string?, -- shown when there's no Model (or it hasn't been imported yet)
+	Model: string?, -- a model in ReplicatedStorage.ItemModels (assets/items), shown in its tile
+	Seller: string, -- the NPC that sells it ("" for things only cooked or found, never sold)
 	Weapon: string?,
 	ArmorSet: string?,
 	Heal: number?,
+	EatTime: number?, -- food: Heal is given gradually over this many seconds, not all at once
 	ManaPercent: number?,
 	Price: number,
 }
@@ -51,8 +53,13 @@ for _, info in InventoryConfig.Weapons do
 	})
 end
 
-table.insert(ShopConfig.Items, { Id = "HP Potion", Name = "HP potion", Category = ShopConfig.ConsumableCategory, Description = "Restores 50 HP when used.", Icon = "Vitality", Seller = ShopConfig.MerchantNpc, Heal = 50, Price = 50 })
-table.insert(ShopConfig.Items, { Id = "MP Potion", Name = "MP potion", Category = ShopConfig.ConsumableCategory, Description = "Restores 30% of max mana when used.", Icon = "Arcana", Seller = ShopConfig.MerchantNpc, ManaPercent = 0.3, Price = 30 })
+table.insert(ShopConfig.Items, { Id = "HP Potion", Name = "Health Potion", Category = ShopConfig.ConsumableCategory, Description = "Restores 50 HP when used.", Icon = "Vitality", Model = "HealthPotion", Seller = ShopConfig.MerchantNpc, Heal = 50, Price = 50 })
+table.insert(ShopConfig.Items, { Id = "MP Potion", Name = "Mana Potion", Category = ShopConfig.ConsumableCategory, Description = "Restores 30% of max mana when used.", Icon = "Arcana", Model = "ManaPotion", Seller = ShopConfig.MerchantNpc, ManaPercent = 0.3, Price = 30 })
+
+-- Food cooked at the tavern campfire from raw meat (CookingConfig): eaten from a potion slot,
+-- it heals over EatTime. Not sold.
+table.insert(ShopConfig.Items, { Id = "CookedCowMeat", Name = "Cooked Steak", Category = ShopConfig.ConsumableCategory, Description = "A juicy grilled steak. Restores 70 HP over 3 seconds.", Icon = "Vitality", Model = "CookedCowMeat", Seller = "", Heal = 70, EatTime = 3, Price = 0 })
+table.insert(ShopConfig.Items, { Id = "CookedChickenMeat", Name = "Roast Chicken", Category = ShopConfig.ConsumableCategory, Description = "A roasted drumstick. Restores 35 HP over 2 seconds.", Icon = "Vitality", Model = "CookedChickenMeat", Seller = "", Heal = 35, EatTime = 2, Price = 0 })
 
 for _, setId in ArmorConfig.SetOrder do
 	local set = ArmorConfig.Sets[setId]

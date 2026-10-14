@@ -1,7 +1,11 @@
 --!strict
 -- Builds Beginning Town (the hub) at server start, from shared/Config/TownConfig: a cobblestone
--- plaza with a fountain and the spawn, roads out to the buildings, shops and homes, props,
--- lamps, a low fence ring with an arch at the north road to the hunting grounds, and trees.
+-- plaza with the knight statue and the spawn, roads out to the buildings, shops and homes,
+-- landmarks (bell tower, watchtowers, windmill), props and decor, lamps, a low fence ring with
+-- an arch at the north road to the hunting grounds, and trees.
+-- Things the client brings to life are marked with attributes: "Sway" (radians) on cloth that
+-- sways in the wind, "Spin" (radians per second) on the windmill's sails, "Bell" on the bell;
+-- chimneys get a smoke emitter. Lamps and windows light up at night (client DayCycle).
 -- The town sits inside the hub safe zone (shared/SafeZone); its edge isn't marked in the world.
 -- Buildings with an Asset use that model from ServerStorage.TownAssets (synced from
 -- assets/town) when it exists, fitted to the building's footprint and recolored with its
@@ -52,7 +56,11 @@ local ASSET_YAW: { [string]: number } = {
 	House_1 = 0,
 	Houses_SecondAge_1_Level2 = 0,
 	Blacksmith = 0,
-	Fountain = 0,
+	FantasyInn = 0, -- the Hunters' Guild
+	CookingFire = 0,
+	BellTower = 0,
+	Watchtower = 0,
+	Windmill = 0,
 	LampPost = 90, -- the lantern hangs off the model's +X side; this turns it to the front
 	Tree = 0,
 	FarmFence = 90, -- a fence section runs along the model's X; this lines it up with the run
@@ -70,7 +78,7 @@ local PROP_MODELS: { [string]: string } = {
 	dummy = "TrainingDummy",
 	target = "ArcheryTarget",
 	rack = "WeaponRack",
-	campfire = "Campfire",
+	campfire = "CookingFire", -- saved already scaled to size
 	table = "PicnicTable",
 	itembox = "ItemBox",
 	stable = "Stable",
@@ -83,10 +91,18 @@ local ASSET_TINT: { [string]: { Walls: { string }, Roof: { string } } } = {
 }
 local TREE_SCALE = 0.5 -- the Tree model is ~38 studs tall; town trees are about half that
 local ASSET_SINK = 0.3 -- push models slightly into the ground so they don't float on uneven terrain
+local SMOKE_TEXTURE = "rbxasset://textures/particles/smoke_main.dds"
+local CLOTH_SWAY = math.rad(9) -- how far flags and washing swing in the wind
+-- Per-model ASSET_SINK overrides: thin models would vanish under it (the StonePath is ~0.23
+-- studs thick), so the path sits a hair above the ground instead (negative = raised).
+local ASSET_SINK_BY: { [string]: number } = {
+	StonePath = -0.05,
+	CookingFire = 1, -- its ring of stones reaches a stud below the dirt patch it sits on
+}
 
 local TownBuilder = {}
 
-local townFolder = Instance.new("Folder")
+local townFolder: Folder = Instance.new("Folder")
 townFolder.Name = "Town"
 
 local groundParams = RaycastParams.new()
@@ -153,6 +169,25 @@ local function addLight(target: BasePart, range: number, brightness: number?, co
 	light.Parent = target
 end
 
+-- A gentle plume of chimney smoke rising from `position`.
+local function addSmoke(position: Vector3, parent: Instance)
+	local vent = part({ Name = "ChimneySmoke", Size = Vector3.new(1, 0.2, 1), CFrame = CFrame.new(position), Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, Parent = parent })
+	local smoke = Instance.new("ParticleEmitter")
+	smoke.Texture = SMOKE_TEXTURE
+	smoke.Color = ColorSequence.new(Color3.fromRGB(200, 195, 190))
+	smoke.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.15, 0.6), NumberSequenceKeypoint.new(1, 1) })
+	smoke.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 5) })
+	smoke.Lifetime = NumberRange.new(5, 7)
+	smoke.Rate = 3
+	smoke.Speed = NumberRange.new(2, 3)
+	smoke.SpreadAngle = Vector2.new(10, 10)
+	smoke.Acceleration = Vector3.new(1.2, 0.4, 0.6) -- drifts off with the breeze
+	smoke.Rotation = NumberRange.new(0, 360)
+	smoke.RotSpeed = NumberRange.new(-15, 15)
+	smoke.LightInfluence = 1
+	smoke.Parent = vent
+end
+
 -- World-aligned bounding box of every part in a model.
 local function worldBounds(model: Model): (Vector3, Vector3)
 	local low, high = Vector3.one * math.huge, Vector3.one * -math.huge
@@ -213,7 +248,7 @@ local function placeAsset(assetName: string, base: CFrame, footprint: Vector2?, 
 	low, high = worldBounds(model)
 	local bottomCenter = Vector3.new((low.X + high.X) / 2, low.Y, (low.Z + high.Z) / 2)
 
-	model:PivotTo(base * CFrame.new(0, -ASSET_SINK, 0) * CFrame.new(-bottomCenter) * model:GetPivot())
+	model:PivotTo(base * CFrame.new(0, -(ASSET_SINK_BY[assetName] or ASSET_SINK), 0) * CFrame.new(-bottomCenter) * model:GetPivot())
 	model.Parent = townFolder
 	return model
 end
@@ -240,49 +275,6 @@ local function cylinder(name: string, length: number, diameter: number, cframe: 
 	})
 end
 
--- Simple stone fountain, used when the Fountain model isn't in TownAssets.
-local function buildFallbackFountain(plazaTop: number)
-	local at = function(y: number): CFrame
-		return CFrame.new(0, plazaTop + y, 0)
-	end
-	cylinder("FountainBasin", 2.5, 16, at(1.25), COLORS.Stone, Enum.Material.Slate)
-	cylinder("FountainWater", 0.2, 14.5, at(2.55), COLORS.Water, Enum.Material.Glass).Transparency = 0.2
-	cylinder("FountainPillar", 6, 2, at(5.5), COLORS.Stone, Enum.Material.Slate)
-	cylinder("FountainBowl", 0.8, 6, at(8.9), COLORS.Stone, Enum.Material.Slate)
-	cylinder("FountainBowlWater", 0.2, 5, at(9.35), COLORS.Water, Enum.Material.Glass).Transparency = 0.2
-end
-
--- Tones down a glowing model (the Fountain of Sidon's neon, water beams and blue lights) so
--- it sits with the town's colors instead of outshining them.
-local GLOW = {
-	LightBrightness = 0.6,
-	LightRange = 10,
-	LightColor = Color3.fromRGB(160, 205, 240),
-	BeamEmission = 0.15,
-	BeamOpacity = 0.45, -- times each beam's original opacity
-	NeonColor = Color3.fromRGB(110, 165, 205),
-}
-local function calmGlow(model: Model)
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("PointLight") or descendant:IsA("SpotLight") or descendant:IsA("SurfaceLight") then
-			descendant.Brightness = math.min(descendant.Brightness, GLOW.LightBrightness)
-			descendant.Range = math.min(descendant.Range, GLOW.LightRange)
-			descendant.Color = GLOW.LightColor
-		elseif descendant:IsA("Beam") then
-			descendant.LightEmission = math.min(descendant.LightEmission, GLOW.BeamEmission)
-			local points = {}
-			for _, point in descendant.Transparency.Keypoints do
-				table.insert(points, NumberSequenceKeypoint.new(point.Time, 1 - (1 - point.Value) * GLOW.BeamOpacity, point.Envelope))
-			end
-			descendant.Transparency = NumberSequence.new(points)
-		elseif descendant:IsA("BasePart") and descendant.Material == Enum.Material.Neon then
-			descendant.Material = Enum.Material.Glass
-			descendant.Color = descendant.Color:Lerp(GLOW.NeonColor, 0.6)
-			descendant.Transparency = math.max(descendant.Transparency, 0.15)
-		end
-	end
-end
-
 local function buildPlaza(baseY: number)
 	local size = TownConfig.PlazaSize
 	local plazaTop = baseY + 0.4
@@ -293,13 +285,10 @@ local function buildPlaza(baseY: number)
 		part({ Name = "PlazaRim", Size = rimSize, CFrame = CFrame.new(side * size / 2 + Vector3.new(0, plazaTop - 0.95, 0)), Color = COLORS.DarkStone, Material = Enum.Material.Slate })
 	end
 
-	local fountainSize = TownConfig.FountainSize
-	local fountain = placeAsset("Fountain", CFrame.new(0, plazaTop, 0), Vector2.new(fountainSize, fountainSize))
-	if fountain then
-		calmGlow(fountain)
-	else
-		buildFallbackFountain(plazaTop)
-	end
+	-- The knight statue in the middle, facing the spawn.
+	local statue = TownConfig.PlazaStatue
+	local facing = Vector3.new(statue.Facing.X, 0, statue.Facing.Y)
+	placeAsset(statue.Asset, CFrame.lookAt(Vector3.new(0, plazaTop, 0), Vector3.new(0, plazaTop, 0) + facing), nil, statue.Scale)
 
 	part({
 		ClassName = "SpawnLocation",
@@ -546,12 +535,175 @@ local function buildHallParts(spec: Building, base: CFrame, model: Model)
 	piece({ Name = "Steps", Size = Vector3.new(8, 0.8, 2), CFrame = base * CFrame.new(0, 0.1, front - 1), Color = COLORS.Stone, Material = Enum.Material.Slate })
 end
 
+-- Cloth hanging from its top edge (a banner, a flag, washing), swaying in the wind.
+local function cloth(name: string, size: Vector3, cframe: CFrame, color: Color3, parent: Instance): BasePart
+	local piece = part({ Name = name, Size = size, CFrame = cframe, Color = color, Material = Enum.Material.Fabric, CanCollide = false, Parent = parent })
+	piece:SetAttribute("Sway", CLOTH_SWAY)
+	return piece
+end
+
+-- A lantern hanging at `cframe`, lit at night (client DayCycle).
+local function lantern(cframe: CFrame, parent: Instance)
+	part({ Name = "LanternCap", Size = Vector3.new(1.3, 0.3, 1.3), CFrame = cframe * CFrame.new(0, 0.85, 0), Color = COLORS.Metal, Material = Enum.Material.Metal, Parent = parent })
+	local glow = part({ Name = "Lantern", Size = Vector3.new(1, 1.4, 1), CFrame = cframe, Color = COLORS.LampGlow, Material = Enum.Material.Neon, CanCollide = false, Parent = parent })
+	addLight(glow, 16)
+end
+
+-- A lookout tower: four log legs with cross braces, a railed platform, a pointed roof, a
+-- ladder up the back, a lantern and a pennant on top.
+local function buildWatchtowerParts(spec: Building, base: CFrame, model: Model)
+	local width, height = spec.Size.X, spec.Size.Y
+	local half = width / 2
+	local deck = height * 0.65
+	local function piece(props: { [string]: any }): BasePart
+		props.Parent = model
+		return part(props)
+	end
+	for _, corner in { Vector2.new(1, 1), Vector2.new(1, -1), Vector2.new(-1, 1), Vector2.new(-1, -1) } do
+		cylinder("Leg", deck + 5, 1.1, base * CFrame.new(corner.X * (half - 0.6), (deck + 5) / 2, corner.Y * (half - 0.6)), COLORS.Wood, Enum.Material.Wood, model)
+	end
+	for _, side in { -1, 1 } do
+		-- X braces on two sides.
+		for _, tilt in { -1, 1 } do
+			local length = math.sqrt((width - 1.2) ^ 2 + (deck * 0.55) ^ 2)
+			piece({ Name = "Brace", Size = Vector3.new(0.4, length, 0.4), CFrame = base * CFrame.new(side * (half - 0.6), deck * 0.4, 0) * CFrame.Angles(math.atan2(width - 1.2, deck * 0.55) * tilt, 0, 0), Color = COLORS.DarkWood, Material = Enum.Material.Wood })
+			piece({ Name = "Brace", Size = Vector3.new(0.4, length, 0.4), CFrame = base * CFrame.new(0, deck * 0.4, side * (half - 0.6)) * CFrame.Angles(0, 0, math.atan2(width - 1.2, deck * 0.55) * tilt), Color = COLORS.DarkWood, Material = Enum.Material.Wood })
+		end
+	end
+	piece({ Name = "Deck", Size = Vector3.new(width + 1, 0.6, width + 1), CFrame = base * CFrame.new(0, deck, 0), Color = COLORS.LightWood, Material = Enum.Material.WoodPlanks })
+	for _, side in { -1, 1 } do
+		piece({ Name = "Rail", Size = Vector3.new(width + 1, 1.6, 0.3), CFrame = base * CFrame.new(0, deck + 1.1, side * (half + 0.35)), Color = COLORS.Wood, Material = Enum.Material.WoodPlanks })
+		piece({ Name = "Rail", Size = Vector3.new(0.3, 1.6, width + 1), CFrame = base * CFrame.new(side * (half + 0.35), deck + 1.1, 0), Color = COLORS.Wood, Material = Enum.Material.WoodPlanks })
+	end
+	-- Roof: a four-sided cap of tilted slabs.
+	local roofY = deck + 5
+	for index = 0, 3 do
+		local turn = CFrame.Angles(0, index * math.pi / 2, 0)
+		piece({ Name = "Roof", Size = Vector3.new(width + 2.4, 0.5, (width + 2.4) * 0.62), CFrame = base * turn * CFrame.new(0, roofY + 1.3, (width + 2.4) / 4) * CFrame.Angles(math.rad(38), 0, 0), Color = spec.Roof or COLORS.DarkWood, Material = Enum.Material.Slate })
+	end
+	-- Pennant on a short pole at the peak.
+	local poleTop = roofY + 6.5
+	cylinder("FlagPole", 4, 0.3, base * CFrame.new(0, poleTop - 2, 0), COLORS.DarkWood, Enum.Material.Wood, model)
+	cloth("Pennant", Vector3.new(0.1, 1.6, 2.6), base * CFrame.new(0, poleTop - 0.9, -1.4), COLORS.Banner, model)
+	lantern(base * CFrame.new(0, deck + 3.4, -half - 0.2), model)
+	-- Ladder up the back.
+	for _, side in { -1, 1 } do
+		piece({ Name = "LadderRail", Size = Vector3.new(0.3, deck + 1, 0.3), CFrame = base * CFrame.new(side * 1, (deck + 1) / 2, half + 0.9), Color = COLORS.DarkWood, Material = Enum.Material.Wood })
+	end
+	for y = 1, deck, 1.5 do
+		piece({ Name = "Rung", Size = Vector3.new(2.2, 0.25, 0.25), CFrame = base * CFrame.new(0, y, half + 0.9), Color = COLORS.Wood, Material = Enum.Material.Wood })
+	end
+end
+
+-- A square stone bell tower: a tall shaft, an open belfry with the bell (marked "Bell": the
+-- client tolls it at dawn and dusk), and a steep roof.
+local function buildBellTowerParts(spec: Building, base: CFrame, model: Model)
+	local width, height = spec.Size.X, spec.Size.Y
+	local half = width / 2
+	local shaft = height * 0.62
+	local belfry = height * 0.2
+	local function piece(props: { [string]: any }): BasePart
+		props.Parent = model
+		return part(props)
+	end
+	piece({ Name = "Plinth", Size = Vector3.new(width + 2, 1.6, width + 2), CFrame = base * CFrame.new(0, 0.3, 0), Color = COLORS.DarkStone, Material = Enum.Material.Slate })
+	piece({ Name = "Shaft", Size = Vector3.new(width, shaft, width), CFrame = base * CFrame.new(0, shaft / 2, 0), Color = COLORS.Stone, Material = Enum.Material.Cobblestone })
+	for _, y in { shaft * 0.35, shaft * 0.7 } do
+		piece({ Name = "Band", Size = Vector3.new(width + 0.5, 0.6, width + 0.5), CFrame = base * CFrame.new(0, y, 0), Color = COLORS.DarkStone, Material = Enum.Material.Slate })
+	end
+	piece({ Name = "Door", Size = Vector3.new(3, 5.5, 0.3), CFrame = base * CFrame.new(0, 2.75, -half - 0.1), Color = COLORS.Wood, Material = Enum.Material.WoodPlanks })
+	piece({ Name = "Window", Size = Vector3.new(1.6, 2.6, 0.2), CFrame = base * CFrame.new(0, shaft * 0.55, -half - 0.05), Color = COLORS.Glass, Material = Enum.Material.Glass })
+	-- The belfry: corner pillars, open sides.
+	piece({ Name = "BelfryFloor", Size = Vector3.new(width + 0.6, 0.8, width + 0.6), CFrame = base * CFrame.new(0, shaft + 0.4, 0), Color = COLORS.DarkStone, Material = Enum.Material.Slate })
+	for _, corner in { Vector2.new(1, 1), Vector2.new(1, -1), Vector2.new(-1, 1), Vector2.new(-1, -1) } do
+		piece({ Name = "Pillar", Size = Vector3.new(1.6, belfry, 1.6), CFrame = base * CFrame.new(corner.X * (half - 0.8), shaft + belfry / 2, corner.Y * (half - 0.8)), Color = COLORS.Stone, Material = Enum.Material.Cobblestone })
+	end
+	local top = shaft + belfry
+	piece({ Name = "BelfryTop", Size = Vector3.new(width + 0.8, 1, width + 0.8), CFrame = base * CFrame.new(0, top + 0.5, 0), Color = COLORS.DarkStone, Material = Enum.Material.Slate })
+	piece({ Name = "BellBeam", Size = Vector3.new(width - 1, 0.6, 0.6), CFrame = base * CFrame.new(0, top - 0.6, 0), Color = COLORS.DarkWood, Material = Enum.Material.Wood })
+	local bell = piece({ Name = "Bell", Shape = Enum.PartType.Ball, Size = Vector3.new(3, 3, 3), CFrame = base * CFrame.new(0, top - 2.6, 0), Color = Color3.fromRGB(180, 140, 60), Material = Enum.Material.Metal })
+	bell:SetAttribute("Bell", true)
+	piece({ Name = "BellLip", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 3.6, 3.6), CFrame = base * CFrame.new(0, top - 3.7, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(160, 120, 50), Material = Enum.Material.Metal })
+	-- A steep four-sided roof and a spire.
+	local roofRise = height - top - 2
+	for index = 0, 3 do
+		local turn = CFrame.Angles(0, index * math.pi / 2, 0)
+		local slope = math.atan2(roofRise, half + 0.6)
+		local length = math.sqrt(roofRise ^ 2 + (half + 0.6) ^ 2) + 0.6
+		piece({ Name = "Roof", Size = Vector3.new(width + 1.6, 0.5, length), CFrame = base * turn * CFrame.new(0, top + 1 + roofRise / 2, (half + 0.6) / 2) * CFrame.Angles(slope, 0, 0), Color = spec.Roof or COLORS.DarkWood, Material = Enum.Material.Slate })
+	end
+	cylinder("Spire", 3, 0.35, base * CFrame.new(0, height + 0.5, 0), COLORS.Metal, Enum.Material.Metal, model)
+end
+
+-- A stone windmill: a tapering round tower, a cap, and four lattice sails on a hub (a Model
+-- marked "Spin"; the client turns it about the axle, its pivot's look direction).
+local function buildWindmillParts(spec: Building, base: CFrame, model: Model)
+	local width, height = spec.Size.X, spec.Size.Y
+	local function piece(props: { [string]: any }): BasePart
+		props.Parent = model
+		return part(props)
+	end
+	local tiers = 4
+	for tier = 0, tiers - 1 do
+		local diameter = width * (1 - tier * 0.08)
+		local tierHeight = height / tiers
+		cylinder("Tower", tierHeight + 0.2, diameter, base * CFrame.new(0, tierHeight * (tier + 0.5), 0), if tier % 2 == 0 then COLORS.Plaster else COLORS.Stone, if tier % 2 == 0 then Enum.Material.Plaster else Enum.Material.Cobblestone, model)
+	end
+	piece({ Name = "Door", Size = Vector3.new(3, 5.5, 0.4), CFrame = base * CFrame.new(0, 2.75, -width / 2 + 0.1), Color = COLORS.Wood, Material = Enum.Material.WoodPlanks })
+	piece({ Name = "Window", Size = Vector3.new(1.6, 2, 0.3), CFrame = base * CFrame.new(0, height * 0.6, -width * 0.42 + 0.1), Color = COLORS.Glass, Material = Enum.Material.Glass })
+	-- The cap: a cone made of a stack of shrinking discs.
+	for step = 0, 4 do
+		cylinder("Cap", 1.2, width * (0.95 - step * 0.18), base * CFrame.new(0, height + 0.6 + step * 1.1, 0), spec.Roof or COLORS.DarkWood, Enum.Material.Slate, model)
+	end
+	-- The sails, in front (local -Z) of the cap.
+	local hubCFrame = base * CFrame.new(0, height * 0.88, -width / 2 - 1.2)
+	piece({ Name = "Axle", Size = Vector3.new(0.8, 0.8, 3), CFrame = hubCFrame * CFrame.new(0, 0, 1.2), Color = COLORS.DarkWood, Material = Enum.Material.Wood })
+	local sails = Instance.new("Model")
+	sails.Name = "Sails"
+	local hub = part({ Name = "Hub", Size = Vector3.new(1.6, 1.6, 1), CFrame = hubCFrame, Color = COLORS.DarkWood, Material = Enum.Material.Wood, Parent = sails })
+	local length = height * 0.55
+	for index = 0, 3 do
+		local arm = hubCFrame * CFrame.Angles(0, 0, index * math.pi / 2 + math.rad(20))
+		part({ Name = "Stock", Size = Vector3.new(0.5, length, 0.4), CFrame = arm * CFrame.new(0, length / 2, -0.2), Color = COLORS.DarkWood, Material = Enum.Material.Wood, CanCollide = false, Parent = sails })
+		part({ Name = "Sail", Size = Vector3.new(2.6, length * 0.78, 0.15), CFrame = arm * CFrame.new(1.4, length * 0.58, -0.25), Color = COLORS.Paper, Material = Enum.Material.Fabric, CanCollide = false, Parent = sails })
+		for rung = 1, 4 do
+			part({ Name = "Lattice", Size = Vector3.new(2.8, 0.2, 0.2), CFrame = arm * CFrame.new(1.4, length * (0.2 + rung * 0.17), -0.35), Color = COLORS.Wood, Material = Enum.Material.Wood, CanCollide = false, Parent = sails })
+		end
+	end
+	hub.CanCollide = false
+	sails.PrimaryPart = hub
+	sails.WorldPivot = hubCFrame
+	sails:SetAttribute("Spin", 0.5)
+	sails.Parent = model
+end
+
 local BUILDERS: { [string]: (Building, CFrame, Model) -> () } = {
 	house = buildHouseParts,
 	forge = buildForgeParts,
 	stall = buildStallParts,
 	hall = buildHallParts,
+	watchtower = buildWatchtowerParts,
+	belltower = buildBellTowerParts,
+	windmill = buildWindmillParts,
 }
+
+-- The highest point of a model (its chimney top, on a house), found by raycasting down onto it.
+local function topOf(model: Model): Vector3?
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { model }
+	local low, high = worldBounds(model)
+	local best: Vector3? = nil
+	for x = low.X, high.X, 1 do
+		for z = low.Z, high.Z, 1 do
+			local hit = workspace:Raycast(Vector3.new(x, high.Y + 5, z), Vector3.new(0, low.Y - high.Y - 10, 0), params)
+			if hit and (not best or hit.Position.Y > best.Y + 0.05) then
+				best = hit.Position
+			end
+		end
+	end
+	return best
+end
 
 local function buildBuilding(spec: Building)
 	local base = groundCFrame(spec.Position, spec.Facing) -- front faces local -Z
@@ -578,12 +730,22 @@ local function buildBuilding(spec: Building)
 			local width, depth = math.abs(size.X), math.abs(size.Z)
 			addSignpost(base * CFrame.new(width / 2 - 2, 0, -depth / 2 - 2.5), spec.Sign, asset, math.max(7, #spec.Sign * 0.55))
 		end
+		if spec.Chimney then
+			local top = topOf(asset)
+			if top then
+				addSmoke(top + Vector3.new(0, 0.5, 0), asset)
+			end
+		end
 		return
 	end
 	local model = Instance.new("Model")
 	model.Name = spec.Name
 	BUILDERS[spec.Kind](spec, base, model)
 	model.Parent = townFolder
+	local chimney = model:FindFirstChild("Chimney")
+	if spec.Chimney and chimney and chimney:IsA("BasePart") then
+		addSmoke(chimney.Position + Vector3.new(0, chimney.Size.Y / 2 + 0.3, 0), model)
+	end
 end
 
 -- Props ---------------------------------------------------------------------------------------
@@ -712,28 +874,146 @@ PROPS.pond = function(base, prop)
 	end
 end
 
-local function buildProps()
-	for _, prop in TownConfig.Props do
-		local base = groundCFrame(prop.Position, prop.Facing)
-		local modelName = PROP_MODELS[prop.Kind]
-		local model = modelName and placeAsset(modelName, base, nil, prop.Scale)
-		if model then
-			for _, descendant in model:GetDescendants() do
-				-- Fires (the campfire) light up their surroundings.
-				if descendant:IsA("Fire") and descendant.Parent and descendant.Parent:IsA("BasePart") then
-					addLight(descendant.Parent, 24, 2, COLORS.Ember)
-				end
-				-- Color recolors the model's colored cloth (a stall's canopy stripes), not white cloth.
-				if prop.Color and descendant:IsA("BasePart") and descendant.Material == Enum.Material.Fabric then
-					local h, sat, v = descendant.Color:ToHSV()
-					if sat > 0.2 or v < 0.8 then
-						descendant.Color = prop.Color
-					end
+-- The guild's trophy board: a big board on posts (LeaderboardService writes the top hunters on
+-- "TrophyBoard"), a title plank, and orc heads mounted on plaques along the top.
+PROPS.trophies = function(base)
+	local model = Instance.new("Model")
+	model.Name = "Trophies"
+	for _, side in { -1, 1 } do
+		part({ Name = "BoardPost", Size = Vector3.new(0.7, 11, 0.7), CFrame = base * CFrame.new(side * 5.4, 5.5, 0.1), Color = COLORS.DarkWood, Material = Enum.Material.Wood, Parent = model })
+	end
+	part({ Name = "TrophyBoard", Size = Vector3.new(10, 6.5, 0.4), CFrame = base * CFrame.new(0, 4.6, 0), Color = COLORS.Wood, Material = Enum.Material.WoodPlanks, Parent = model })
+	local title = part({ Name = "BoardTitle", Size = Vector3.new(8, 1, 0.25), CFrame = base * CFrame.new(0, 8.4, -0.15), Color = COLORS.DarkWood, Material = Enum.Material.Wood, Parent = model })
+	addSign(title, "Hall of Hunters")
+	part({ Name = "TrophyShelf", Size = Vector3.new(11.4, 0.5, 1.6), CFrame = base * CFrame.new(0, 9.2, -0.4), Color = COLORS.DarkWood, Material = Enum.Material.Wood, Parent = model })
+	part({ Name = "BoardRoof", Size = Vector3.new(12.4, 0.4, 2.4), CFrame = base * CFrame.new(0, 11.6, -0.3) * CFrame.Angles(math.rad(-15), 0, 0), Color = COLORS.DarkWood, Material = Enum.Material.WoodPlanks, Parent = model })
+	local enemies = ServerStorage:FindFirstChild("EnemyModels")
+	local orc = enemies and enemies:FindFirstChild("Orc")
+	local orcHead = orc and orc:FindFirstChild("Head")
+	for index, x in { -3.6, 0, 3.6 } do
+		local at = base * CFrame.new(x, 10.4, -0.2)
+		part({ Name = "Plaque", Size = Vector3.new(1.8, 2.2, 0.3), CFrame = at * CFrame.new(0, 0, 0.5), Color = COLORS.LightWood, Material = Enum.Material.WoodPlanks, Parent = model })
+		if orcHead and orcHead:IsA("BasePart") then
+			local head = orcHead:Clone()
+			for _, child in head:GetChildren() do
+				if not child:IsA("SurfaceAppearance") and not child:IsA("Decal") then
+					child:Destroy()
 				end
 			end
-		elseif PROPS[prop.Kind] then
-			PROPS[prop.Kind](base, prop)
+			head.Name = "OrcHead"
+			head.Anchored = true
+			head.CanCollide = false
+			head.Size *= if index == 2 then 0.85 else 0.7
+			head.CFrame = at * CFrame.new(0, 0.1, -0.2) * CFrame.Angles(0, math.rad(if index == 1 then 15 elseif index == 3 then -15 else 0), 0)
+			head.Parent = model
+		else
+			part({ Name = "OrcHead", Size = Vector3.new(1.3, 1.4, 1), CFrame = at * CFrame.new(0, 0.1, -0.3), Color = Color3.fromRGB(95, 130, 70), Material = Enum.Material.SmoothPlastic, Parent = model })
 		end
+	end
+	model.Parent = townFolder
+end
+
+-- A round leafy bush (a few overlapping balls).
+PROPS.bush = function(base)
+	local random = Random.new(math.floor(base.Position.X * 11 + base.Position.Z * 17))
+	for index = 1, 4 do
+		local size = random:NextNumber(2.4, 3.6) * (if index == 1 then 1.2 else 1)
+		local offset = if index == 1 then Vector3.zero else Vector3.new(random:NextNumber(-1.4, 1.4), 0, random:NextNumber(-1.4, 1.4))
+		part({ Name = "Bush", Shape = Enum.PartType.Ball, Size = Vector3.one * size, CFrame = base * CFrame.new(offset + Vector3.new(0, size * 0.35, 0)), Color = if index % 2 == 0 then COLORS.DarkLeaves else COLORS.Leaves, Material = Enum.Material.Grass })
+	end
+end
+
+-- A long wooden planter box full of flowers.
+PROPS.planter = function(base)
+	part({ Name = "Planter", Size = Vector3.new(7, 1.4, 2), CFrame = base * CFrame.new(0, 0.7, 0), Color = COLORS.Wood, Material = Enum.Material.WoodPlanks })
+	part({ Name = "Soil", Size = Vector3.new(6.4, 0.3, 1.5), CFrame = base * CFrame.new(0, 1.35, 0), Color = COLORS.Dirt, Material = Enum.Material.Ground })
+	local random = Random.new(math.floor(base.Position.X * 5 + base.Position.Z * 3))
+	for x = -2.8, 2.8, 0.8 do
+		local leafX = x + random:NextNumber(-0.15, 0.15)
+		part({ Name = "Leaf", Size = Vector3.new(0.8, 0.8, 0.8), CFrame = base * CFrame.new(leafX, 1.75, random:NextNumber(-0.3, 0.3)), Color = COLORS.DarkLeaves, Material = Enum.Material.Grass, CanCollide = false })
+		part({ Name = "Flower", Size = Vector3.new(0.45, 0.45, 0.45), CFrame = base * CFrame.new(leafX, 2.3, random:NextNumber(-0.3, 0.3)), Color = COLORS.Flowers[random:NextInteger(1, #COLORS.Flowers)], Material = Enum.Material.SmoothPlastic, CanCollide = false })
+	end
+end
+
+-- A washing line between two posts (along local X), with clothes swaying on it.
+PROPS.laundry = function(base)
+	local length = 14
+	for _, side in { -1, 1 } do
+		part({ Name = "LinePost", Size = Vector3.new(0.5, 7, 0.5), CFrame = base * CFrame.new(side * length / 2, 3.5, 0), Color = COLORS.DarkWood, Material = Enum.Material.Wood })
+	end
+	part({ Name = "Line", Size = Vector3.new(length, 0.08, 0.08), CFrame = base * CFrame.new(0, 6.6, 0), Color = COLORS.Paper, Material = Enum.Material.Fabric, CanCollide = false })
+	local colors = { Color3.fromRGB(240, 240, 235), Color3.fromRGB(150, 60, 55), Color3.fromRGB(90, 120, 170), Color3.fromRGB(230, 200, 120), Color3.fromRGB(120, 150, 100) }
+	local random = Random.new(math.floor(base.Position.X * 7 + base.Position.Z))
+	local x = -length / 2 + 1.4
+	local index = 1
+	while x < length / 2 - 1.4 do
+		local width = random:NextNumber(1.4, 2.4)
+		local drop = random:NextNumber(1.6, 2.8)
+		cloth("Washing", Vector3.new(width, drop, 0.1), base * CFrame.new(x + width / 2, 6.6 - drop / 2, 0), colors[(index - 1) % #colors + 1], townFolder)
+		x += width + random:NextNumber(0.4, 1)
+		index += 1
+	end
+end
+
+-- A tall pole with a banner hanging from a crossbar; the banner faces Facing.
+PROPS.flag = function(base, prop)
+	cylinder("FlagPole", 14, 0.45, base * CFrame.new(0, 7, 0), COLORS.DarkWood, Enum.Material.Wood)
+	part({ Name = "FlagBar", Size = Vector3.new(4, 0.3, 0.3), CFrame = base * CFrame.new(0, 13.2, -0.35), Color = COLORS.DarkWood, Material = Enum.Material.Wood })
+	part({ Name = "FlagTop", Shape = Enum.PartType.Ball, Size = Vector3.one * 0.8, CFrame = base * CFrame.new(0, 14.2, 0), Color = COLORS.Hay, Material = Enum.Material.Metal })
+	cloth("Banner", Vector3.new(3.4, 6, 0.12), base * CFrame.new(0, 10.1, -0.45), prop.Color or COLORS.Banner, townFolder)
+end
+
+-- A stack of firewood logs under a little lean-to roof.
+PROPS.woodpile = function(base)
+	for row = 0, 2 do
+		for i = 0, 3 - row do
+			-- Cylinders run along X; turned to lie front to back.
+			part({ Name = "Log", Shape = Enum.PartType.Cylinder, Size = Vector3.new(5, 0.9, 0.9), CFrame = base * CFrame.new(-1.35 + i * 0.9 + row * 0.45, 0.45 + row * 0.8, 0) * CFrame.Angles(0, math.rad(90), 0), Color = if (i + row) % 2 == 0 then COLORS.Trunk else COLORS.Wood, Material = Enum.Material.Wood })
+		end
+	end
+	part({ Name = "WoodRoof", Size = Vector3.new(5, 0.3, 6), CFrame = base * CFrame.new(0, 3.6, 0) * CFrame.Angles(math.rad(10), 0, 0), Color = COLORS.DarkWood, Material = Enum.Material.WoodPlanks })
+	for _, x in { -2.2, 2.2 } do
+		part({ Name = "WoodPost", Size = Vector3.new(0.4, 3.6, 0.4), CFrame = base * CFrame.new(x, 1.8, -2.6), Color = COLORS.DarkWood, Material = Enum.Material.Wood })
+	end
+end
+
+-- A heap of grain sacks.
+PROPS.sacks = function(base)
+	local spots = { Vector3.new(-1, 0.6, 0), Vector3.new(0.9, 0.6, 0.3), Vector3.new(0, 0.6, -1.2), Vector3.new(-0.1, 1.6, -0.2) }
+	for index, at in spots do
+		part({ Name = "Sack", Size = Vector3.new(1.6, 1.2, 1.3), CFrame = base * CFrame.new(at) * CFrame.Angles(0, math.rad(index * 25), math.rad(if index == 4 then 10 else 0)), Color = COLORS.Hay, Material = Enum.Material.Fabric })
+	end
+end
+
+local function buildProp(prop: Prop)
+	local base = groundCFrame(prop.Position, prop.Facing)
+	local modelName = PROP_MODELS[prop.Kind]
+	local model = modelName and placeAsset(modelName, base, nil, prop.Scale)
+	if model then
+		for _, descendant in model:GetDescendants() do
+			-- Fires (the campfire) light up their surroundings.
+			if descendant:IsA("Fire") and descendant.Parent and descendant.Parent:IsA("BasePart") then
+				addLight(descendant.Parent, 24, 2, COLORS.Ember)
+			end
+			-- Color recolors the model's colored cloth (a stall's canopy stripes), not white cloth.
+			if prop.Color and descendant:IsA("BasePart") and descendant.Material == Enum.Material.Fabric then
+				local h, sat, v = descendant.Color:ToHSV()
+				if sat > 0.2 or v < 0.8 then
+					descendant.Color = prop.Color
+				end
+			end
+		end
+	elseif PROPS[prop.Kind] then
+		PROPS[prop.Kind](base, prop)
+	end
+end
+
+local function buildProps()
+	for _, prop in TownConfig.Props do
+		buildProp(prop)
+	end
+	for _, prop in TownConfig.Decor do
+		buildProp(prop)
 	end
 end
 
@@ -867,7 +1147,40 @@ local function buildTrees()
 	end
 end
 
-function TownBuilder.build()
+-- Adds `buildings` and `props` to the town already in workspace (the saved copy), leaving the
+-- rest as it is: for putting new pieces of TownConfig into the place in edit mode without a
+-- full rebuild (which would throw away hand edits). Returns the asset names that were missing.
+function TownBuilder.add(buildings: { Building }, props: { Prop }): { string }
+	local include: { Instance } = { workspace.Terrain }
+	local baseplate = workspace:FindFirstChild("Baseplate")
+	if baseplate then
+		table.insert(include, baseplate)
+	end
+	groundParams.FilterDescendantsInstances = include
+	local existing = workspace:FindFirstChild("Town")
+	townFolder = if existing and existing:IsA("Folder") then existing else townFolder
+	table.clear(missingAssets)
+	for _, building in buildings do
+		buildBuilding(building)
+	end
+	for _, prop in props do
+		buildProp(prop)
+	end
+	townFolder.Parent = workspace
+	local missing: { string } = {}
+	for name in missingAssets do
+		table.insert(missing, name)
+	end
+	return missing
+end
+
+-- Builds the town into workspace.Town. A Town already saved in the place is kept as it is
+-- (so hand edits made in Studio's edit mode stay), unless `replace` is true: the edit-mode
+-- tools (tools/preview_town.lua, tools/generate_terrain.lua) rebuild it from TownConfig.
+function TownBuilder.build(replace: boolean?)
+	if not replace and workspace:FindFirstChild("Town") then
+		return
+	end
 	local include: { Instance } = { workspace.Terrain }
 	local baseplate = workspace:FindFirstChild("Baseplate")
 	if baseplate then
@@ -875,9 +1188,8 @@ function TownBuilder.build()
 	end
 	groundParams.FilterDescendantsInstances = include
 
-	-- The town is built from TownConfig; a copy saved into the place (an edit-mode preview, see
-	-- tools/preview_town.lua) is replaced, so play always matches the code. (SafeZoneBorder was
-	-- the old pillar ring along the safe zone edge; it's no longer built.)
+	-- The town is built from TownConfig, replacing the saved copy. (SafeZoneBorder was the old
+	-- pillar ring along the safe zone edge; it's no longer built.)
 	for _, name in { "Town", "SafeZoneBorder" } do
 		local saved = workspace:FindFirstChild(name)
 		if saved then

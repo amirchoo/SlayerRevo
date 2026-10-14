@@ -81,6 +81,35 @@ local function holdWeapon(mannequin: Model, name: string)
 			descendant.Massless = true
 		end
 	end
+	-- Which parts are welded together (the grip and its blade; a dual-wielded weapon is two
+	-- such groups).
+	local links: { [BasePart]: { BasePart } } = {}
+	for _, joint in weapon:GetDescendants() do
+		if joint:IsA("WeldConstraint") or joint:IsA("JointInstance") then
+			local a, b = joint.Part0, joint.Part1
+			if a and b then
+				links[a] = links[a] or {}
+				links[b] = links[b] or {}
+				table.insert(links[a], b)
+				table.insert(links[b], a)
+			end
+		end
+	end
+	local function group(start: BasePart): { BasePart }
+		local seen, list = { [start] = true }, { start }
+		local index = 1
+		while list[index] do
+			for _, other in links[list[index]] or {} do
+				if not seen[other] then
+					seen[other] = true
+					table.insert(list, other)
+				end
+			end
+			index += 1
+		end
+		return list
+	end
+
 	-- The grip part in the right hand, and a dual-wielded weapon's twin in the left; the same
 	-- offsets HandGrip uses when a player holds it.
 	for gripName, hand in { [HandGrip.GRIP_NAME] = "Right", [HandGrip.OFFHAND_NAME] = "Left" } do
@@ -88,6 +117,13 @@ local function holdWeapon(mannequin: Model, name: string)
 		local handPart = mannequin:FindFirstChild(`{hand}Hand`)
 		local attachment = handPart and handPart:FindFirstChild(`{hand}GripAttachment`)
 		if grip and grip:IsA("BasePart") and handPart and handPart:IsA("BasePart") and attachment and attachment:IsA("Attachment") then
+			-- Move the grip and everything welded to it into the hand first: on an anchored
+			-- mannequin the weld places the grip, but nothing drags its blade along, which
+			-- stayed wherever the copy was made.
+			local move = handPart.CFrame * attachment.CFrame * tool.Grip:Inverse() * grip.CFrame:Inverse()
+			for _, part in group(grip) do
+				part.CFrame = move * part.CFrame
+			end
 			local weld = Instance.new("Weld")
 			weld.Part0 = handPart
 			weld.Part1 = grip
@@ -118,6 +154,19 @@ local function equip(player: Player, stand: Stand)
 	if tool and tool:IsA("Tool") and humanoid then
 		humanoid:EquipTool(tool)
 	end
+end
+
+-- A mannequin standing on `feet`, wearing the stand's set, posed, and (soon) holding its
+-- weapon. Parent it before yielding.
+local function posed(feet: CFrame, stand: Stand): Model
+	local mannequin = ArmorService.mannequin(feet, stand.Set)
+	mannequin:SetAttribute("PoseAnimation", stand.Pose)
+	mannequin:SetAttribute("PoseAt", stand.PoseAt)
+	CollectionService:AddTag(mannequin, POSE_TAG)
+	-- Deferred: the caller parents the mannequin first (holdWeapon drops the weapon on an
+	-- unparented one, taking it for removed).
+	task.defer(holdWeapon, mannequin, stand.Weapon)
+	return mannequin
 end
 
 local function buildStand(parent: Instance, stand: Stand, index: number)
@@ -165,13 +214,21 @@ local function buildStand(parent: Instance, stand: Stand, index: number)
 		equip(player, stand)
 	end)
 
-	local mannequin = ArmorService.mannequin(origin * CFrame.new(0, 0.5, 0), stand.Set)
-	mannequin:SetAttribute("PoseAnimation", stand.Pose)
-	mannequin:SetAttribute("PoseAt", stand.PoseAt)
+	local mannequin = posed(origin * CFrame.new(0, 0.5, 0), stand)
 	mannequin.Parent = model
-	CollectionService:AddTag(mannequin, POSE_TAG)
 	model.Parent = parent
-	task.spawn(holdWeapon, mannequin, stand.Weapon)
+end
+
+-- A posed mannequin like set `setId`'s stand (wearing it, holding its weapon), standing on
+-- `feet`; nil if no stand shows that set. Yields (making the mannequin); parent the result
+-- before yielding again. The Hall of Oaths' statues are these.
+function TrainingStands.mannequin(feet: CFrame, setId: string): Model?
+	for _, stand in STANDS do
+		if stand.Set == setId then
+			return posed(feet, stand)
+		end
+	end
+	return nil
 end
 
 -- Builds every stand (making each mannequin yields, so call it with task.spawn).

@@ -96,7 +96,7 @@ NpcConfig.List = {
 		Pants = Color3.fromRGB(60, 50, 40),
 		Lines = {
 			"The supply cart finally made it through. Nothing fancy yet, but potions keep slayers alive.",
-			"HP potions and MP potions are stocked and ready.",
+			"Health and Mana potions are stocked and ready.",
 		},
 		Action = "Shop",
 	},

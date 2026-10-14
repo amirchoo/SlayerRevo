@@ -39,7 +39,10 @@ WorldConfig.HuntingGrounds = { Min = Vector2.new(-540, -840), Max = Vector2.new(
 
 WorldConfig.HillHeight = 28 -- forest hills rise up to about this above flat ground
 WorldConfig.PlainHeight = 5 -- the plain's gentle roll
-WorldConfig.Mountains = { Start = 850, Height = 120 } -- rising from Start studs out to the map edge
+-- Mountains rise from Start studs out to their ridge at the map edge (HalfSize), then fall
+-- away again over Back studs beyond it, so they're whole mountains from any angle (the
+-- terrain runs out just past that).
+WorldConfig.Mountains = { Start = 850, Height = 120, Back = 300 }
 
 -- A river across the hunting grounds, ending in a small lake at each end.
 WorldConfig.River = {

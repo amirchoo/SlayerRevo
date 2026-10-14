@@ -22,7 +22,7 @@ local HudStyle = require(script.Parent.HudStyle)
 
 local LOCK = CombatConfig.LockOn
 local RETICLE_COLOR = Color3.fromRGB(255, 210, 90)
-local TARGET_FOLDERS = { "Enemies", "TrainingGround" } -- where lockable things live in workspace
+local TARGET_FOLDERS = { "Enemies", "Animals", "TrainingGround" } -- where lockable things live in workspace
 
 local player = Players.LocalPlayer
 
@@ -239,7 +239,7 @@ function LockOn.start()
 		cameraPosition = position
 		-- Look past your shoulder at the target, along the same line you're facing (offset to
 		-- the right like the camera), so you stay on the left and the target near the middle.
-		local focus = center + Vector3.new(0, 1, 0) + right * LOCK.CameraShoulder * 0.6
+		local focus = center + Vector3.new(0, LOCK.CameraFocusHeight, 0) + right * LOCK.CameraShoulder * LOCK.CameraFocusShift
 		camera.CFrame = CFrame.lookAt(position, focus)
 
 		diamond.Rotation += dt * 90

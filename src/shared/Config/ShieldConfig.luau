@@ -21,9 +21,26 @@ local ShieldConfig = {}
 -- Weapons (ToolName) that can be used with a shield.
 ShieldConfig.OneHanded = { "Sword", "Emberfang", "Mace", "Axe", "Rapier" }
 
--- Played instead of the weapon's own guard while blocking with a shield (tools/shield_anims.py).
--- Leave "" until published: the weapon's guard is used meanwhile.
+-- Played instead of the weapon's own guard while blocking with a shield, for a weapon whose
+-- stance has no Guard yet (tools/shield_anims.py). Leave "" until published: the weapon's
+-- guard is used meanwhile.
 ShieldConfig.GuardAnimation = "rbxassetid://87055276993217" -- ShieldGuard
+
+export type Stance = {
+	Idle: string, -- loops instead of the weapon's idle while the shield is up
+	Guard: string, -- played instead of GuardAnimation while blocking
+}
+
+-- Each one-handed weapon's (ToolName) idle and guard with a shield up (tools/shield_anims.py);
+-- attacks stay the weapon's own. Leave "" until published: the weapon's idle and
+-- GuardAnimation are used meanwhile.
+ShieldConfig.Stances = {
+	Sword = { Idle = "", Guard = "rbxassetid://90431531942999" }, -- SwordShieldIdle, SwordShieldGuard
+	Mace = { Idle = "", Guard = "rbxassetid://137365984550648" }, -- MaceShieldIdle, MaceShieldGuard
+	Axe = { Idle = "", Guard = "rbxassetid://126735171229166" }, -- AxeShieldIdle, AxeShieldGuard
+	Rapier = { Idle = "", Guard = "rbxassetid://87465660980219" }, -- RapierShieldIdle, RapierShieldGuard
+} :: { [string]: Stance }
+ShieldConfig.Stances.Emberfang = ShieldConfig.Stances.Sword -- the sword's moves
 
 ShieldConfig.Diameter = 2.6 -- studs across, whatever size the model comes in at
 -- Studs between the body part's surface and the shield's back.
