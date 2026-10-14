@@ -24,6 +24,7 @@ return {
 		DashStart = 10,
 		SkillSpend = 10,
 		SkillRespec = 3,
+		AdminCommand = 10,
 		StaffElement = 10,
 		StaffCast = 12,
 		StaffCharge = 12,

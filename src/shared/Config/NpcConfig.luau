@@ -147,6 +147,99 @@ NpcConfig.List = {
 	},
 } :: { Npc }
 
+-- Animal NPCs with their own rigged model and animation clips (not R15 figures): PetService
+-- (server) spawns each from ServerStorage.NpcModels, walks it around its Wander area and
+-- picks what it's doing; PetAnimator (client) poses its bones from its clip data, swings its
+-- legs while it walks, and moves its eyelids (PetEyes). Pet it (its prompt) and it plays.
+-- See assets/npcs/README.md.
+-- Clips: the clip data module in src/shared/PetClips (made by tools/npc_clips.py from the
+-- source .glb; played by the game itself, not uploaded). States: the clip each state plays
+-- (Walking has none of its own: the legs are swung on top of it).
+-- Wander: walks to random spots between MinRadius and MaxRadius studs from Center, never
+-- along a line that passes through an Avoid circle (the area inside MinRadius is avoided too).
+-- Lids: the X rotation (radians) of the "LidL"/"LidR" bones for open, half-open and shut eyes.
+-- Eyes: how open (0 shut .. 1 open) the eyes are in each state; she blinks when they're open.
+-- FacingOffset: degrees the model is turned on its root, in case Import 3D turned it around.
+-- Height: studs tall in its rest pose; the model is scaled to it, whatever scale it imported at
+-- (its root, hip height and stride scale with it).
+-- Blessing: the buff (BuffConfig) a player gets for petting it, shown in a short cutscene
+-- (PetCutscene, set up in PetCutscene below).
+export type PetState = "Idle" | "Walking" | "Loafing" | "Sleeping" | "Playing"
+export type Circle = { Center: Vector2, Radius: number }
+export type Pet = {
+	Id: string,
+	Name: string,
+	Title: string, -- under its name (client Nameplates)
+	Model: string,
+	Wander: { Center: Vector2, MinRadius: number, MaxRadius: number, Avoid: { Circle } },
+	WalkSpeed: number,
+	FacingOffset: number,
+	Height: number,
+	Clips: string,
+	States: { [string]: string }, -- PetState -> clip name
+	Lids: { Open: number, Half: number, Shut: number },
+	Eyes: { [string]: number }, -- by PetState
+	Blessing: string?,
+}
+
+NpcConfig.Pets = {
+	{
+		Id = "Bonnie",
+		Name = "Bonnie",
+		Title = "Town Cat",
+		Model = "Bonnie",
+		-- The town plaza (72 studs square, TownConfig.PlazaSize), around the knight statue.
+		Wander = {
+			Center = Vector2.new(0, 0),
+			MinRadius = 9, -- clear of the statue
+			MaxRadius = 30,
+			Avoid = {
+				{ Center = Vector2.new(9, 13), Radius = 3 }, -- Elder Maren
+			},
+		},
+		WalkSpeed = 5,
+		FacingOffset = 180, -- Import 3D turned her around (on top of npc_glb.py's --turn-y 180)
+		Height = 2.6, -- studs, ears up and tail raised (modeled at 1.85; bigger so she's easy to spot)
+		Clips = "Bonnie",
+		States = { Idle = "Idle", Walking = "Idle", Loafing = "Loafing", Sleeping = "Sleeping", Playing = "Playing" },
+		Lids = { Open = -1.2, Half = 0.15, Shut = 1.45 },
+		Eyes = { Idle = 1, Walking = 1, Playing = 1, Loafing = 0.5, Sleeping = 0 },
+		Blessing = "BonniesGrace",
+	},
+} :: { Pet }
+
+-- How the pets behave (PetService). After each idle spell a pet picks what to do next by
+-- these weights; loafs and naps last RestTime. Petting it (the prompt) makes it stop and
+-- play for PlayTime seconds (again and again if you keep petting), facing you.
+NpcConfig.PetBehaviour = {
+	IdleTime = NumberRange.new(3, 8), -- seconds standing between other things
+	Next = { Walking = 6, Loafing = 2, Sleeping = 1.5, Idle = 1 }, -- weights after an idle spell
+	RestTime = NumberRange.new(15, 40), -- seconds loafing or sleeping before getting up
+	WalkTimeout = 15, -- seconds to reach a spot before giving up on it
+	StrayDistance = 8, -- studs past MaxRadius before she heads straight back into her area...
+	LostDistance = 60, -- ...and this far past it, she's put back
+	PlayTime = 6, -- seconds she plays after being petted
+	PromptDistance = 8, -- studs her "Pet" prompt shows from
+	PetCooldown = 6, -- seconds before the same player can pet her again (the cutscene's length)
+	Fade = 0.6, -- seconds each clip fades into the next (PetAnimator)
+	BlinkEvery = NumberRange.new(2.5, 6), -- seconds between blinks while her eyes are open
+}
+
+-- The camera when you pet a pet (client PetCutscene): it flies in to a close shot in front of
+-- the pet (which turns to face you and plays), pushes in slowly while the blessing's name
+-- shows between letterbox bars, then flies back. Distances are per stud of the pet's Height.
+NpcConfig.PetCutscene = {
+	ZoomTime = 0.8, -- seconds to fly in
+	HoldTime = 3.4, -- seconds on the pet
+	BackTime = 0.7, -- seconds to fly back out
+	Distance = 1.9, -- in front of the pet at the start of the hold...
+	EndDistance = 1.45, -- ...and at its end (a slow push in)
+	Side = 0.55, -- to the pet's right, so it isn't dead-on
+	Up = 0.55, -- camera height above the ground
+	LookUp = 0.4, -- where it looks: the pet's head is about here
+	FieldOfView = 45,
+}
+
 function NpcConfig.get(id: string): Npc?
 	for _, npc in NpcConfig.List do
 		if npc.Id == id then

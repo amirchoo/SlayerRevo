@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ProgressionConfig = require(ReplicatedStorage.Shared.Config.ProgressionConfig)
+local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local DataService = require(script.Parent.DataService)
 local HealthService = require(script.Parent.HealthService)
 local SkillService = require(script.Parent.SkillService)
@@ -45,6 +46,20 @@ function ProgressionService.addXP(player: Player, amount: number)
 		levelUpRemote:FireClient(player, data.Level, gained * ProgressionConfig.PointsPerLevel)
 		SkillService.refresh(player) -- new points
 	end
+end
+
+-- Sets the player's level outright (XP back to 0), for admin testing (AdminService). A lower
+-- level can leave them with more points spent than they have, so their skills are re-checked.
+function ProgressionService.setLevel(player: Player, level: number)
+	local data = DataService.data(player)
+	if not data then
+		return
+	end
+	data.Level = math.clamp(math.floor(level), 1, ProgressionConfig.MaxLevel)
+	data.XP = 0
+	data.Skills = SkillMath.sanitize(data.Skills, data.Level)
+	publish(player, data)
+	SkillService.refresh(player)
 end
 
 function ProgressionService.start()

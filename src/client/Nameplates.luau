@@ -2,6 +2,9 @@
 -- Names over heads, in the HUD's style (FredokaOne with a dark outline; see HudStyle), in
 -- place of the ones Roblox draws:
 --   * townsfolk (workspace.Townsfolk, NpcConfig): their name, and their title under it
+--   * pets (workspace.Pets, NpcConfig.Pets): the same, and while you're close enough to pet
+--     one, its key and "Pet" under that (in place of Roblox's prompt popup, which would hide
+--     a cat; the hint can be tapped/clicked too)
 --   * other players: their level and display name, and under it a small chunky health bar
 --     like your own (green, red when low, with the pale chunk that drains after a hit),
 --     shown only while they're hurt
@@ -9,11 +12,13 @@
 -- server sets and the player's "Level" attribute.
 
 local Players = game:GetService("Players")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local NpcConfig = require(ReplicatedStorage.Shared.Config.NpcConfig)
 local HudStyle = require(script.Parent.HudStyle)
+local Gamepad = require(script.Parent.Gamepad)
 
 local PLAYER_DISTANCE = 70 -- studs a player's nameplate shows from
 local NPC_DISTANCE = 40
@@ -21,6 +26,9 @@ local ABOVE_HEAD = 2.3 -- studs above the head's middle
 local PLATE_WIDTH = 200
 local NAME_SIZE = 17
 local TITLE_SIZE = 13
+local HINT_SIZE = 15
+local PET_ABOVE = 0.62 -- studs above a pet's root, per stud of its Height (just over its ears)
+local KEY_COLOR = Color3.fromRGB(58, 54, 74)
 local BAR_WIDTH = 96
 local BAR_HEIGHT = 10
 
@@ -101,6 +109,97 @@ local function attachNpc(model: Model)
 	title.Size = UDim2.new(1, 0, 0, TITLE_SIZE + 2)
 	title.Text = npc.Title
 	model.Destroying:Connect(function()
+		gui:Destroy()
+	end)
+end
+
+-- Pets ----------------------------------------------------------------------------------------
+
+local function attachPet(model: Model)
+	local id = model:GetAttribute("PetId")
+	local pet: NpcConfig.Pet? = nil
+	for _, entry in NpcConfig.Pets do
+		if entry.Id == id then
+			pet = entry
+		end
+	end
+	local root = model:WaitForChild("HumanoidRootPart", 10)
+	if not pet or not root or not root:IsA("BasePart") then
+		return
+	end
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		hideDefault(humanoid)
+	end
+	local gui = plate(root, `Pet_{pet.Id}`, NAME_SIZE + TITLE_SIZE + HINT_SIZE + 18, NPC_DISTANCE)
+	gui.StudsOffset = Vector3.new(0, pet.Height * PET_ABOVE, 0)
+	gui.Active = true -- the hint can be clicked
+	local name = outlined(gui, NAME_SIZE, NPC_NAME_COLOR)
+	name.Size = UDim2.new(1, 0, 0, NAME_SIZE + 2)
+	name.Text = pet.Name
+	local title = outlined(gui, TITLE_SIZE, TITLE_COLOR)
+	title.Position = UDim2.fromOffset(0, NAME_SIZE + 4)
+	title.Size = UDim2.new(1, 0, 0, TITLE_SIZE + 2)
+	title.Text = pet.Title
+
+	-- "[E] Pet", shown while its prompt is (the prompt draws nothing itself: Custom style).
+	local hint = Instance.new("TextButton")
+	hint.BackgroundTransparency = 1
+	hint.Text = ""
+	hint.AnchorPoint = Vector2.new(0.5, 0)
+	hint.Position = UDim2.new(0.5, 0, 0, NAME_SIZE + TITLE_SIZE + 10)
+	hint.Size = UDim2.fromOffset(80, HINT_SIZE + 4)
+	hint.Visible = false
+	hint.Parent = gui
+	local key = outlined(hint, HINT_SIZE - 2, Color3.new(1, 1, 1))
+	key.BackgroundTransparency = 0
+	key.BackgroundColor3 = KEY_COLOR
+	key.Size = UDim2.fromOffset(HINT_SIZE + 4, HINT_SIZE + 4)
+	key.Text = "E"
+	HudStyle.chunky(key, 5, 1.5)
+	local action = outlined(hint, HINT_SIZE, Color3.new(1, 1, 1))
+	action.Position = UDim2.fromOffset(HINT_SIZE + 10, 0)
+	action.Size = UDim2.new(1, -(HINT_SIZE + 10), 1, 0)
+	action.TextXAlignment = Enum.TextXAlignment.Left
+	action.Text = "Pet"
+
+	local prompt: ProximityPrompt? = nil
+	local function findPrompt()
+		local found = root:FindFirstChildOfClass("ProximityPrompt")
+		if found and not prompt then
+			prompt = found
+			key.Text = found.KeyboardKeyCode.Name
+			Gamepad.hint(key, found.KeyboardKeyCode.Name, found.GamepadKeyCode)
+			action.Text = found.ActionText
+		end
+	end
+	findPrompt()
+	local connections = {
+		root.ChildAdded:Connect(findPrompt),
+		ProximityPromptService.PromptShown:Connect(function(shown)
+			if shown == prompt then
+				hint.Visible = true
+				HudStyle.pop(hint, 0.8)
+			end
+		end),
+		ProximityPromptService.PromptHidden:Connect(function(hidden)
+			if hidden == prompt then
+				hint.Visible = false
+			end
+		end),
+		hint.Activated:Connect(function()
+			local current = prompt
+			if current and current.Enabled then
+				current:InputHoldBegin()
+				current:InputHoldEnd()
+			end
+		end),
+	}
+	Instance.new("UIScale").Parent = hint
+	model.Destroying:Connect(function()
+		for _, connection in connections do
+			connection:Disconnect()
+		end
 		gui:Destroy()
 	end)
 end
@@ -224,6 +323,19 @@ function Nameplates.start()
 		for _, child in townsfolk:GetChildren() do
 			if child:IsA("Model") then
 				task.spawn(attachNpc, child)
+			end
+		end
+	end)
+	task.spawn(function()
+		local pets = workspace:WaitForChild("Pets")
+		pets.ChildAdded:Connect(function(child)
+			if child:IsA("Model") then
+				task.spawn(attachPet, child)
+			end
+		end)
+		for _, child in pets:GetChildren() do
+			if child:IsA("Model") then
+				task.spawn(attachPet, child)
 			end
 		end
 	end)

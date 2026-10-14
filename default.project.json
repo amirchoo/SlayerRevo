@@ -92,6 +92,12 @@
         "SkillRespec": {
           "$className": "RemoteEvent"
         },
+        "AdminCommand": {
+          "$className": "RemoteEvent"
+        },
+        "PetCutscene": {
+          "$className": "RemoteEvent"
+        },
         "LevelUp": {
           "$className": "RemoteEvent"
         },
@@ -304,6 +310,9 @@
       },
       "AnimalModels": {
         "$path": "assets/animals"
+      },
+      "NpcModels": {
+        "$path": "assets/npcs"
       }
     }
   }

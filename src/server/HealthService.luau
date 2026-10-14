@@ -127,8 +127,13 @@ end
 -- fraction of health (so a new max health point doesn't leave them "hurt").
 function HealthService.refreshPlayer(player: Player)
 	local character = player.Character
-	local health, maxHealth = if character then HealthService.getHealth(character) else nil, nil
-	if not character or not health or not maxHealth or health <= 0 then
+	if not character then
+		return
+	end
+	-- (Not `if character then getHealth(...) else nil, nil`: an if-expression keeps only the
+	-- first return value, which left maxHealth nil so skill bonuses never applied until respawn.)
+	local health, maxHealth = HealthService.getHealth(character)
+	if not health or not maxHealth or health <= 0 then
 		return
 	end
 	local newMax, regen = playerStats(player)
