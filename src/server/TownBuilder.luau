@@ -825,7 +825,7 @@ PROPS.questboard = function(base)
 		paper.CanCollide = false
 	end
 	local title = part({ Name = "BoardTitle", Size = Vector3.new(5, 0.9, 0.2), CFrame = board.CFrame * CFrame.new(0, 2.5, -0.15), Color = COLORS.DarkWood, Material = Enum.Material.Wood })
-	addSign(title, "Quests: coming soon")
+	addSign(title, "Quest Board")
 end
 
 PROPS.signpost = function(base, prop)

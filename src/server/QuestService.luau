@@ -189,39 +189,64 @@ local function addPaper(parent: Model, origin: CFrame, offset: Vector3, rotation
 	end
 end
 
+local function findTownBoard(): BasePart?
+	local town = workspace:FindFirstChild("Town")
+	if not town then
+		return nil
+	end
+	local notice = town:FindFirstChild("NoticeBoard")
+	if notice then
+		local part = notice:FindFirstChildWhichIsA("BasePart", true)
+		if part then
+			return part
+		end
+	end
+	local fallback = town:FindFirstChild("QuestBoard", true)
+	if fallback and fallback:IsA("BasePart") then
+		return fallback
+	end
+	return nil
+end
+
 local function buildBoard()
 	local old = workspace:FindFirstChild(BOARD_NAME)
 	if old then
 		old:Destroy()
 	end
 
-	local model = Instance.new("Model")
-	model.Name = BOARD_NAME
-	local origin = boardCFrame()
-	part({ Name = "LeftPost", Size = Vector3.new(0.5, 6.6, 0.5), CFrame = origin * CFrame.new(-3.6, 3.3, 0.25), Color = BOARD_COLOR, Material = Enum.Material.Wood, Parent = model })
-	part({ Name = "RightPost", Size = Vector3.new(0.5, 6.6, 0.5), CFrame = origin * CFrame.new(3.6, 3.3, 0.25), Color = BOARD_COLOR, Material = Enum.Material.Wood, Parent = model })
-	part({ Name = "Header", Size = Vector3.new(8.2, 0.5, 0.5), CFrame = origin * CFrame.new(0, 6.25, 0.25), Color = BOARD_COLOR, Material = Enum.Material.Wood, Parent = model })
-	part({ Name = "Footer", Size = Vector3.new(8, 0.42, 0.45), CFrame = origin * CFrame.new(0, 1.7, 0.25), Color = BOARD_COLOR, Material = Enum.Material.Wood, Parent = model })
-	local board = part({ Name = "Board", Size = Vector3.new(7.6, 4.25, 0.35), CFrame = origin * CFrame.new(0, 3.95, 0), Color = Color3.fromRGB(105, 68, 38), Material = Enum.Material.Wood, Parent = model })
-	local sign = part({ Name = "BoardTitle", Size = Vector3.new(3.6, 0.55, 0.08), CFrame = origin * CFrame.new(0, 5.8, -0.24), Color = Color3.fromRGB(190, 150, 85), Material = Enum.Material.Wood, Parent = model })
-	addText(sign, "QUEST BOARD", 24)
-	local paperOffsets = { Vector3.new(-1.9, 4.05, -0.25), Vector3.new(1.8, 3.8, -0.25) }
-	for index, quest in QuestConfig.Quests do
-		addPaper(model, origin, paperOffsets[index] or Vector3.new(0, 3.35, -0.25), if index % 2 == 0 then 4 else -3, quest)
+	local boardPart = findTownBoard()
+	if not boardPart then
+		local model = Instance.new("Model")
+		model.Name = BOARD_NAME
+		local origin = boardCFrame()
+		part({ Name = "LeftPost", Size = Vector3.new(0.5, 6.6, 0.5), CFrame = origin * CFrame.new(-3.6, 3.3, 0.25), Color = BOARD_COLOR, Material = Enum.Material.Wood, Parent = model })
+		part({ Name = "RightPost", Size = Vector3.new(0.5, 6.6, 0.5), CFrame = origin * CFrame.new(3.6, 3.3, 0.25), Color = BOARD_COLOR, Material = Enum.Material.Wood, Parent = model })
+		part({ Name = "Header", Size = Vector3.new(8.2, 0.5, 0.5), CFrame = origin * CFrame.new(0, 6.25, 0.25), Color = BOARD_COLOR, Material = Enum.Material.Wood, Parent = model })
+		part({ Name = "Footer", Size = Vector3.new(8, 0.42, 0.45), CFrame = origin * CFrame.new(0, 1.7, 0.25), Color = BOARD_COLOR, Material = Enum.Material.Wood, Parent = model })
+		local board = part({ Name = "Board", Size = Vector3.new(7.6, 4.25, 0.35), CFrame = origin * CFrame.new(0, 3.95, 0), Color = Color3.fromRGB(105, 68, 38), Material = Enum.Material.Wood, Parent = model })
+		local sign = part({ Name = "BoardTitle", Size = Vector3.new(3.6, 0.55, 0.08), CFrame = origin * CFrame.new(0, 5.8, -0.24), Color = Color3.fromRGB(190, 150, 85), Material = Enum.Material.Wood, Parent = model })
+		addText(sign, "QUEST BOARD", 24)
+		local paperOffsets = { Vector3.new(-1.9, 4.05, -0.25), Vector3.new(1.8, 3.8, -0.25) }
+		for index, quest in QuestConfig.Quests do
+			addPaper(model, origin, paperOffsets[index] or Vector3.new(0, 3.35, -0.25), if index % 2 == 0 then 4 else -3, quest)
+		end
+		model.Parent = workspace
+		boardPart = board
 	end
 
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "View Quests"
-	prompt.ObjectText = "Quest Board"
-	prompt.HoldDuration = 0.2
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = board
-	prompt.Triggered:Connect(function(player)
-		boardRemote:FireClient(player)
-	end)
-
-	model.Parent = workspace
+	local prompt = boardPart:FindFirstChildWhichIsA("ProximityPrompt")
+	if not prompt then
+		prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "View Quests"
+		prompt.ObjectText = "Quest Board"
+		prompt.HoldDuration = 0.2
+		prompt.MaxActivationDistance = 12
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = boardPart
+		prompt.Triggered:Connect(function(player)
+			boardRemote:FireClient(player)
+		end)
+	end
 end
 
 local function reward(player: Player, quest: QuestConfig.Quest)

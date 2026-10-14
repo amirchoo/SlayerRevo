@@ -21,8 +21,8 @@ export type Target = {
 local QuestConfig = {}
 
 QuestConfig.Board = {
-	Position = Vector2.new(36, -36), -- north-east edge of the central plaza
-	Facing = Vector2.new(-1, 1),
+	Position = Vector2.new(-14, 96), -- outside the Hunters' Guild
+	Facing = Vector2.new(0, -1),
 }
 
 QuestConfig.Quests = {

@@ -112,7 +112,7 @@ NpcConfig.List = {
 		Pants = Color3.fromRGB(45, 45, 55),
 		Lines = {
 			"The Hunters' Guild keeps track of every beast that threatens this town.",
-			"The quest board will fill up soon. Until then, the hunting grounds to the north need thinning.",
+			"Check the quest board outside for open bounties, or head north to thin the hunting grounds.",
 		},
 	},
 	{

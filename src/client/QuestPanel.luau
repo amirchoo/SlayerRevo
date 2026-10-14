@@ -309,8 +309,8 @@ function QuestPanel.start()
 			end
 		else
 			title.Text = "Active Quests"
-			subtitle.Text = "No active quest. Visit the Quest Board in town."
-			local empty = label(content, "No active quest.\nInteract with the Quest Board at the edge of the central square to pick one up.", 20, SOFT_TEXT)
+			subtitle.Text = "No active quest. Visit the Quest Board outside the Hunters' Guild."
+			local empty = label(content, "No active quest.\nInteract with the Quest Board outside the Hunters' Guild to pick one up.", 20, SOFT_TEXT)
 			empty.Size = UDim2.fromScale(1, 1)
 			empty.TextWrapped = true
 			empty.TextYAlignment = Enum.TextYAlignment.Top
