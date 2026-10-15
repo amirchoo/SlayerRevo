@@ -40,6 +40,7 @@ local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local Stamina = require(ReplicatedStorage.Shared.Stamina)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local CombatInput = require(script.Parent.CombatInput)
+local ParryPredict = require(script.Parent.ParryPredict)
 local Push = require(script.Parent.Push)
 
 type ComboWeapon = CombatConfig.ComboWeapon
@@ -378,6 +379,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		end
 
 		blockRemote:FireServer(true)
+		ParryPredict.guardUp() -- the clang can play without waiting for the server
 		comboStep = 0
 		stopSwings(0.1)
 		setTrails(tool, false)
@@ -397,6 +399,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		stopBlock = function()
 			stopBlock = nil
 			blockRemote:FireServer(false)
+			ParryPredict.guardDown()
 			if guardTrack then
 				guardTrack:Stop(0.15)
 			else

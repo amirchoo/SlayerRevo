@@ -51,6 +51,7 @@ local CookingPose = require(script.CookingPose)
 local TutorialClient = require(script.TutorialClient)
 local Nameplates = require(script.Nameplates)
 local PromptHints = require(script.PromptHints)
+local ParryPredict = require(script.ParryPredict)
 local AdminPanel = require(script.AdminPanel)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 
@@ -101,6 +102,7 @@ AdminPanel.start() -- the ` key, admins only (everyone in Studio)
 ProgressionHud.start()
 task.spawn(EnemyHealthBars.start) -- waits for the Enemies folder
 PromptHints.start()
+ParryPredict.start()
 Nameplates.start()
 task.spawn(AnimalAnimator.start) -- waits for the Animals folder
 task.spawn(PetAnimator.start) -- waits for the Pets folder

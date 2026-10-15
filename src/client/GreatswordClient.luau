@@ -19,6 +19,7 @@ local UserInputService = game:GetService("UserInputService")
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 local CombatInput = require(script.Parent.CombatInput)
+local ParryPredict = require(script.Parent.ParryPredict)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local Stamina = require(ReplicatedStorage.Shared.Stamina)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
@@ -350,6 +351,7 @@ end
 
 local function startGuard(state: Equipped)
 	blockRemote:FireServer(true)
+	ParryPredict.guardUp() -- the clang can play without waiting for the server
 	local guard = state.tracks.guard
 	if guard then
 		guard:Play(0.1)
@@ -363,6 +365,7 @@ local function startGuard(state: Equipped)
 	stopGuard = function()
 		stopGuard = nil
 		blockRemote:FireServer(false)
+		ParryPredict.guardDown()
 		if guard then
 			guard:Stop(0.15)
 		else

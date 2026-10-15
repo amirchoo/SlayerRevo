@@ -16,6 +16,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
+local ParryPredict = require(script.Parent.ParryPredict)
 
 local SPARK_TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
 local DUST_TEXTURE = "rbxasset://textures/particles/smoke_main.dds"
@@ -224,6 +225,9 @@ local function onHit(model: Model?, position: Vector3, direction: Vector3, weapo
 		parryClash(position, look.color)
 	end
 
+	if weapon == "Parry" and ParryPredict.consume(model) then
+		return -- our own parry: its clang already played the instant the claw landed
+	end
 	-- Impact sound from the hit point (3D, so it's quieter further away).
 	local soundSource = Instance.new("Attachment")
 	soundSource.Parent = workspace.Terrain

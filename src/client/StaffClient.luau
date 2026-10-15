@@ -28,6 +28,7 @@ local Stamina = require(ReplicatedStorage.Shared.Stamina)
 local Aim = require(script.Parent.Aim)
 local SkillTrees = require(ReplicatedStorage.Shared.Config.SkillTrees)
 local CombatInput = require(script.Parent.CombatInput)
+local ParryPredict = require(script.Parent.ParryPredict)
 local HudStyle = require(script.Parent.HudStyle)
 local Gamepad = require(script.Parent.Gamepad)
 local LockOn = require(script.Parent.LockOn)
@@ -334,6 +335,7 @@ function StaffClient.new(STAFF: Caster)
 
 	local function startGuard(state: Equipped)
 		blockRemote:FireServer(true)
+		ParryPredict.guardUp() -- the clang can play without waiting for the server
 		local guard = state.tracks.guard
 		if guard then
 			guard:Play(0.1)
@@ -342,6 +344,7 @@ function StaffClient.new(STAFF: Caster)
 		stopGuard = function()
 			stopGuard = nil
 			blockRemote:FireServer(false)
+			ParryPredict.guardDown()
 			if guard then
 				guard:Stop(0.15)
 			end

@@ -20,6 +20,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local ShieldConfig = require(ReplicatedStorage.Shared.Config.ShieldConfig)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
+local ParryWindow = require(ReplicatedStorage.Shared.ParryWindow)
 local EnemyEffects = require(script.Parent.EnemyEffects)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 local HealthService = require(script.Parent.HealthService)
@@ -54,22 +55,6 @@ local function blockAmountInHand(character: Model): number?
 	local tool = character:FindFirstChildOfClass("Tool")
 	return if tool then BLOCK_AMOUNTS[tool.Name] else nil
 end
-
--- Seconds after raising the guard that a hit is parried, per weapon (heavier = shorter).
-local PARRY_WINDOWS: { [string]: number } = {
-	[CombatConfig.Sword.ToolName] = CombatConfig.Sword.Block.ParryWindow,
-	[CombatConfig.Emberfang.ToolName] = CombatConfig.Emberfang.Block.ParryWindow,
-	[CombatConfig.Mace.ToolName] = CombatConfig.Mace.Block.ParryWindow,
-	[CombatConfig.Spear.ToolName] = CombatConfig.Spear.Block.ParryWindow,
-	[CombatConfig.Rapier.ToolName] = CombatConfig.Rapier.Block.ParryWindow,
-	[CombatConfig.Axe.ToolName] = CombatConfig.Axe.Block.ParryWindow,
-	[CombatConfig.DualBlade.ToolName] = CombatConfig.DualBlade.Block.ParryWindow,
-	[CombatConfig.Scythe.ToolName] = CombatConfig.Scythe.Block.ParryWindow,
-	[CombatConfig.Hammer.ToolName] = CombatConfig.Hammer.Block.ParryWindow,
-	[CombatConfig.Staff.ToolName] = CombatConfig.Staff.ParryWindow,
-	[CombatConfig.Grimoire.ToolName] = CombatConfig.Grimoire.ParryWindow,
-	[CombatConfig.Greatsword.ToolName] = CombatConfig.Greatsword.ParryWindow,
-}
 
 -- When each player's guard went up, if that raise can still parry (see ParryRecovery),
 -- and when they last raised it at all.
@@ -181,10 +166,7 @@ function BlockService.tryParry(target: Model, attacker: Model): boolean
 		return false
 	end
 	local tool = target:FindFirstChildOfClass("Tool")
-	local window = tool and PARRY_WINDOWS[tool.Name]
-	if tool and window then
-		window += SkillMath.general(player, "ParryWindow") + SkillMath.weapon(player, tool.Name, "ParryWindow")
-	end
+	local window = tool and ParryWindow.of(player, tool.Name)
 	if not window or os.clock() - raisedAt > window then
 		return false
 	end
