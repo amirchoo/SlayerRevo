@@ -3,9 +3,8 @@
 -- Store (Toolbox > Audio, e.g. "sword hit", "metal clang", "blunt impact", "whoosh") and
 -- paste its ID as "rbxassetid://123..." into Id. Set Id = "" to silence a sound.
 --
--- The defaults are stand-ins built from the few sounds bundled with Roblox
--- (rbxasset://sounds/...), re-pitched to roughly fit, so everything makes some noise
--- until real sounds are picked.
+-- Most are free Creator Store sounds (Pro Sound Effects where it had a fit). ChargeLevel
+-- is still a sound bundled with Roblox (rbxasset://sounds/...), re-pitched per level.
 --
 -- One-shot sounds (play, replay) vary their pitch a little each time (PITCH_VARIATION) so
 -- repeated hits and swings don't grate; a spec with Steady = true always plays exactly.
@@ -19,56 +18,53 @@ export type SoundSpec = {
 
 local PITCH_VARIATION = 0.1 -- one-shots play up to 10% higher or lower
 
-local THUD = "rbxasset://sounds/action_jump_land.mp3"
-local WHOOSH = "rbxasset://sounds/action_jump.mp3"
 local TICK = "rbxasset://sounds/volume_slider.ogg"
-local BOOM = "rbxasset://sounds/impact_explosion_03.mp3"
 
 local SPECS: { [string]: SoundSpec } = {
 	-- Swings (played on the attacker's own screen as they swing).
-	SwordSwing = { Id = WHOOSH, Pitch = 1.6, Volume = 0.4 },
-	MaceSwing = { Id = WHOOSH, Pitch = 1.1, Volume = 0.45 },
-	SpearSwing = { Id = WHOOSH, Pitch = 2.0, Volume = 0.35 },
+	SwordSwing = { Id = "rbxassetid://134671877618939", Pitch = 1, Volume = 0.5 },
+	MaceSwing = { Id = "rbxassetid://127747416982963", Pitch = 0.85, Volume = 0.55 },
+	SpearSwing = { Id = "rbxassetid://128213617026859", Pitch = 1.15, Volume = 0.45 },
 	RapierSwing = { Id = "rbxassetid://137418191870543", Pitch = 1, Volume = 0.5 }, -- also each stab of the flurry, faster with charge
 	GreatswordSwing = { Id = "rbxassetid://137628815514180", Pitch = 1, Volume = 0.6 },
 	GreatswordSlam = { Id = "rbxassetid://140277245983305", Pitch = 1, Volume = 0.8 }, -- the charged slam, as it lands
-	AxeSwing = { Id = WHOOSH, Pitch = 1.3, Volume = 0.45 },
-	DaggerSwing = { Id = WHOOSH, Pitch = 2.5, Volume = 0.3 },
-	DualBladeSwing = { Id = WHOOSH, Pitch = 2.1, Volume = 0.35 },
-	HammerSwing = { Id = WHOOSH, Pitch = 0.65, Volume = 0.6 },
-	ScytheSwing = { Id = WHOOSH, Pitch = 0.95, Volume = 0.5 },
-	StaffCast = { Id = WHOOSH, Pitch = 2.2, Volume = 0.4 },
-	StaffBlast = { Id = BOOM, Pitch = 1.6, Volume = 0.45 },
+	AxeSwing = { Id = "rbxassetid://132679887057202", Pitch = 0.9, Volume = 0.55 },
+	DaggerSwing = { Id = "rbxassetid://122795737772215", Pitch = 1.25, Volume = 0.4 },
+	DualBladeSwing = { Id = "rbxassetid://9126047581", Pitch = 1.1, Volume = 0.4 },
+	HammerSwing = { Id = "rbxassetid://101266427032050", Pitch = 0.8, Volume = 0.7 },
+	ScytheSwing = { Id = "rbxassetid://131550402637533", Pitch = 0.8, Volume = 0.55 },
+	StaffCast = { Id = "rbxassetid://106456870308007", Pitch = 1.3, Volume = 0.4 },
+	StaffBlast = { Id = "rbxassetid://139681553729333", Pitch = 1.1, Volume = 0.5 },
 
 	-- Impacts when an enemy is hit (heard by everyone nearby).
-	SwordHit = { Id = THUD, Pitch = 1.5, Volume = 0.8 },
-	MaceHit = { Id = THUD, Pitch = 0.7, Volume = 1 },
-	SpearHit = { Id = THUD, Pitch = 1.9, Volume = 0.7 },
-	RapierHit = { Id = THUD, Pitch = 2.2, Volume = 0.55 },
+	SwordHit = { Id = "rbxassetid://138293953015099", Pitch = 1, Volume = 0.85 },
+	MaceHit = { Id = "rbxassetid://9113568548", Pitch = 0.75, Volume = 1 },
+	SpearHit = { Id = "rbxassetid://111984442168614", Pitch = 0.9, Volume = 0.8 },
+	RapierHit = { Id = "rbxassetid://108673879396403", Pitch = 1.15, Volume = 0.65 },
 	GreatswordHit = { Id = "", Pitch = 1, Volume = 0.5 }, -- silent: the swing and slam sounds already land with the hit
-	AxeHit = { Id = THUD, Pitch = 1.1, Volume = 0.9 },
-	DaggerHit = { Id = THUD, Pitch = 2.0, Volume = 0.55 },
-	DualBladeHit = { Id = THUD, Pitch = 1.8, Volume = 0.6 },
-	HammerHit = { Id = BOOM, Pitch = 0.9, Volume = 0.7 },
-	ScytheHit = { Id = THUD, Pitch = 1.4, Volume = 0.75 },
-	StaffFireHit = { Id = BOOM, Pitch = 1.8, Volume = 0.5 },
-	StaffWaterHit = { Id = THUD, Pitch = 1.6, Volume = 0.7 },
-	StaffEarthHit = { Id = THUD, Pitch = 0.8, Volume = 1 },
-	StaffElectricHit = { Id = TICK, Pitch = 0.6, Volume = 1 },
-	GrimoireFaithHit = { Id = TICK, Pitch = 1.4, Volume = 0.7 },
-	GrimoireNecromancyHit = { Id = THUD, Pitch = 0.9, Volume = 0.8 },
-	BowHit = { Id = THUD, Pitch = 2.3, Volume = 0.6 },
-	CrossbowHit = { Id = THUD, Pitch = 1.8, Volume = 0.75 },
-	BlunderbussHit = { Id = THUD, Pitch = 2.1, Volume = 0.35 }, -- per pellet, so quieter
+	AxeHit = { Id = "rbxassetid://159798370", Pitch = 0.9, Volume = 0.9 },
+	DaggerHit = { Id = "rbxassetid://136518851744814", Pitch = 1.1, Volume = 0.65 },
+	DualBladeHit = { Id = "rbxassetid://137287949709499", Pitch = 1.15, Volume = 0.65 },
+	HammerHit = { Id = "rbxassetid://9113225986", Pitch = 0.8, Volume = 1 },
+	ScytheHit = { Id = "rbxassetid://72106360544198", Pitch = 0.9, Volume = 0.8 },
+	StaffFireHit = { Id = "rbxassetid://112891149928058", Pitch = 1, Volume = 0.6 },
+	StaffWaterHit = { Id = "rbxassetid://9125703168", Pitch = 1, Volume = 0.8 },
+	StaffEarthHit = { Id = "rbxassetid://9118627392", Pitch = 0.85, Volume = 1 },
+	StaffElectricHit = { Id = "rbxassetid://9114277757", Pitch = 1.1, Volume = 0.7 },
+	GrimoireFaithHit = { Id = "rbxassetid://137715760191944", Pitch = 1, Volume = 0.6 },
+	GrimoireNecromancyHit = { Id = "rbxassetid://131653988627020", Pitch = 0.9, Volume = 0.7 },
+	BowHit = { Id = "rbxassetid://129822254617682", Pitch = 1.1, Volume = 0.7 },
+	CrossbowHit = { Id = "rbxassetid://131010454040062", Pitch = 0.85, Volume = 0.85 },
+	BlunderbussHit = { Id = "rbxassetid://108077049514411", Pitch = 1.2, Volume = 0.35 }, -- per pellet, so quieter
 
 	-- Movement.
-	DashWhoosh = { Id = WHOOSH, Pitch = 1.9, Volume = 0.35 }, -- a dash (heard by everyone nearby)
+	DashWhoosh = { Id = "rbxassetid://104835897489348", Pitch = 1.2, Volume = 0.4 }, -- a dash (heard by everyone nearby)
 
 	-- Other feedback.
-	Block = { Id = THUD, Pitch = 1.8, Volume = 0.8 }, -- a blocked hit
+	Block = { Id = "rbxassetid://136623299198321", Pitch = 1, Volume = 0.8 }, -- a blocked hit
 	ParryHit = { Id = "rbxassetid://137580087669661", Pitch = 1, Volume = 0.8 }, -- a parried hit, every weapon (heard by everyone nearby)
 	ChargeLevel = { Id = TICK, Pitch = 1, Volume = 0.8, Steady = true }, -- greatsword charge level reached (pitch rises per level)
-	Heartbeat = { Id = THUD, Pitch = 0.5, Volume = 0.6 }, -- thumps while your health is low
+	Heartbeat = { Id = "rbxassetid://176554627", Pitch = 1, Volume = 0.6 }, -- thumps while your health is low
 
 	-- Town and wildlife (Pro Sound Effects and other free Creator Store sounds).
 	BirdsDay = { Id = "rbxassetid://9112742473", Pitch = 1, Volume = 0.35 }, -- loop: daytime birdsong over town
@@ -82,7 +78,7 @@ local SPECS: { [string]: SoundSpec } = {
 	ChickenCluck = { Id = "rbxassetid://77584650945481", Pitch = 1, Volume = 0.5 },
 	CowMoo = { Id = "rbxassetid://138223429", Pitch = 1, Volume = 0.5 },
 	Sizzle = { Id = "rbxassetid://6383276435", Pitch = 1, Volume = 0.6 }, -- meat cooking on the campfire
-	Eat = { Id = "", Pitch = 1, Volume = 0.6 }, -- eating cooked meat (no sound picked yet)
+	Eat = { Id = "rbxassetid://6830313781", Pitch = 1, Volume = 0.6 }, -- eating cooked meat
 }
 
 local Sounds = {}
