@@ -352,12 +352,13 @@ function TutorialClient.start()
 			total -= 1
 		end
 		stepCounter.Text = `Training {position} / {total}`
-		objective.Text = fill(step.Objective, weapon)
+		local stepWeapon = TutorialConfig.stepWeapon(id, weapon) -- a caster's sidearm for the guard drills
+		objective.Text = fill(step.Objective, stepWeapon)
 		if retype then
-			typeOut(line, fill(step.Line, weapon))
+			typeOut(line, fill(step.Line, stepWeapon))
 			HudStyle.pop(card, 0.94)
 		else
-			line.Text = fill(step.Line, weapon)
+			line.Text = fill(step.Line, stepWeapon)
 		end
 		placeCard(id)
 		updateCount()

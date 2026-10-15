@@ -27,7 +27,7 @@ InventoryConfig.WeaponSlots = {
 -- The filters under the backpack's Primary tab, in order: each lists the weapons it shows
 -- (by Name). Display only; the Primary slot itself goes by Class.
 InventoryConfig.PrimaryFilters = {
-	{ Id = "One-Handed", Weapons = { "Sword", "Emberfang", "Rapier", "Axe", "Mace" } },
+	{ Id = "One-Handed", Weapons = { "Sword", "Emberfang", "Rapier", "Dagger", "Axe", "Mace" } },
 	{ Id = "Two-Handed", Weapons = { "Greatsword", "Hammer", "DualBlade" } },
 	{ Id = "Polearms", Weapons = { "Spear", "Scythe" } },
 }
@@ -58,6 +58,7 @@ InventoryConfig.Weapons = {
 	{ Name = "Sword", Class = "Swords", Description = "Quick 3-hit combo. Hold to spin." },
 	{ Name = "Emberfang", Class = "Swords", Rarity = "Epic", Description = "A slayer's blade: the sword's moves, hitting harder. Shares the Sword skill tree." },
 	{ Name = "Rapier", Class = "Swords", Description = "Elegant, quick thrusts with long reach. Hold to unleash a flurry of stabs." },
+	{ Name = "Dagger", Class = "Swords", Description = "A light knife: fast slashes and stabs, but you have to get close. Hold to lunge into a backstab. Guards only lightly." },
 	{ Name = "DualBlade", Class = "Swords", Description = "A blade in each hand: a fast 4-cut combo. Hold to rush wherever you walk, slashing all around." },
 	{ Name = "Greatsword", Class = "Swords", Description = "Wide sweeps. Hold to charge a slam." },
 	{ Name = "Axe", Class = "Axes", Description = "Hard chops. Hold for a leaping cleave that bleeds." },
@@ -75,6 +76,10 @@ InventoryConfig.Weapons = {
 -- What a new player's hotbar holds (each goes in its category's slot); everything else
 -- starts stored.
 InventoryConfig.DefaultHotbar = { "Sword", "Staff", "Bow" }
+
+-- A second weapon that comes with a starter pick, by the starter weapon: casters can't guard,
+-- so a mage also gets the dagger (in the Primary slot) for close work.
+InventoryConfig.StarterSidearms = { Staff = "Dagger" } :: { [string]: string }
 
 function InventoryConfig.weapon(name: string): WeaponInfo?
 	for _, info in InventoryConfig.Weapons do

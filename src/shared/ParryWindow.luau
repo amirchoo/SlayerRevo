@@ -13,12 +13,11 @@ local BASE: { [string]: number } = {
 	[CombatConfig.Mace.ToolName] = CombatConfig.Mace.Block.ParryWindow,
 	[CombatConfig.Spear.ToolName] = CombatConfig.Spear.Block.ParryWindow,
 	[CombatConfig.Rapier.ToolName] = CombatConfig.Rapier.Block.ParryWindow,
+	[CombatConfig.Dagger.ToolName] = CombatConfig.Dagger.Block.ParryWindow,
 	[CombatConfig.Axe.ToolName] = CombatConfig.Axe.Block.ParryWindow,
 	[CombatConfig.DualBlade.ToolName] = CombatConfig.DualBlade.Block.ParryWindow,
 	[CombatConfig.Scythe.ToolName] = CombatConfig.Scythe.Block.ParryWindow,
 	[CombatConfig.Hammer.ToolName] = CombatConfig.Hammer.Block.ParryWindow,
-	[CombatConfig.Staff.ToolName] = CombatConfig.Staff.ParryWindow,
-	[CombatConfig.Grimoire.ToolName] = CombatConfig.Grimoire.ParryWindow,
 	[CombatConfig.Greatsword.ToolName] = CombatConfig.Greatsword.ParryWindow,
 }
 

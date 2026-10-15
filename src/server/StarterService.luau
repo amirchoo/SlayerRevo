@@ -37,6 +37,15 @@ local function onChoose(player: Player, weapon: unknown)
 	else
 		InventoryService.grant(player, choice.Weapon)
 	end
+	-- A caster's sidearm comes too (InventoryConfig.StarterSidearms).
+	local sidearm = InventoryConfig.StarterSidearms[choice.Weapon]
+	if sidearm then
+		if InventoryService.owns(player, sidearm) then
+			InventoryService.move(player, sidearm, true)
+		else
+			InventoryService.grant(player, sidearm)
+		end
+	end
 	ArmorService.giveSet(player, choice.ArmorSet)
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")

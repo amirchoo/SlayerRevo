@@ -17,7 +17,7 @@
 --   Weapon: Damage, LightDamage, HeavyDamage (fractions), StaminaCost, LightStaminaCost,
 --     HeavyStaminaCost (fractions, negative = cheaper), BlockAmount, ParryWindow, and each
 --     weapon's own: SpinDuration (s, sword), ChargeSpeed (greatsword), QuakeRadius (mace, hammer),
---     LungeDistance (spear), HookReach (scythe), FlurryHits (extra stabs, rapier), RushDuration (s, dual blade), BleedDamage (per tick, axe), DrawSpeed (bow), ReloadSpeed (crossbow, blunderbuss), DamageRange (blunderbuss) as fractions; the
+--     LungeDistance (spear, dagger), HookReach (scythe), FlurryHits (extra stabs, rapier), RushDuration (s, dual blade), BleedDamage (per tick, axe), DrawSpeed (bow), ReloadSpeed (crossbow, blunderbuss), DamageRange (blunderbuss) as fractions; the
 --     casters' (staff, grimoire) are listed with SkillTrees.Casters below.
 
 export type Node = {
@@ -180,6 +180,12 @@ SkillTrees.Weapons = {
 		{ Id = "Duelist", Name = "Duelist", Description = "+15% thrust damage, thrusts cost 20% less stamina.", Tier = 4, MaxRank = 1, Effects = { LightDamage = 0.15, LightStaminaCost = -0.2 } },
 		{ Id = "ThousandCuts", Name = "Thousand Cuts", Description = "Flurry strikes 2 more times, +15% flurry damage.", Tier = 4, MaxRank = 1, Effects = { FlurryHits = 2, HeavyDamage = 0.15 } }
 	),
+	Dagger = weaponTree(
+		{ Id = "Shadowstep", Name = "Shadowstep", Description = "Backstab lunges 15% further.", Tier = 2, MaxRank = 3, Effects = { LungeDistance = 0.15 } },
+		{ table.clone(HEAVY_TRAINING), guardcraft() },
+		{ Id = "Cutthroat", Name = "Cutthroat", Description = "+15% combo damage, combo cuts cost 20% less stamina.", Tier = 4, MaxRank = 1, Effects = { LightDamage = 0.15, LightStaminaCost = -0.2 } },
+		{ Id = "Assassin", Name = "Assassin", Description = "+30% backstab damage.", Tier = 4, MaxRank = 1, Effects = { HeavyDamage = 0.3 } }
+	),
 	DualBlade = weaponTree(
 		{ Id = "Relentless", Name = "Relentless", Description = "Rush lasts 0.5 s longer.", Tier = 2, MaxRank = 3, Effects = { RushDuration = 0.5 } },
 		{ table.clone(HEAVY_TRAINING), guardcraft() },
@@ -214,7 +220,7 @@ SkillTrees.Weapons = {
 
 -- Caster weapons (the staff, the grimoire) each have a class tree, drawn as branches growing
 -- from the class node, like the General tree. Unlock the class first (until then the weapon
--- only blocks), then each element is its own branch that must be unlocked before that element
+-- can't cast), then each element is its own branch that must be unlocked before that element
 -- can be cast, with upgrades beyond. All their nodes are tier 1; the Requires chains set the
 -- order. Element stats (fractions unless noted): <Element>Damage (that element's spells),
 -- BurnDamage (per tick), WaterKnockback, EarthStun (seconds), ElectricRadius (thunder),
@@ -314,6 +320,6 @@ SkillTrees.SharedTrees = {
 } :: { [string]: string }
 
 -- Tabs in the skill screen, in order ("General" first, then each weapon).
-SkillTrees.WeaponOrder = { "Sword", "Rapier", "DualBlade", "Greatsword", "Axe", "Mace", "Hammer", "Spear", "Scythe", "Bow", "Crossbow", "Blunderbuss", "Staff", "Grimoire" }
+SkillTrees.WeaponOrder = { "Sword", "Rapier", "Dagger", "DualBlade", "Greatsword", "Axe", "Mace", "Hammer", "Spear", "Scythe", "Bow", "Crossbow", "Blunderbuss", "Staff", "Grimoire" }
 
 return SkillTrees

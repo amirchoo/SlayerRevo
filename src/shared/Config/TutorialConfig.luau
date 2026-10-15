@@ -12,6 +12,7 @@
 
 local CombatConfig = require(script.Parent.CombatConfig)
 local EnemyConfig = require(script.Parent.EnemyConfig)
+local InventoryConfig = require(script.Parent.InventoryConfig)
 
 export type Step = {
 	Line: string, -- what Hode says as the step starts
@@ -23,22 +24,30 @@ export type Lesson = {
 	Light: string, -- Hode's line for the Light step (how the combo works)
 	Heavy: string, -- and for the Heavy step
 	LightGoal: number?, -- hits to land (default Steps.Light.Goal)
-	Caster: boolean?, -- casters unlock their magic in the skill tree first (CasterOrder)
+	-- Casters can't guard: they learn the melee drills with their Sidearm (a Primary weapon
+	-- they start with), then unlock their magic and cast at the dummy (CasterOrder).
+	Caster: boolean?,
+	Sidearm: string?,
 }
 
 export type Station = { Stand: Vector2, Facing: Vector2 }
 
 local TutorialConfig = {}
 
--- The steps, in order, for most weapons; casters (the staff) unlock their class and an element
--- in the skill tree before they can cast at all, so their skill steps come first.
+-- The steps, in order, for most weapons. Casters (the staff) do the melee drills with their
+-- sidearm (the dagger), then unlock their class and an element in the skill tree (they can't
+-- cast before that), then cast at the dummy.
 TutorialConfig.Order = { "Intro", "Light", "Heavy", "LockOn", "Dodge", "Block", "Parry", "SkillsOpen", "SkillsSpend", "Spar" }
-TutorialConfig.CasterOrder = { "Intro", "SkillsOpen", "SkillsSpend", "Light", "Heavy", "LockOn", "Dodge", "Block", "Parry", "Spar" }
+TutorialConfig.CasterOrder = { "Intro", "Light", "Heavy", "LockOn", "Dodge", "Block", "Parry", "SkillsOpen", "SkillsSpend", "Cast", "CastHeavy", "Spar" }
+-- The steps a caster does with their sidearm in hand.
+local SIDEARM_STEPS = { Light = true, Heavy = true, LockOn = true, Dodge = true, Block = true, Parry = true }
 
 TutorialConfig.Steps = {
 	Intro = { Line = "", Objective = "" }, -- the cutscene (Cutscene below)
 	Light = { Line = "", Objective = "Hit the training dummy ({Attack})", Goal = 6 },
 	Heavy = { Line = "", Objective = "Land heavy attacks on the dummy (hold {Attack})", Goal = 2 },
+	Cast = { Line = "", Objective = "Hit the training dummy with spells ({Attack})", Goal = 4 }, -- casters
+	CastHeavy = { Line = "", Objective = "Land charged spells on the dummy (hold {Attack})", Goal = 2 },
 	LockOn = {
 		Line = "Out there, things move. Lock on and you'll never lose sight of them: you'll keep facing your target, and so will every swing.",
 		Objective = "Lock on to the sparring orc ({Lock})",
@@ -76,7 +85,7 @@ TutorialConfig.Steps = {
 -- Casters' skill steps say what to unlock.
 TutorialConfig.CasterSkills = {
 	SkillsOpen = {
-		Line = "A {Weapon} is just a stick until you know its magic. Open your skill tree.",
+		Line = "Steel's not why you came, though. A {Weapon} is just a stick until you know its magic. Open your skill tree.",
 		Objective = "Open your skill tree ({Skills})",
 	},
 	SkillsSpend = {
@@ -94,6 +103,10 @@ local SWORD: Lesson = {
 TutorialConfig.Weapons = {
 	Sword = SWORD,
 	Emberfang = SWORD, -- the sword's moves
+	Dagger = {
+		Light = "Click for four quick strikes: two slashes, a stab, then a rising stab that springs you in. A knife has no reach: get right on top of them.",
+		Heavy = "Hold to crouch and coil, release to lunge into a backstab. One deep stab that hits harder than anything else you've got.",
+	},
 	Rapier = {
 		Light = "Click for three quick stabs; the third lunges forward. Long reach, narrow line: keep your target right in front of you.",
 		Heavy = "Hold to gather a flurry, release to unleash it. The longer you hold, the more stabs, up to eight. The last one knocks back.",
@@ -131,8 +144,8 @@ TutorialConfig.Weapons = {
 	Staff = {
 		Light = "Click to cast a missile at what you're aiming at, or at your lock-on target. Spells cost mana, not stamina; watch the blue bar.",
 		Heavy = "Hold to charge a stronger spell, release to cast it. Every element's is different. Try it.",
-		LightGoal = 4,
 		Caster = true,
+		Sidearm = InventoryConfig.StarterSidearms.Staff, -- a mage can't guard with the staff: the dagger is for close work
 	},
 } :: { [string]: Lesson }
 
@@ -170,6 +183,16 @@ function TutorialConfig.order(weapon: string): { string }
 	return if lesson and lesson.Caster then TutorialConfig.CasterOrder else TutorialConfig.Order
 end
 
+-- The weapon step `id` is done with (drawn for it, and named in its text) when `weapon` is
+-- being taught: a caster's sidearm for the melee drills, else `weapon` itself.
+function TutorialConfig.stepWeapon(id: string, weapon: string): string
+	local lesson = TutorialConfig.Weapons[weapon]
+	if lesson and lesson.Sidearm and SIDEARM_STEPS[id] then
+		return lesson.Sidearm
+	end
+	return weapon
+end
+
 function TutorialConfig.step(id: string, weapon: string): Step
 	local base = TutorialConfig.Steps[id]
 	local lesson = TutorialConfig.Weapons[weapon]
@@ -177,10 +200,18 @@ function TutorialConfig.step(id: string, weapon: string): Step
 		base = TutorialConfig.CasterSkills[id]
 	end
 	local step = table.clone(base)
-	if lesson and id == "Light" then
+	-- Light/Heavy are taught for the weapon in hand (a caster's sidearm); Cast/CastHeavy with
+	-- the caster's own lines.
+	local taught = TutorialConfig.Weapons[TutorialConfig.stepWeapon(id, weapon)]
+	if taught and id == "Light" then
+		step.Line = taught.Light
+		step.Goal = taught.LightGoal or base.Goal
+	elseif taught and id == "Heavy" then
+		step.Line = taught.Heavy
+	elseif lesson and id == "Cast" then
 		step.Line = lesson.Light
 		step.Goal = lesson.LightGoal or base.Goal
-	elseif lesson and id == "Heavy" then
+	elseif lesson and id == "CastHeavy" then
 		step.Line = lesson.Heavy
 	end
 	return step

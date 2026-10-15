@@ -28,19 +28,19 @@ local HitEffects = require(script.Parent.HitEffects)
 
 local BLOCK = CombatConfig.Blocking -- charges, recharge, and knockback are shared by all blades
 
--- Weapons that can block, and how much damage each absorbs per block.
+-- Weapons that can block, and how much damage each absorbs per block (not the casters: they
+-- don't guard).
 local BLOCK_AMOUNTS: { [string]: number } = {
 	[CombatConfig.Sword.ToolName] = CombatConfig.Sword.Block.BlockAmount,
 	[CombatConfig.Emberfang.ToolName] = CombatConfig.Emberfang.Block.BlockAmount,
 	[CombatConfig.Mace.ToolName] = CombatConfig.Mace.Block.BlockAmount,
 	[CombatConfig.Spear.ToolName] = CombatConfig.Spear.Block.BlockAmount,
 	[CombatConfig.Rapier.ToolName] = CombatConfig.Rapier.Block.BlockAmount,
+	[CombatConfig.Dagger.ToolName] = CombatConfig.Dagger.Block.BlockAmount,
 	[CombatConfig.Axe.ToolName] = CombatConfig.Axe.Block.BlockAmount,
 	[CombatConfig.DualBlade.ToolName] = CombatConfig.DualBlade.Block.BlockAmount,
 	[CombatConfig.Scythe.ToolName] = CombatConfig.Scythe.Block.BlockAmount,
 	[CombatConfig.Hammer.ToolName] = CombatConfig.Hammer.Block.BlockAmount,
-	[CombatConfig.Staff.ToolName] = CombatConfig.Staff.BlockAmount,
-	[CombatConfig.Grimoire.ToolName] = CombatConfig.Grimoire.BlockAmount,
 	[CombatConfig.Greatsword.ToolName] = CombatConfig.Greatsword.BlockAmount,
 }
 

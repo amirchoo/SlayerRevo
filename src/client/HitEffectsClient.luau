@@ -42,6 +42,7 @@ local LOOKS: { [string]: Look } = {
 	Mace = { style = "Blunt", color = Color3.fromRGB(255, 215, 150), size = 1.1 },
 	Spear = { style = "Pierce", color = Color3.fromRGB(200, 230, 255), size = 1 },
 	Rapier = { style = "Pierce", color = Color3.fromRGB(235, 240, 255), size = 0.85 },
+	Dagger = { style = "Slash", color = Color3.fromRGB(230, 235, 245), size = 0.7 },
 	Axe = { style = "Slash", color = Color3.fromRGB(255, 190, 150), size = 1.15 },
 	DualBlade = { style = "Slash", color = Color3.fromRGB(200, 215, 255), size = 0.85 },
 	Hammer = { style = "Blunt", color = Color3.fromRGB(255, 200, 130), size = 1.6 },

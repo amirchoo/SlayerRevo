@@ -451,6 +451,57 @@ local Rapier: ComboWeapon = {
 	},
 }
 
+-- Dagger: a light knife for close work (the mage's sidearm, but anyone can use it). A fast
+-- 4-hit combo mixing slashes and stabs with very little reach; its heavy is a backstab: a
+-- quick crouch, then a short lunge into one deep stab. Guards and parries, but its block
+-- absorbs very little. Animations from tools/dagger_anims.py ("" until published).
+local Dagger: ComboWeapon = {
+	ToolName = "Dagger",
+	Hand = "Right",
+	IdleAnimation = "", -- DaggerIdle
+	AnimationSpeed = 1,
+	Stamina = 4,
+	ModelFit = { Length = 2.6, GripFrom = 0.2 }, -- placeholder fit: check it in hand
+	TrailColor = Color3.fromRGB(225, 230, 240),
+	Combo = {
+		-- HitDelay matches each move's "Hit" keyframe in tools/dagger_anims.py.
+		{ Animation = "", Damage = 9, Cooldown = 0.22, HitDelay = 0.1 }, -- DaggerSlash1
+		{ Animation = "", Damage = 9, Cooldown = 0.22, HitDelay = 0.1 }, -- DaggerSlash2
+		{ Animation = "", Damage = 11, Cooldown = 0.24, HitDelay = 0.1 }, -- DaggerStab3
+		{ Animation = "", Damage = 18, Cooldown = 0.45, HitDelay = 0.16, Lunge = 18, Knockback = 10 }, -- DaggerStab4
+	},
+	ComboWindow = 0.7,
+	Range = 4.5, -- very short: you have to be right on them
+	Width = 4.5,
+	Height = 5,
+	Block = {
+		Animation = "", -- DaggerGuard
+		BlockAmount = 8, -- the lightest guard there is
+		ParryWindow = 0.24,
+	},
+	Heavy = {
+		Kind = "Thrust",
+		Stamina = 16,
+		WindUpAnimation = "", -- DaggerWindUp
+		ThrustAnimation = "", -- DaggerBackstab
+		HoldTime = 0.2,
+		FullChargeTime = 0.6, -- quick to ready
+		MaxHold = 2,
+		MinDamage = 28,
+		MaxDamage = 55,
+		MinDistance = 3,
+		MaxDistance = 8,
+		LungeTime = 0.15,
+		Reach = 3,
+		Width = 3.5,
+		Height = 5,
+		Knockback = 8,
+		HitDelay = 0.12, -- matches DaggerBackstab's "Hit" keyframe
+		Recovery = 0.5,
+		WalkSpeed = 9,
+	},
+}
+
 -- How many stabs a flurry gets for a charge of `power` (0..1), plus `bonus` from skills
 -- (FlurryHits). Shared so the client's animation and the server's hits agree.
 local function flurryHits(flurry: FlurryHeavy, power: number, bonus: number?): number
@@ -726,7 +777,6 @@ local Staff = {
 	ChargeAnimation = "80897307077510", -- StaffCharge (held raised while charging)
 	BlastAnimation = "73647528064933", -- StaffBlast (heavy release: Water, Earth, Lightning, Faith)
 	SlamAnimation = "", -- StaffSlam (Fire\'s heavy: the staff slammed into the ground)
-	GuardAnimation = Sword.Block.Animation,
 	-- How the hand holds it (Tool.Grip): its length along the grip part's Z.
 	Grip = CFrame.new(0, 0, -0.3) * CFrame.Angles(math.pi / 2, 0, 0),
 	AimWithHand = false, -- see the grimoire's
@@ -742,8 +792,6 @@ local Staff = {
 	Recovery = 0.8, -- seconds after a blast before the next charge
 	ChargeWalkSpeed = 8,
 	MaxRange = 140, -- studs a missile flies before fizzling
-	BlockAmount = 12,
-	ParryWindow = 0.22,
 	-- A real model (assets/weapons/Staff.rbxmx); see Sword.ModelFit. Held below the middle.
 	ModelFit = { Length = 6, GripFrom = 0.38 },
 	Elements = {
@@ -782,7 +830,6 @@ local Grimoire = {
 	ChargeAnimation = "94630732418140", -- GrimoireCharge (held while charging)
 	BlastAnimation = "101609423364698", -- GrimoireBlast (heavy release)
 	SlamAnimation = "",
-	GuardAnimation = "", -- the book raised as a shield (code-driven while "")
 	-- Held by the bottom of its spine, turned so its pages face the reader.
 	Grip = CFrame.Angles(0, 0, math.rad(-90)) * CFrame.new(0, 0, -0.3) * CFrame.Angles(math.pi / 2, 0, 0),
 	-- While casting, the head and the free (right) hand turn onto the aim on top of the
@@ -800,8 +847,6 @@ local Grimoire = {
 	Recovery = 0.8,
 	ChargeWalkSpeed = 8,
 	MaxRange = 140,
-	BlockAmount = 10,
-	ParryWindow = 0.22,
 	-- A real model (assets/weapons/Grimoire.rbxmx): held by the spine, the book standing upright.
 	ModelFit = { Length = 1.6, GripFrom = 0.2 },
 	Elements = {
@@ -930,6 +975,7 @@ return {
 	Mace = Mace,
 	Spear = Spear,
 	Rapier = Rapier,
+	Dagger = Dagger,
 	flurryHits = flurryHits,
 	Axe = Axe,
 	DualBlade = DualBlade,

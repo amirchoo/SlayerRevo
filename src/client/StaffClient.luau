@@ -5,7 +5,7 @@
 --     centre). Held past HoldTime: charge a blast (the staff is raised and sparks in the
 --     element's colour gather at its tip, with a chime at full charge); let go to release it.
 --   Spells spend mana (see ManaService), not stamina.
---   Block (held): guard, like any weapon.
+--   No block or parry: casters fight from range (a mage guards with the dagger, a Primary weapon).
 --   R, or clicking/tapping an element in the bar above the meters: switch element.
 -- The element bar (the unlocked elements, the current one highlighted) shows only while the
 -- caster is in hand and at least one element is unlocked. Spells need the caster's class and
@@ -28,14 +28,12 @@ local Stamina = require(ReplicatedStorage.Shared.Stamina)
 local Aim = require(script.Parent.Aim)
 local SkillTrees = require(ReplicatedStorage.Shared.Config.SkillTrees)
 local CombatInput = require(script.Parent.CombatInput)
-local ParryPredict = require(script.Parent.ParryPredict)
 local HudStyle = require(script.Parent.HudStyle)
 local Gamepad = require(script.Parent.Gamepad)
 local LockOn = require(script.Parent.LockOn)
 
 type Caster = typeof(CombatConfig.Staff)
 
-local BLOCK = CombatConfig.Blocking
 local ELEMENT_ICON_SIZE = 36
 local ELEMENT_GAP = 8
 local ELEMENT_BAR_BOTTOM = -192 -- above the mana bar
@@ -53,7 +51,6 @@ local elementRemote = remotes:WaitForChild("StaffElement") :: RemoteEvent
 local castRemote = remotes:WaitForChild("StaffCast") :: RemoteEvent
 local chargeRemote = remotes:WaitForChild("StaffCharge") :: RemoteEvent
 local releaseRemote = remotes:WaitForChild("StaffRelease") :: RemoteEvent
-local blockRemote = remotes:WaitForChild("SwordBlock") :: RemoteEvent
 
 local StaffClient = {}
 
@@ -128,7 +125,6 @@ function StaffClient.new(STAFF: Caster)
 		charge = makeAnimation(STAFF.ChargeAnimation),
 		blast = makeAnimation(STAFF.BlastAnimation),
 		slam = makeAnimation(STAFF.SlamAnimation),
-		guard = makeAnimation(STAFF.GuardAnimation),
 	}
 
 	type Tracks = { [string]: AnimationTrack }
@@ -148,7 +144,7 @@ function StaffClient.new(STAFF: Caster)
 					-- The idle is Movement, not Idle: Roblox's own "mood" animation plays at Idle and
 					-- would win the arms (dropping the book). It still yields to the Action spells.
 					track.Priority = if name == "idle" then Enum.AnimationPriority.Movement else Enum.AnimationPriority.Action
-					track.Looped = name == "idle" or name == "guard"
+					track.Looped = name == "idle"
 					tracks[name] = track
 				end
 			end
@@ -161,7 +157,6 @@ function StaffClient.new(STAFF: Caster)
 	local equipped: Equipped? = nil
 	local pressedAt: number? = nil
 	local stopCharge: ((released: boolean) -> ())? = nil
-	local stopGuard: (() -> ())? = nil
 	local lastCast = 0
 	local lastBlast = 0
 	local aimingUntil = 0 -- casters with AimWithHand: aim the hand at the target until then
@@ -333,28 +328,9 @@ function StaffClient.new(STAFF: Caster)
 		end
 	end
 
-	local function startGuard(state: Equipped)
-		blockRemote:FireServer(true)
-		ParryPredict.guardUp() -- the clang can play without waiting for the server
-		local guard = state.tracks.guard
-		if guard then
-			guard:Play(0.1)
-		end
-		state.humanoid.WalkSpeed = BLOCK.WalkSpeed
-		stopGuard = function()
-			stopGuard = nil
-			blockRemote:FireServer(false)
-			ParryPredict.guardDown()
-			if guard then
-				guard:Stop(0.15)
-			end
-			state.humanoid.WalkSpeed = state.baseWalkSpeed
-		end
-	end
-
 	local function onAttackBegan()
 		local state = equipped
-		if not state or stopCharge or stopGuard then
+		if not state or stopCharge then
 			return
 		end
 		if not canCastAnything() then
@@ -363,7 +339,7 @@ function StaffClient.new(STAFF: Caster)
 		local pressed = os.clock()
 		pressedAt = pressed
 		task.delay(STAFF.HoldTime, function()
-			if pressedAt ~= pressed or equipped ~= state or stopCharge or stopGuard then
+			if pressedAt ~= pressed or equipped ~= state or stopCharge then
 				return
 			end
 			pressedAt = nil
@@ -383,7 +359,7 @@ function StaffClient.new(STAFF: Caster)
 			local held = os.clock() - pressedAt
 			pressedAt = nil
 			local state = equipped
-			if state and held < STAFF.HoldTime and not stopGuard then
+			if state and held < STAFF.HoldTime then
 				cast(state) -- a quick tap
 			end
 		end
@@ -643,9 +619,6 @@ function StaffClient.new(STAFF: Caster)
 		if stopCharge then
 			stopCharge(false)
 		end
-		if stopGuard then
-			stopGuard()
-		end
 		pressedAt = nil
 		equipped = nil
 		HandGrip.detach(tool, `Local{STAFF.ToolName}Grip`)
@@ -697,18 +670,6 @@ function StaffClient.new(STAFF: Caster)
 
 		CombatInput.AttackBegan:Connect(onAttackBegan)
 		CombatInput.AttackEnded:Connect(onAttackEnded)
-		CombatInput.BlockBegan:Connect(function()
-			local state = equipped
-			if state and not stopCharge and not stopGuard then
-				pressedAt = nil
-				startGuard(state)
-			end
-		end)
-		CombatInput.BlockEnded:Connect(function()
-			if stopGuard then
-				stopGuard()
-			end
-		end)
 		UserInputService.InputBegan:Connect(function(input, gameProcessed)
 			if not gameProcessed and (input.KeyCode == STAFF.ElementKey or input.KeyCode == Enum.KeyCode.ButtonY) and equipped then
 				cycleElement()
@@ -718,7 +679,6 @@ function StaffClient.new(STAFF: Caster)
 		local function onCharacterAdded(character: Model)
 			equipped = nil
 			stopCharge = nil
-			stopGuard = nil
 			pressedAt = nil
 			staffInHand = false
 			updateElementBar()

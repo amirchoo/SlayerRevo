@@ -269,6 +269,23 @@ local function createRapier(): Tool
 	return tool
 end
 
+-- Placeholder dagger (until its model is in assets/weapons): a short steel blade over a
+-- small guard and a wrapped wooden grip.
+local function createDagger(): Tool
+	local tool, grip = newTool(
+		CombatConfig.Dagger,
+		CFrame.new(0, 0, -0.2) * CFrame.Angles(math.pi / 2, 0, 0),
+		Vector3.new(0.22, 0.22, 0.7),
+		Color3.fromRGB(70, 40, 25),
+		Enum.Material.Wood
+	)
+	addPart(grip, "Guard", Vector3.new(0.7, 0.18, 0.16), CFrame.new(0, 0, 0.42), Color3.fromRGB(150, 120, 50), Enum.Material.Metal)
+	local blade = addPart(grip, "Blade", Vector3.new(0.08, 0.3, 1.4), CFrame.new(0, 0, 1.2), Color3.fromRGB(200, 205, 215), Enum.Material.Metal)
+	addTrail(blade, -0.5, 0.7, 0.1, CombatConfig.Dagger.TrailColor)
+	addSwingSound(grip, "DaggerSwing")
+	return tool
+end
+
 -- Placeholder dual blades: two short blades with dark grips, one on each grip part (the
 -- off-hand one is welded to the other hand when equipped; see HandGrip.OFFHAND_NAME). At rest
 -- (in the backpack's icon) the off-hand blade crosses the main one.
@@ -350,13 +367,14 @@ local CREATORS: { [string]: () -> Tool } = {
 	[CombatConfig.Mace.ToolName] = createMace,
 	[CombatConfig.Spear.ToolName] = createSpear,
 	[CombatConfig.Rapier.ToolName] = createRapier,
+	[CombatConfig.Dagger.ToolName] = createDagger,
 	[CombatConfig.Axe.ToolName] = createAxe,
 	[CombatConfig.DualBlade.ToolName] = createDualBlade,
 	[CombatConfig.Scythe.ToolName] = createScythe,
 	[CombatConfig.Hammer.ToolName] = createHammer,
 }
 
-local COMBO_WEAPONS: { ComboWeapon } = { CombatConfig.Sword, CombatConfig.Emberfang, CombatConfig.Mace, CombatConfig.Spear, CombatConfig.Rapier, CombatConfig.Axe, CombatConfig.DualBlade, CombatConfig.Scythe, CombatConfig.Hammer }
+local COMBO_WEAPONS: { ComboWeapon } = { CombatConfig.Sword, CombatConfig.Emberfang, CombatConfig.Mace, CombatConfig.Spear, CombatConfig.Rapier, CombatConfig.Dagger, CombatConfig.Axe, CombatConfig.DualBlade, CombatConfig.Scythe, CombatConfig.Hammer }
 
 local function configFor(tool: Tool): ComboWeapon?
 	for _, config in COMBO_WEAPONS do

@@ -33,6 +33,7 @@ local SPECS: { [string]: SoundSpec } = {
 	GreatswordSwing = { Id = "rbxassetid://137628815514180", Pitch = 1, Volume = 0.6 },
 	GreatswordSlam = { Id = "rbxassetid://140277245983305", Pitch = 1, Volume = 0.8 }, -- the charged slam, as it lands
 	AxeSwing = { Id = WHOOSH, Pitch = 1.3, Volume = 0.45 },
+	DaggerSwing = { Id = WHOOSH, Pitch = 2.5, Volume = 0.3 },
 	DualBladeSwing = { Id = WHOOSH, Pitch = 2.1, Volume = 0.35 },
 	HammerSwing = { Id = WHOOSH, Pitch = 0.65, Volume = 0.6 },
 	ScytheSwing = { Id = WHOOSH, Pitch = 0.95, Volume = 0.5 },
@@ -46,6 +47,7 @@ local SPECS: { [string]: SoundSpec } = {
 	RapierHit = { Id = THUD, Pitch = 2.2, Volume = 0.55 },
 	GreatswordHit = { Id = "", Pitch = 1, Volume = 0.5 }, -- silent: the swing and slam sounds already land with the hit
 	AxeHit = { Id = THUD, Pitch = 1.1, Volume = 0.9 },
+	DaggerHit = { Id = THUD, Pitch = 2.0, Volume = 0.55 },
 	DualBladeHit = { Id = THUD, Pitch = 1.8, Volume = 0.6 },
 	HammerHit = { Id = BOOM, Pitch = 0.9, Volume = 0.7 },
 	ScytheHit = { Id = THUD, Pitch = 1.4, Volume = 0.75 },

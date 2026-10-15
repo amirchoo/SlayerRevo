@@ -6,6 +6,8 @@
 --   Intro       the cutscene (the client says when it's over)
 --   Light/Heavy hits on the player's own training dummy; a hit counts as heavy while a heavy
 --               attack runs ("HeavyAttacking", or the greatsword's charge) or just after it
+--               (a caster does these, and the guard drills, with their sidearm, the dagger)
+--   Cast/CastHeavy the same for a caster's spells, once their magic is unlocked
 --   LockOn      locked on to the sparring partner (the client says)
 --   Dodge/Block/Parry  the sparring partner (a puppet orc, EnemyService.spawnPuppet) swings
 --               with a long, glowing wind-up; this service resolves each swing itself: a dash
@@ -38,6 +40,7 @@ local EnemyEffects = require(script.Parent.EnemyEffects)
 local EnemyService = require(script.Parent.EnemyService)
 local HealthService = require(script.Parent.HealthService)
 local HitEffects = require(script.Parent.HitEffects)
+local InventoryService = require(script.Parent.InventoryService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 
 local PARTNER = TutorialConfig.Partner
@@ -207,15 +210,22 @@ local function placePlayer(session: Session)
 	end
 end
 
--- Draws the taught weapon if nothing is in hand.
-local function drawWeapon(session: Session)
+-- Draws the weapon step `id` is done with if nothing is in hand, or (a caster switching
+-- between their sidearm and their magic) if the other one is.
+local function drawWeapon(session: Session, id: string)
 	local character = session.player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if not character or not humanoid or character:FindFirstChildOfClass("Tool") then
+	if not character or not humanoid then
+		return
+	end
+	local wanted = TutorialConfig.stepWeapon(id, session.weapon)
+	local lesson = TutorialConfig.Weapons[session.weapon]
+	local held = character:FindFirstChildOfClass("Tool")
+	if held and (held.Name == wanted or not (lesson and lesson.Sidearm)) then
 		return
 	end
 	local backpack = session.player:FindFirstChildOfClass("Backpack")
-	local tool = backpack and backpack:FindFirstChild(session.weapon)
+	local tool = backpack and backpack:FindFirstChild(wanted)
 	if tool and tool:IsA("Tool") then
 		humanoid:EquipTool(tool)
 	end
@@ -560,7 +570,9 @@ local function spawnSparring(session: Session)
 	end
 end
 
-local COMBAT_STEPS = { Light = true, Heavy = true, LockOn = true, Dodge = true, Block = true, Parry = true, Spar = true }
+local COMBAT_STEPS = { Light = true, Heavy = true, Cast = true, CastHeavy = true, LockOn = true, Dodge = true, Block = true, Parry = true, Spar = true }
+-- Steps done on the training dummy.
+local DUMMY_STEPS = { Light = true, Heavy = true, Cast = true, CastHeavy = true }
 local PARTNER_STEPS = { LockOn = true, Dodge = true, Block = true, Parry = true }
 
 function enterStep(session: Session)
@@ -586,7 +598,7 @@ function enterStep(session: Session)
 	healFull(player)
 	publish(session)
 
-	if id == "Light" or id == "Heavy" then
+	if DUMMY_STEPS[id] then
 		if not session.dummy or not session.dummy.Parent then
 			session.dummy = buildDummy(session)
 		end
@@ -606,7 +618,7 @@ function enterStep(session: Session)
 		spawnSparring(session)
 	end
 	if COMBAT_STEPS[id] then
-		drawWeapon(session)
+		drawWeapon(session, id)
 	end
 	if id == "SkillsSpend" then
 		session.spentAtStart = SkillMath.spent(SkillMath.allocations(player))
@@ -620,6 +632,15 @@ local function begin(player: Player, weapon: string, replay: boolean, from: stri
 		return
 	end
 	local order = table.clone(TutorialConfig.order(weapon))
+	-- A caster needs their sidearm for the guard drills (older saves never got one).
+	local lesson = TutorialConfig.Weapons[weapon]
+	if lesson and lesson.Sidearm then
+		if InventoryService.owns(player, lesson.Sidearm) then
+			InventoryService.move(player, lesson.Sidearm, true)
+		else
+			InventoryService.grant(player, lesson.Sidearm)
+		end
+	end
 	if replay then
 		table.remove(order, table.find(order, "Intro") or #order + 1)
 	end
@@ -722,9 +743,9 @@ end
 local function onDummyHit(session: Session)
 	local id = stepId(session)
 	local heavy = session.heavyHeld or os.clock() <= session.heavyGraceUntil
-	if id == "Light" and not heavy then
+	if (id == "Light" or id == "Cast") and not heavy then
 		progress(session)
-	elseif id == "Heavy" and heavy and not session.credited[session.heavySerial] then
+	elseif (id == "Heavy" or id == "CastHeavy") and heavy and not session.credited[session.heavySerial] then
 		session.credited[session.heavySerial] = true
 		progress(session)
 	end
