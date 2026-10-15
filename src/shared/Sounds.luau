@@ -21,33 +21,35 @@ local PITCH_VARIATION = 0.1 -- one-shots play up to 10% higher or lower
 local TICK = "rbxasset://sounds/volume_slider.ogg"
 
 local SPECS: { [string]: SoundSpec } = {
-	-- Swings (played on the attacker's own screen as they swing).
-	SwordSwing = { Id = "rbxassetid://134671877618939", Pitch = 1, Volume = 0.5 },
+	-- Swings (played on the attacker's own screen on every attack, hit or miss). The
+	-- bladed weapons slash; the blunt ones and the spear whoosh.
+	SwordSwing = { Id = "rbxassetid://75603792288640", Pitch = 1, Volume = 0.6 },
 	MaceSwing = { Id = "rbxassetid://127747416982963", Pitch = 0.85, Volume = 0.55 },
 	SpearSwing = { Id = "rbxassetid://128213617026859", Pitch = 1.15, Volume = 0.45 },
 	RapierSwing = { Id = "rbxassetid://137418191870543", Pitch = 1, Volume = 0.5 }, -- also each stab of the flurry, faster with charge
 	GreatswordSwing = { Id = "rbxassetid://137628815514180", Pitch = 1, Volume = 0.6 },
 	GreatswordSlam = { Id = "rbxassetid://140277245983305", Pitch = 1, Volume = 0.8 }, -- the charged slam, as it lands
-	AxeSwing = { Id = "rbxassetid://132679887057202", Pitch = 0.9, Volume = 0.55 },
-	DaggerSwing = { Id = "rbxassetid://122795737772215", Pitch = 1.25, Volume = 0.4 },
-	DualBladeSwing = { Id = "rbxassetid://9126047581", Pitch = 1.1, Volume = 0.4 },
+	AxeSwing = { Id = "rbxassetid://72106360544198", Pitch = 0.75, Volume = 0.6 },
+	DaggerSwing = { Id = "rbxassetid://140180249061198", Pitch = 1.3, Volume = 0.5 },
+	DualBladeSwing = { Id = "rbxassetid://7118966167", Pitch = 1.2, Volume = 0.5 },
 	HammerSwing = { Id = "rbxassetid://101266427032050", Pitch = 0.8, Volume = 0.7 },
-	ScytheSwing = { Id = "rbxassetid://131550402637533", Pitch = 0.8, Volume = 0.55 },
+	ScytheSwing = { Id = "rbxassetid://75603792288640", Pitch = 0.8, Volume = 0.65 },
 	StaffCast = { Id = "rbxassetid://106456870308007", Pitch = 1.3, Volume = 0.4 },
 	StaffBlast = { Id = "rbxassetid://139681553729333", Pitch = 1.1, Volume = 0.5 },
 
-	-- Impacts when an enemy is hit (heard by everyone nearby).
-	SwordHit = { Id = "rbxassetid://138293953015099", Pitch = 1, Volume = 0.85 },
+	-- Impacts when an enemy is hit (heard by everyone nearby): plain impacts with no voices,
+	-- since the swing already carries the slash.
+	SwordHit = { Id = "rbxassetid://116062165012558", Pitch = 1.1, Volume = 0.8 },
 	MaceHit = { Id = "rbxassetid://9113568548", Pitch = 0.75, Volume = 1 },
-	SpearHit = { Id = "rbxassetid://111984442168614", Pitch = 0.9, Volume = 0.8 },
-	RapierHit = { Id = "rbxassetid://108673879396403", Pitch = 1.15, Volume = 0.65 },
+	SpearHit = { Id = "rbxassetid://79890059692096", Pitch = 1.15, Volume = 0.75 },
+	RapierHit = { Id = "rbxassetid://137127080014551", Pitch = 1, Volume = 0.6 },
 	GreatswordHit = { Id = "", Pitch = 1, Volume = 0.5 }, -- silent: the swing and slam sounds already land with the hit
-	AxeHit = { Id = "rbxassetid://159798370", Pitch = 0.9, Volume = 0.9 },
-	DaggerHit = { Id = "rbxassetid://136518851744814", Pitch = 1.1, Volume = 0.65 },
-	DualBladeHit = { Id = "rbxassetid://137287949709499", Pitch = 1.15, Volume = 0.65 },
+	AxeHit = { Id = "rbxassetid://115144773187007", Pitch = 0.85, Volume = 0.9 },
+	DaggerHit = { Id = "rbxassetid://83174011180310", Pitch = 1, Volume = 0.6 },
+	DualBladeHit = { Id = "rbxassetid://121630173864664", Pitch = 1, Volume = 0.6 },
 	HammerHit = { Id = "rbxassetid://9113225986", Pitch = 0.8, Volume = 1 },
-	ScytheHit = { Id = "rbxassetid://72106360544198", Pitch = 0.9, Volume = 0.8 },
-	StaffFireHit = { Id = "rbxassetid://112891149928058", Pitch = 1, Volume = 0.6 },
+	ScytheHit = { Id = "rbxassetid://116062165012558", Pitch = 0.9, Volume = 0.8 },
+	StaffFireHit = { Id = "rbxassetid://139681553729333", Pitch = 1.3, Volume = 0.55 },
 	StaffWaterHit = { Id = "rbxassetid://9125703168", Pitch = 1, Volume = 0.8 },
 	StaffEarthHit = { Id = "rbxassetid://9118627392", Pitch = 0.85, Volume = 1 },
 	StaffElectricHit = { Id = "rbxassetid://9114277757", Pitch = 1.1, Volume = 0.7 },
@@ -55,7 +57,7 @@ local SPECS: { [string]: SoundSpec } = {
 	GrimoireNecromancyHit = { Id = "rbxassetid://131653988627020", Pitch = 0.9, Volume = 0.7 },
 	BowHit = { Id = "rbxassetid://129822254617682", Pitch = 1.1, Volume = 0.7 },
 	CrossbowHit = { Id = "rbxassetid://131010454040062", Pitch = 0.85, Volume = 0.85 },
-	BlunderbussHit = { Id = "rbxassetid://108077049514411", Pitch = 1.2, Volume = 0.35 }, -- per pellet, so quieter
+	BlunderbussHit = { Id = "rbxassetid://133794731281686", Pitch = 1.1, Volume = 0.35 }, -- per pellet, so quieter
 
 	-- Movement.
 	DashWhoosh = { Id = "rbxassetid://104835897489348", Pitch = 1.2, Volume = 0.4 }, -- a dash (heard by everyone nearby)
