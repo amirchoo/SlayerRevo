@@ -140,10 +140,39 @@ def describe(gltf, binary):
 
 # --- converting ----------------------------------------------------------------------------
 
+def merge_meshes(gltf, binary):
+    """Fold several skinned meshes into the first one when they share one skeleton (same joints,
+    same bind matrices), e.g. a body with separate wing and tail meshes."""
+    nodes = gltf["nodes"]
+    holders = [i for i, n in enumerate(nodes) if "mesh" in n]
+    skins = gltf.get("skins", [])
+    if len(holders) != len(gltf["meshes"]) or any("skin" not in nodes[i] for i in holders):
+        sys.exit("expected one skinned node per mesh")
+    first = skins[nodes[holders[0]]["skin"]]
+    binds = read_accessor(gltf, binary, first["inverseBindMatrices"])
+    for i in holders[1:]:
+        skin = skins[nodes[i]["skin"]]
+        if skin["joints"] != first["joints"] or read_accessor(gltf, binary, skin["inverseBindMatrices"]) != binds:
+            sys.exit(f"mesh node {nodes[i].get('name')} has its own skeleton; can't merge")
+    keep = nodes[holders[0]]["mesh"]
+    for i in holders[1:]:
+        gltf["meshes"][keep]["primitives"] += gltf["meshes"][nodes[i]["mesh"]]["primitives"]
+        for n in nodes:
+            if i in n.get("children", []):
+                n["children"].remove(i)
+        for scene in gltf.get("scenes", []):
+            if i in scene["nodes"]:
+                scene["nodes"].remove(i)
+        del nodes[i]["mesh"], nodes[i]["skin"]
+    gltf["meshes"] = [gltf["meshes"][keep]]
+    nodes[holders[0]]["mesh"] = 0
+    print(f"  merged {len(holders)} meshes into {nodes[holders[0]].get('name')}")
+
+
 def convert(gltf, binary, degrees, clips):
     nodes = gltf["nodes"]
-    if len(gltf["meshes"]) != 1:
-        sys.exit("expected exactly one mesh")
+    if len(gltf["meshes"]) > 1:
+        merge_meshes(gltf, binary)
     if clips:
         missing = set(clips) - {a.get("name") for a in gltf.get("animations", [])}
         if missing:

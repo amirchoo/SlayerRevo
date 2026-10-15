@@ -1,6 +1,6 @@
 --!strict
 -- Saves each player's progress in a DataStore: level, XP, skill trees, owned weapons, the
--- starter pick, tutorial progress, hotbar, armor, shield, and materials.
+-- starter pick, tutorial progress, hotbar, armor, shield, materials, and unlocked map waypoints.
 -- Session-locked: while a server has a player's data loaded it marks the save as its own, so
 -- a second server (e.g. after a quick rejoin) waits instead of loading stale data and
 -- overwriting newer progress later. A lock older than LOCK_TIMEOUT is assumed abandoned
@@ -38,6 +38,7 @@ export type Data = {
 	Hotbar: { string }?,
 	Armor: { Owned: { [string]: boolean }, Worn: { [string]: string } }?,
 	Shield: { Owned: { [string]: boolean }, Worn: string? }?,
+	Waypoints: { [string]: boolean }?, -- map waypoints reached (MapConfig.Waypoints with Discover), by Id
 }
 
 local DataService = {}
@@ -154,6 +155,15 @@ local function reconcile(raw: any): Data
 	end
 	if typeof(raw.Shield) == "table" then
 		data.Shield = raw.Shield
+	end
+	if typeof(raw.Waypoints) == "table" then
+		local waypoints: { [string]: boolean } = {}
+		for id, reached in raw.Waypoints do
+			if typeof(id) == "string" and reached == true then
+				waypoints[id] = true
+			end
+		end
+		data.Waypoints = waypoints
 	end
 	return data
 end

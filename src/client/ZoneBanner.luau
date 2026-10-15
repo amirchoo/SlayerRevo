@@ -1,5 +1,6 @@
 --!strict
--- Shows a banner when the player moves between zones (hub, training grounds, hunting grounds).
+-- Shows a banner when the player moves between zones (hub, training grounds, hunting grounds,
+-- a dungeon: the player's "Dungeon" attribute while in a run, from DungeonService).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -22,8 +23,18 @@ local player = Players.LocalPlayer
 
 local ZoneBanner = {}
 
+local dungeonZones: { [string]: Zone } = {}
+
 local function zoneAt(position: Vector3): Zone
-	if SafeZone.contains(position) then
+	local dungeon = player:GetAttribute("Dungeon")
+	if typeof(dungeon) == "string" then
+		local zone = dungeonZones[dungeon]
+		if not zone then
+			zone = { text = dungeon, color = Color3.fromRGB(230, 120, 70) }
+			dungeonZones[dungeon] = zone
+		end
+		return zone
+	elseif SafeZone.contains(position) then
 		return HUB
 	elseif TrainingArea.contains(position) then
 		return TRAINING

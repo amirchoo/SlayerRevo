@@ -554,15 +554,30 @@ local function buildWorldMap(gui: ScreenGui, close: () -> ()): Frame
 	questLabel.ZIndex = 7
 	questLabel.Visible = false
 
-	local townSpot = uv(MapConfig.TownWaypoint.Position)
-	local townButton = mapButton(map, 28, COLORS.Waypoint, "T")
-	townButton.Position = UDim2.fromScale(townSpot.X, townSpot.Y)
-	local townLabel = HudStyle.caption(map, "Teleport", 13)
-	townLabel.AnchorPoint = Vector2.new(0.5, 0)
-	townLabel.Position = UDim2.fromScale(townSpot.X, townSpot.Y + 0.018)
-	townLabel.Size = UDim2.fromOffset(90, 18)
-	townLabel.TextColor3 = COLORS.Waypoint
-	townLabel.ZIndex = 7
+	-- A teleport button per waypoint, shown once it's unlocked (MapConfig.unlocked).
+	local chosen: MapConfig.Waypoint? = nil
+	local openConfirm: (MapConfig.Waypoint) -> ()
+	for _, waypoint in MapConfig.Waypoints do
+		local spot = uv(waypoint.Position)
+		local button = mapButton(map, 28, COLORS.Waypoint, waypoint.Letter)
+		button.Position = UDim2.fromScale(spot.X, spot.Y)
+		local label = HudStyle.caption(map, "Teleport", 13)
+		label.AnchorPoint = Vector2.new(0.5, 0)
+		label.Position = UDim2.fromScale(spot.X, spot.Y + 0.018)
+		label.Size = UDim2.fromOffset(90, 18)
+		label.TextColor3 = COLORS.Waypoint
+		label.ZIndex = 7
+		local function refresh()
+			local open = MapConfig.unlocked(player, waypoint)
+			button.Visible = open
+			label.Visible = open
+		end
+		refresh()
+		player:GetAttributeChangedSignal("Waypoint_" .. waypoint.Id):Connect(refresh)
+		button.Activated:Connect(function()
+			openConfirm(waypoint)
+		end)
+	end
 
 	local confirm = Instance.new("Frame")
 	confirm.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -573,7 +588,7 @@ local function buildWorldMap(gui: ScreenGui, close: () -> ()): Frame
 	confirm.ZIndex = 20
 	confirm.Parent = panel
 	HudStyle.chunky(confirm, 18, 4)
-	local confirmText = HudStyle.caption(confirm, "Teleport to Beginning Town?", 20)
+	local confirmText = HudStyle.caption(confirm, "", 20)
 	confirmText.Position = UDim2.fromOffset(24, 22)
 	confirmText.Size = UDim2.new(1, -48, 0, 32)
 	confirmText.TextXAlignment = Enum.TextXAlignment.Center
@@ -599,15 +614,19 @@ local function buildWorldMap(gui: ScreenGui, close: () -> ()): Frame
 	no.ZIndex = 21
 	no.Parent = confirm
 	HudStyle.chunky(no, 12, 3)
-	townButton.Activated:Connect(function()
+	openConfirm = function(waypoint: MapConfig.Waypoint)
+		chosen = waypoint
+		confirmText.Text = `Teleport to {waypoint.Name}?`
 		confirm.Visible = true
 		HudStyle.pop(confirm, 0.92)
-	end)
+	end
 	no.Activated:Connect(function()
 		confirm.Visible = false
 	end)
 	yes.Activated:Connect(function()
-		teleportRemote:FireServer(MapConfig.TownWaypoint.Id)
+		if chosen then
+			teleportRemote:FireServer(chosen.Id)
+		end
 		confirm.Visible = false
 		close()
 	end)

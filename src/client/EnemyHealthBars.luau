@@ -235,9 +235,10 @@ local function pick()
 		local dying = bar.dyingSince ~= nil and os.clock() - bar.dyingSince < FADE_TWEEN.Time
 		local alive = bar.dyingSince == nil
 		local hasHealth = enemy:GetAttribute("MaxHealth") ~= nil -- tame town animals have none
+		local boss = enemy:GetAttribute("Boss") == true -- bosses have the big bar at the top (DungeonHud)
 		local owner = enemy:GetAttribute("SparringOwner") -- the training camp's: shown in town, to their owner only
 		local inPlace = if owner ~= nil then owner == player.UserId else not SafeZone.contains(bar.root.Position)
-		local allowed = hasHealth and distance <= MAX_DISTANCE and inPlace
+		local allowed = hasHealth and not boss and distance <= MAX_DISTANCE and inPlace
 		local full = allowed and enemy == locked and (alive or dying)
 		bar.name.Visible = full
 		bar.amount.Visible = full

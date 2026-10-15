@@ -49,13 +49,17 @@ local oneOff: { [Model]: boolean } = {}
 -- Sparring enemies: the one player each fights (and the only one who can hurt it).
 local ownerOf: { [Model]: Player } = {}
 
-local function groundCFrame(spawnPoint: Vector2): CFrame
+-- The ground under X/Z: the highest thing below SPAWN_RAY_HEIGHT, or below `fromY` (within
+-- DROP_REACH) for floors up in the sky, like a dungeon's.
+local DROP_REACH = 40
+local function groundCFrame(spawnPoint: Vector2, fromY: number?): CFrame
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { enemiesFolder, workspace:FindFirstChild("World") or enemiesFolder }
 
-	local origin = Vector3.new(spawnPoint.X, SPAWN_RAY_HEIGHT, spawnPoint.Y)
-	local result = workspace:Raycast(origin, Vector3.new(0, -SPAWN_RAY_HEIGHT * 2, 0), params)
+	local origin = Vector3.new(spawnPoint.X, fromY or SPAWN_RAY_HEIGHT, spawnPoint.Y)
+	local reach = if fromY then DROP_REACH else SPAWN_RAY_HEIGHT * 2
+	local result = workspace:Raycast(origin, Vector3.new(0, -reach, 0), params)
 	if not result then
 		warn(`[EnemyService] No ground under spawn point {spawnPoint}; the enemy may fall`)
 	end
@@ -317,7 +321,7 @@ local function idOf(kind: EnemyType): string
 	return kind.DisplayName
 end
 
-local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?, once: boolean?, owner: Player?, puppet: boolean?): Model?
+local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?, once: boolean?, owner: Player?, puppet: boolean?, fromY: number?): Model?
 	local enemy = modelFromTemplate(kind) or plainBody(kind)
 	if not enemy then
 		return nil
@@ -340,7 +344,7 @@ local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?
 		regen:Destroy()
 	end
 
-	local spawnCFrame = groundCFrame(spawnPoint)
+	local spawnCFrame = groundCFrame(spawnPoint, fromY)
 	enemy:PivotTo(spawnCFrame)
 	enemy.Parent = enemiesFolder
 	root:SetNetworkOwner(nil) -- server simulates enemy movement
@@ -615,6 +619,12 @@ EnemyService.spawnAt = spawnEnemy
 -- while the model loads.
 function EnemyService.spawnOnce(spawnPoint: Vector2, kind: EnemyType): Model?
 	return spawnEnemy(spawnPoint, kind, nil, true)
+end
+
+-- Like spawnOnce, but dropped onto the floor just below `position` (not the land's ground), for
+-- floors up in the sky like a dungeon's. Yields while the model loads.
+function EnemyService.spawnOnFloor(position: Vector3, kind: EnemyType): Model?
+	return spawnEnemy(Vector2.new(position.X, position.Z), kind, nil, true, nil, nil, position.Y)
 end
 
 -- A sparring enemy for `owner` (see the top): chases and attacks only them. Never respawns.

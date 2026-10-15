@@ -151,6 +151,9 @@
         },
         "Cooking": {
           "$className": "RemoteEvent"
+        },
+        "DungeonEvent": {
+          "$className": "RemoteEvent"
         }
       }
     },

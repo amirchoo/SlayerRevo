@@ -1,6 +1,6 @@
 --!strict
 -- Animates the pets (workspace.Pets, from PetService) by posing their bones every frame from
--- their clip data (PetClips; src/shared/PetClips/<Clips>.luau, made by tools/npc_clips.py):
+-- their clip data (RigClips; src/shared/PetClips/<Clips>.luau, made by tools/npc_clips.py):
 -- the clip for each one's "PetState" attribute (NpcConfig.Pets States), looped, cross-fading
 -- from the last one over PetBehaviour.Fade seconds. On top of that it swings the legs in a
 -- trot while the pet moves, and sets the eyelids (PetEyes): open with blinks while idle,
@@ -12,7 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local NpcConfig = require(ReplicatedStorage.Shared.Config.NpcConfig)
-local PetClips = require(script.Parent.PetClips)
+local RigClips = require(ReplicatedStorage.Shared.RigClips)
 local PetEyes = require(script.Parent.PetEyes)
 
 local BEHAVIOUR = NpcConfig.PetBehaviour
@@ -36,8 +36,8 @@ type Tracked = {
 	model: Model,
 	root: BasePart,
 	config: NpcConfig.Pet,
-	data: PetClips.Data,
-	rig: PetClips.Rig,
+	data: RigClips.Data,
+	rig: RigClips.Rig,
 	clip: string,
 	clipTime: number,
 	previous: string?, -- the clip fading out
@@ -85,13 +85,13 @@ local function track(model: Model)
 	if not config or not root or not root:IsA("BasePart") or not module or not module:IsA("ModuleScript") or not model.Parent then
 		return
 	end
-	local data = (require :: any)(module) :: PetClips.Data
+	local data = (require :: any)(module) :: RigClips.Data
 	local pet: Tracked = {
 		model = model,
 		root = root,
 		config = config,
 		data = data,
-		rig = PetClips.rig(model, data),
+		rig = RigClips.rig(model, data),
 		clip = "Idle",
 		clipTime = random:NextNumber(0, 4), -- not every pet in step
 		previous = nil,
@@ -119,11 +119,11 @@ local function step(pet: Tracked, dt: number, now: number)
 	pet.clipTime += dt
 	pet.previousTime += dt
 	pet.fade = math.min(pet.fade + dt / BEHAVIOUR.Fade, 1)
-	local pose = PetClips.sample(pet.data, pet.clip, pet.clipTime)
+	local pose = RigClips.sample(pet.data, pet.clip, pet.clipTime)
 	local previous = pet.previous
 	if previous and pet.fade < 1 then
-		local from = PetClips.sample(pet.data, previous, pet.previousTime)
-		PetClips.blend(from, pose, pet.fade)
+		local from = RigClips.sample(pet.data, previous, pet.previousTime)
+		RigClips.blend(from, pose, pet.fade)
 		pose = from
 	end
 
@@ -163,7 +163,7 @@ local function step(pet: Tracked, dt: number, now: number)
 		end
 	end
 
-	PetClips.apply(pet.rig, pose)
+	RigClips.apply(pet.rig, pose)
 end
 
 function PetAnimator.start()

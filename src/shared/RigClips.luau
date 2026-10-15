@@ -1,6 +1,6 @@
 --!strict
 -- Plays a rigged model's animation clips on its Bones from data made by tools/npc_clips.py
--- (src/shared/PetClips/<Model>.luau), instead of uploaded animations: Studio's Import 3D
+-- (src/shared/PetClips/<Model>.luau for pets, src/shared/EnemyClips for bosses), instead of uploaded animations: Studio's Import 3D
 -- puts the bones in the mesh's bind pose and its converted clips came out scrambled for
 -- Bonnie, so the file's own keys are played here.
 --
@@ -8,10 +8,12 @@
 -- Transform is then Bind^-1 * pose (the imported Bone.CFrame is its bind pose), with
 -- positions scaled to the model (Model:ScaleTo).
 --
---     local rig = PetClips.rig(model, data)
---     local pose = PetClips.sample(data, "Idle", time)       -- { [bone]: CFrame }
---     PetClips.blend(pose, PetClips.sample(data, "Sleeping", t2), 0.3)  -- 30% of the way
---     PetClips.apply(rig, pose)
+--     local rig = RigClips.rig(model, data)
+--     local pose = RigClips.sample(data, "Idle", time)       -- { [bone]: CFrame }
+--     RigClips.blend(pose, RigClips.sample(data, "Sleeping", t2), 0.3)  -- 30% of the way
+--     RigClips.apply(rig, pose)
+--
+-- Shared so the server can read clip lengths (BossService).
 
 export type Track = { PT: { number }?, P: { number }?, RT: { number }?, R: { number }? }
 export type Clip = { Length: number, Tracks: { [string]: Track } }
@@ -19,14 +21,14 @@ export type Data = { Bind: { [string]: { number } }, Rest: { [string]: { number 
 export type Pose = { [string]: CFrame }
 export type Rig = { bones: { [string]: Bone }, bindInverse: { [string]: CFrame }, scale: number }
 
-local PetClips = {}
+local RigClips = {}
 
 local function cframe(v: { number }, scale: number): CFrame
 	return CFrame.new(v[1] * scale, v[2] * scale, v[3] * scale, v[4], v[5], v[6], v[7])
 end
 
 -- Finds the model's bones and its scale (from how far apart the bones are now vs. in the file).
-function PetClips.rig(model: Model, data: Data): Rig
+function RigClips.rig(model: Model, data: Data): Rig
 	local bones: { [string]: Bone } = {}
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("Bone") and data.Bind[descendant.Name] then
@@ -74,8 +76,8 @@ local function at(times: { number }, values: { number }, width: number, time: nu
 end
 
 -- The clip's pose at `time` seconds (looped), with every bone the data knows. Positions are
--- in the file's units (PetClips.apply scales them).
-function PetClips.sample(data: Data, clipName: string, time: number): Pose
+-- in the file's units (RigClips.apply scales them).
+function RigClips.sample(data: Data, clipName: string, time: number): Pose
 	local clip = data.Clips[clipName]
 	local pose: Pose = {}
 	local t = if clip and clip.Length > 0 then time % clip.Length else 0
@@ -91,7 +93,7 @@ function PetClips.sample(data: Data, clipName: string, time: number): Pose
 end
 
 -- Moves `pose` toward `other` by `alpha` (0..1), in place.
-function PetClips.blend(pose: Pose, other: Pose, alpha: number)
+function RigClips.blend(pose: Pose, other: Pose, alpha: number)
 	if alpha <= 0 then
 		return
 	end
@@ -104,7 +106,7 @@ function PetClips.blend(pose: Pose, other: Pose, alpha: number)
 end
 
 -- Puts the bones in `pose`.
-function PetClips.apply(rig: Rig, pose: Pose)
+function RigClips.apply(rig: Rig, pose: Pose)
 	local scale = rig.scale
 	for name, bone in rig.bones do
 		local cf = pose[name]
@@ -114,4 +116,4 @@ function PetClips.apply(rig: Rig, pose: Pose)
 	end
 end
 
-return PetClips
+return RigClips

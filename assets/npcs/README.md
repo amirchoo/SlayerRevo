@@ -8,7 +8,7 @@ These are rigged meshes with their own skeleton (not R15, so no Avatar Setup). P
 (server) scales the model to its `Height`, welds it to an invisible, non-solid
 HumanoidRootPart with a Humanoid (so it walks, like the wildlife), walks it around its
 `Wander` area and picks what it's doing; petting it (its prompt) makes it play. PetAnimator
-(client) poses the bones every frame from the clip data in `src/shared/PetClips/`, swings the
+(client, with shared RigClips) poses the bones every frame from the clip data in `src/shared/PetClips/`, swings the
 legs while it walks, and moves the eyelids (PetEyes).
 
 **The clips are played from the .glb's own keys, not uploaded animations.** Import 3D puts

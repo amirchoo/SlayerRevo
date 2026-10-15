@@ -3,6 +3,8 @@
 -- so these happen here (players' own characters are pushed by their clients instead).
 -- A stunned enemy has a "StunnedUntil" attribute (server os.clock() time); EnemyService
 -- checks it to freeze the enemy and cancel its wind-up attacks.
+-- Bosses (a "Boss" attribute) can't be knocked back, pulled or stunned by weapons: BossService
+-- staggers them itself (poise, parries).
 
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -38,6 +40,9 @@ local EnemyEffects = {}
 
 -- Pushes `model` horizontally away from `from` at `speed` studs/s for `duration` seconds.
 function EnemyEffects.knockBack(model: Model, from: Vector3, speed: number, duration: number)
+	if model:GetAttribute("Boss") then
+		return
+	end
 	local root = model:FindFirstChild("HumanoidRootPart")
 	if not root or not root:IsA("BasePart") or root.Anchored then
 		return
@@ -66,6 +71,9 @@ end
 -- Drags `model` horizontally to `to` over `duration` seconds (the scythe's hook). Nothing
 -- happens if it's already there.
 function EnemyEffects.pull(model: Model, to: Vector3, duration: number)
+	if model:GetAttribute("Boss") then
+		return
+	end
 	local root = model:FindFirstChild("HumanoidRootPart")
 	if not root or not root:IsA("BasePart") or root.Anchored or duration <= 0 then
 		return
@@ -99,6 +107,9 @@ end
 -- "STUNNED" label over its head until it wears off (unless `silent`, e.g. while it's held
 -- by a hook: the hold isn't a stun the player earned).
 function EnemyEffects.stun(model: Model, duration: number, silent: boolean?)
+	if model:GetAttribute("Boss") then
+		return
+	end
 	local stunnedUntil = os.clock() + duration
 	local current = model:GetAttribute("StunnedUntil")
 	if typeof(current) == "number" and current > stunnedUntil then

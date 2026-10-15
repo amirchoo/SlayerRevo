@@ -39,6 +39,8 @@ local MannequinPoses = require(script.MannequinPoses)
 local Intro = require(script.Intro)
 local AnimalAnimator = require(script.AnimalAnimator)
 local PetAnimator = require(script.PetAnimator)
+local BossAnimator = require(script.BossAnimator)
+local DungeonHud = require(script.DungeonHud)
 local PetCutscene = require(script.PetCutscene)
 local BuffDisplay = require(script.BuffDisplay)
 local LootClient = require(script.LootClient)
@@ -107,6 +109,8 @@ ParryPredict.start()
 Nameplates.start()
 task.spawn(AnimalAnimator.start) -- waits for the Animals folder
 task.spawn(PetAnimator.start) -- waits for the Pets folder
+task.spawn(BossAnimator.start) -- waits for the Enemies folder
+DungeonHud.start() -- the boss bar, room banners and attack telegraphs in a dungeon run
 PetCutscene.start()
 task.spawn(LootClient.start) -- waits for the Loot folder
 DayNight.start()
