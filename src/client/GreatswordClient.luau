@@ -199,7 +199,7 @@ local function swing(state: Equipped)
 		if equipped == state and trail and trail:IsA("Trail") then
 			trail.Enabled = true
 		end
-		Sounds.play("GreatswordSwing", state.root, if step == #combo then 0.9 else 1.15)
+		Sounds.play("GreatswordSwing", state.root, if step == #combo then 0.92 else 1.04) -- the finisher a touch heavier
 	end)
 	task.delay(move.HitDelay, function()
 		if equipped == state and step == #combo then

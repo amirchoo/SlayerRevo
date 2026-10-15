@@ -112,8 +112,8 @@ local function createGreatsword(): Tool
 	trail.Enabled = false
 	trail.Parent = blade
 
-	-- The slam's whoosh, played by the client (found by the name "SlamSound"); see Sounds.
-	local slamSound = Sounds.create("GreatswordSwing", grip)
+	-- The slam's impact, played by the client as it lands (found by the name "SlamSound"); see Sounds.
+	local slamSound = Sounds.create("GreatswordSlam", grip)
 	if slamSound then
 		slamSound.Name = "SlamSound"
 	end

@@ -63,6 +63,7 @@ local REACH_TRANSPARENCY_FULL = 0.55 -- brighter once fully charged
 local PLANTED_AFTER_HIT = 0.35 -- seconds the feet stay planted after a charged heavy lands
 local FLIPPED_GRIP = CFrame.Angles(0, 0, math.pi) -- a FlipGrip heavy's weapon, turned around its handle
 local UNFLIP_AFTER_HIT = 0.45 -- matches WeaponService: when a flipped weapon turns back after the hit
+local FLURRY_SOUND_SPEEDUP = 0.4 -- a fully charged flurry's stab sounds play this much faster
 
 -- Fallback guard pose when a weapon has no guard animation (Block.Animation = ""): the
 -- weapon turned sideways across the body, tipped slightly forward. Local only.
@@ -625,11 +626,14 @@ function ComboWeaponClient.new(config: ComboWeapon)
 				attackTime = stabs.HitDelay + (hits - 1) * stabs.Interval
 				busyUntil = os.clock() + attackTime
 				Push.apply(root, root.CFrame.LookVector, stabs.Advance, attackTime)
+				-- A stab sound on every stab, played faster the harder it was charged (overlapping,
+				-- so the rapid ones don't cut each other off).
 				local stabSound = tool:FindFirstChild("SlashSound", true)
-				for stab = 2, hits do
+				local rate = 1 + FLURRY_SOUND_SPEEDUP * releasePower
+				for stab = 1, hits do
 					task.delay(stabs.HitDelay + (stab - 1) * stabs.Interval, function()
 						if stabSound and stabSound:IsA("Sound") and tool.Parent == character then
-							Sounds.replay(stabSound)
+							Sounds.playCopy(stabSound, rate)
 						end
 					end)
 				end
@@ -647,8 +651,8 @@ function ComboWeaponClient.new(config: ComboWeapon)
 				Push.apply(root, root.CFrame.LookVector, distance / lunge.LungeTime, lunge.LungeTime)
 			end
 			local sound = tool:FindFirstChild("SlashSound", true)
-			if sound and sound:IsA("Sound") then
-				Sounds.replay(sound)
+			if not stabs and sound and sound:IsA("Sound") then
+				Sounds.replay(sound) -- (a flurry plays its own, one per stab)
 			end
 			setTrails(tool, true)
 			task.delay(attackTime + TRAIL_AFTER_HIT, function()

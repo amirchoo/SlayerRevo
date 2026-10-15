@@ -29,8 +29,9 @@ local SPECS: { [string]: SoundSpec } = {
 	SwordSwing = { Id = WHOOSH, Pitch = 1.6, Volume = 0.4 },
 	MaceSwing = { Id = WHOOSH, Pitch = 1.1, Volume = 0.45 },
 	SpearSwing = { Id = WHOOSH, Pitch = 2.0, Volume = 0.35 },
-	RapierSwing = { Id = WHOOSH, Pitch = 2.4, Volume = 0.3 },
-	GreatswordSwing = { Id = WHOOSH, Pitch = 0.8, Volume = 0.5 },
+	RapierSwing = { Id = "rbxassetid://137418191870543", Pitch = 1, Volume = 0.5 }, -- also each stab of the flurry, faster with charge
+	GreatswordSwing = { Id = "rbxassetid://137628815514180", Pitch = 1, Volume = 0.6 },
+	GreatswordSlam = { Id = "rbxassetid://140277245983305", Pitch = 1, Volume = 0.8 }, -- the charged slam, as it lands
 	AxeSwing = { Id = WHOOSH, Pitch = 1.3, Volume = 0.45 },
 	DualBladeSwing = { Id = WHOOSH, Pitch = 2.1, Volume = 0.35 },
 	HammerSwing = { Id = WHOOSH, Pitch = 0.65, Volume = 0.6 },
@@ -63,7 +64,7 @@ local SPECS: { [string]: SoundSpec } = {
 
 	-- Other feedback.
 	Block = { Id = THUD, Pitch = 1.8, Volume = 0.8 }, -- a blocked hit
-	ParryHit = { Id = BOOM, Pitch = 2.2, Volume = 0.6 }, -- a parried hit (heard by everyone nearby)
+	ParryHit = { Id = "rbxassetid://137580087669661", Pitch = 1, Volume = 0.8 }, -- a parried hit, every weapon (heard by everyone nearby)
 	ChargeLevel = { Id = TICK, Pitch = 1, Volume = 0.8, Steady = true }, -- greatsword charge level reached (pitch rises per level)
 	Heartbeat = { Id = THUD, Pitch = 0.5, Volume = 0.6 }, -- thumps while your health is low
 
@@ -130,6 +131,20 @@ end
 function Sounds.replay(sound: Sound)
 	varied(sound)
 	sound:Play()
+end
+
+-- Plays a copy of a kept sound once, `pitchScale` times faster, without cutting off the sound
+-- itself or other copies (for rapid repeats like the rapier's flurry).
+function Sounds.playCopy(sound: Sound, pitchScale: number)
+	local copy = sound:Clone()
+	local base = sound:GetAttribute("BasePitch")
+	copy:SetAttribute("BasePitch", (if typeof(base) == "number" then base else sound.PlaybackSpeed) * pitchScale)
+	varied(copy)
+	copy.Parent = sound.Parent
+	copy.Ended:Connect(function()
+		copy:Destroy()
+	end)
+	copy:Play()
 end
 
 return Sounds
