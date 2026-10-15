@@ -281,6 +281,7 @@ TutorialConfig.SparringOrc = {
 	AttackWindup = EnemyConfig.Orc.AttackWindup,
 	AttackAnimation = EnemyConfig.Orc.AttackAnimation,
 	AttackCooldown = 2.2,
+	Animations = EnemyConfig.Orc.Animations,
 	RespawnDelay = 3, -- seconds its body stays down
 	XP = 0,
 	Coins = 0,

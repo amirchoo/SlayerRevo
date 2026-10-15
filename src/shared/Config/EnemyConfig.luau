@@ -4,6 +4,21 @@
 
 local SafeZone = require(script.Parent.Parent.SafeZone)
 
+-- An enemy type's own clips (each "" uses the shared one at the bottom of this file). The walk
+-- and run are cycles made for a ground speed (WalkClipSpeed / RunClipSpeed, studs/s, printed by
+-- the generator): they play faster or slower to match how fast the enemy really moves, so its
+-- feet don't slide. Moving faster than RunAbove runs instead of walking.
+export type Animations = {
+	Idle: string,
+	Walk: string,
+	Run: string, -- "" walks at every speed
+	Flinch: string,
+	Parried: string, -- the recoil held through a parry's stun
+	WalkClipSpeed: number,
+	RunClipSpeed: number,
+	RunAbove: number,
+}
+
 export type EnemyType = {
 	DisplayName: string,
 	Level: number, -- shown over its head; how tough it is next to the player's level
@@ -18,6 +33,7 @@ export type EnemyType = {
 	AttackWindup: number, -- seconds between starting the attack and the hit landing (match the animation's "Hit")
 	AttackAnimation: string, -- "" uses Roblox's default tool swing
 	AttackCooldown: number,
+	Animations: Animations?, -- its own idle, walk, run, flinch and parried clips
 	RespawnDelay: number,
 	XP: number, -- given to the player who defeats it (see ProgressionConfig for the level curve)
 	Coins: number?, -- coins given to the killer (defaults to 0 if nil)
@@ -73,9 +89,20 @@ EnemyConfig.Orc = {
 	AggroRange = 60,
 	AttackRange = 5,
 	AttackDamage = 30,
-	AttackWindup = 0.4, -- matches DemonClaw's "Hit" keyframe (tools/sword_anims.py)
-	AttackAnimation = "rbxassetid://135668765525905", -- DemonClaw
+	AttackWindup = 0.4, -- matches OrcAttack's "Hit" keyframe (tools/orc_anims.py)
+	AttackAnimation = "rbxassetid://135668765525905", -- DemonClaw for now; OrcAttack (tools/orc_anims.py) once published
 	AttackCooldown = 1.5,
+	-- Made for this rig by tools/orc_anims.py (it's a T-pose rig: R15 clips don't fit it).
+	Animations = {
+		Idle = "", -- OrcIdle
+		Walk = "", -- OrcWalk
+		Run = "", -- OrcRun
+		Flinch = "", -- OrcFlinch
+		Parried = "", -- OrcParried
+		WalkClipSpeed = 3.54,
+		RunClipSpeed = 7.71,
+		RunAbove = 6, -- roaming (4.5) walks; chasing and circling (8-10) and heading home run
+	},
 	RespawnDelay = 8,
 	XP = 15,
 	Coins = 5,

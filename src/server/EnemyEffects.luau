@@ -23,9 +23,14 @@ local function makeAnimation(id: string): Animation?
 	return animation
 end
 
-local flinchAnimation = makeAnimation(EnemyConfig.FlinchAnimation)
+-- Each enemy's flinch and parried clips (set by EnemyAnimations; the shared ones otherwise).
+type Clips = { flinch: Animation?, parried: Animation? }
+local sharedClips: Clips = {
+	flinch = makeAnimation(EnemyConfig.FlinchAnimation),
+	parried = makeAnimation(EnemyConfig.ParriedAnimation),
+}
+local clipsOf: { [Model]: Clips } = setmetatable({}, { __mode = "k" }) :: any
 local flinchTracks: { [Animator]: AnimationTrack } = setmetatable({}, { __mode = "k" }) :: any
-local parriedAnimation = makeAnimation(EnemyConfig.ParriedAnimation)
 local parriedTracks: { [Animator]: AnimationTrack } = setmetatable({}, { __mode = "k" }) :: any
 
 
@@ -132,10 +137,20 @@ function EnemyEffects.stun(model: Model, duration: number, silent: boolean?)
 	Debris:AddItem(gui, stunnedUntil - os.clock())
 end
 
+-- Gives `model` its own flinch and parried clips (ids; "" = none).
+function EnemyEffects.setClips(model: Model, flinch: string, parried: string)
+	clipsOf[model] = { flinch = makeAnimation(flinch), parried = makeAnimation(parried) }
+end
+
+local function clips(model: Model): Clips
+	return clipsOf[model] or sharedClips
+end
+
 -- Jolts `model` back from a hit (a quick flinch animation). Skipped while it's winding up an
 -- attack (its "Attacking" attribute), so a flinch never looks like it cancelled a hit that
 -- still lands. Models without an Animator (e.g. training dummies) don't flinch.
 function EnemyEffects.flinch(model: Model)
+	local flinchAnimation = clips(model).flinch
 	if not flinchAnimation or model:GetAttribute("Attacking") == true then
 		return
 	end
@@ -158,6 +173,7 @@ end
 -- holds it there for `duration` seconds (the parry's stun), then lets it recover. It plays
 -- over a flinch, so hits landed in the punish window don't break the open pose.
 function EnemyEffects.recoil(model: Model, duration: number)
+	local parriedAnimation = clips(model).parried
 	local humanoid = model:FindFirstChildOfClass("Humanoid")
 	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
 	if not parriedAnimation or not animator then

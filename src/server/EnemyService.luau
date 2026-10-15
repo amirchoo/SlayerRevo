@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local BlockService = require(script.Parent.BlockService)
+local EnemyAnimations = require(script.Parent.EnemyAnimations)
 local EnemyEffects = require(script.Parent.EnemyEffects)
 local HealthService = require(script.Parent.HealthService)
 local HitEffects = require(script.Parent.HitEffects)
@@ -30,9 +31,6 @@ type EnemyType = EnemyConfig.EnemyType
 local SPAWN_RAY_HEIGHT = 500
 local SPAWN_HEIGHT_ABOVE_GROUND = 4
 
-local IDLE_ANIMATION = EnemyConfig.IdleAnimation
-local WALK_ANIMATION = EnemyConfig.WalkAnimation
-local DEFAULT_ATTACK_ANIMATION = EnemyConfig.DefaultAttackAnimation
 local AI_TICK = EnemyConfig.AiTick
 
 local EnemyService = {}
@@ -60,13 +58,6 @@ local function groundCFrame(spawnPoint: Vector2): CFrame
 	end
 	local groundY = if result then result.Position.Y else 0
 	return CFrame.new(spawnPoint.X, groundY + SPAWN_HEIGHT_ABOVE_GROUND, spawnPoint.Y)
-end
-
-local function loadAnimation(animator: Animator, id: string): AnimationTrack
-	local animation = Instance.new("Animation")
-	-- A bare number (e.g. pasted straight from the Creator Dashboard) still works.
-	animation.AnimationId = if string.match(id, "^%d+$") then `rbxassetid://{id}` else id
-	return animator:LoadAnimation(animation)
 end
 
 local function findNearestCharacter(position: Vector3, maxDistance: number): (Model?, BasePart?, number)
@@ -154,26 +145,7 @@ local function attackPlayer(enemy: Model, root: BasePart, kind: EnemyType, attac
 end
 
 local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vector3, kind: EnemyType)
-	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
-	-- Idle always runs underneath, so the enemy never shows its rest pose (a T-pose for
-	-- models made with Avatar Auto Setup); walking and attacking play over it.
-	local idleTrack = loadAnimation(animator, IDLE_ANIMATION)
-	idleTrack.Priority = Enum.AnimationPriority.Idle
-	idleTrack.Looped = true
-	idleTrack:Play()
-	local walkTrack = loadAnimation(animator, WALK_ANIMATION)
-	walkTrack.Priority = Enum.AnimationPriority.Movement
-	walkTrack.Looped = true
-	local attackTrack = loadAnimation(animator, if kind.AttackAnimation ~= "" then kind.AttackAnimation else DEFAULT_ATTACK_ANIMATION)
-	attackTrack.Priority = Enum.AnimationPriority.Action -- plays over the walk
-
-	humanoid.Running:Connect(function(speed)
-		if speed > 0.5 and not walkTrack.IsPlaying then
-			walkTrack:Play()
-		elseif speed <= 0.5 and walkTrack.IsPlaying then
-			walkTrack:Stop()
-		end
-	end)
+	local attackTrack = EnemyAnimations.start(enemy, humanoid, kind) -- idle, walk/run, flinch, parried
 
 	local lastAttack = 0
 	local stuckSince: number? = nil

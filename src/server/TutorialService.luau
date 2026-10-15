@@ -26,7 +26,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local EnemyConfig = require(ReplicatedStorage.Shared.Config.EnemyConfig)
 local NpcConfig = require(ReplicatedStorage.Shared.Config.NpcConfig)
 local TutorialConfig = require(ReplicatedStorage.Shared.Config.TutorialConfig)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
@@ -34,6 +33,7 @@ local SkillTrees = require(ReplicatedStorage.Shared.Config.SkillTrees)
 local BlockService = require(script.Parent.BlockService)
 local DashService = require(script.Parent.DashService)
 local DataService = require(script.Parent.DataService)
+local EnemyAnimations = require(script.Parent.EnemyAnimations)
 local EnemyEffects = require(script.Parent.EnemyEffects)
 local EnemyService = require(script.Parent.EnemyService)
 local HealthService = require(script.Parent.HealthService)
@@ -478,15 +478,6 @@ local function swing(session: Session, partner: Model, root: BasePart, track: An
 	end
 end
 
-local function loadTrack(animator: Animator, id: string, priority: Enum.AnimationPriority, looped: boolean): AnimationTrack
-	local animation = Instance.new("Animation")
-	animation.AnimationId = if string.match(id, "^%d+$") then `rbxassetid://{id}` else id
-	local track = animator:LoadAnimation(animation)
-	track.Priority = priority
-	track.Looped = looped
-	return track
-end
-
 -- The sparring partner keeps close to the player, facing them, and swings during the drills.
 local function runPartner(session: Session, partner: Model, token: number)
 	local humanoid = partner:FindFirstChildOfClass("Humanoid")
@@ -494,18 +485,7 @@ local function runPartner(session: Session, partner: Model, token: number)
 	if not humanoid or not root then
 		return
 	end
-	local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
-	loadTrack(animator, EnemyConfig.IdleAnimation, Enum.AnimationPriority.Idle, true):Play()
-	local walkTrack = loadTrack(animator, EnemyConfig.WalkAnimation, Enum.AnimationPriority.Movement, true)
-	local attack = TutorialConfig.SparringOrc.AttackAnimation
-	local attackTrack = loadTrack(animator, if attack ~= "" then attack else EnemyConfig.DefaultAttackAnimation, Enum.AnimationPriority.Action, false)
-	humanoid.Running:Connect(function(speed)
-		if speed > 0.5 and not walkTrack.IsPlaying then
-			walkTrack:Play()
-		elseif speed <= 0.5 and walkTrack.IsPlaying then
-			walkTrack:Stop()
-		end
-	end)
+	local attackTrack = EnemyAnimations.start(partner, humanoid, TutorialConfig.SparringOrc)
 	local highlight = Instance.new("Highlight")
 	highlight.FillColor = PARTNER.TelegraphColor
 	highlight.OutlineColor = PARTNER.TelegraphColor
