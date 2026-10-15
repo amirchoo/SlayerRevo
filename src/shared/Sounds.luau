@@ -44,7 +44,7 @@ local SPECS: { [string]: SoundSpec } = {
 	MaceHit = { Id = THUD, Pitch = 0.7, Volume = 1 },
 	SpearHit = { Id = THUD, Pitch = 1.9, Volume = 0.7 },
 	RapierHit = { Id = THUD, Pitch = 2.2, Volume = 0.55 },
-	GreatswordHit = { Id = BOOM, Pitch = 1.3, Volume = 0.5 },
+	GreatswordHit = { Id = "", Pitch = 1, Volume = 0.5 }, -- silent: the swing and slam sounds already land with the hit
 	AxeHit = { Id = THUD, Pitch = 1.1, Volume = 0.9 },
 	DualBladeHit = { Id = THUD, Pitch = 1.8, Volume = 0.6 },
 	HammerHit = { Id = BOOM, Pitch = 0.9, Volume = 0.7 },
@@ -125,6 +125,23 @@ function Sounds.play(name: string, parent: Instance, pitchScale: number?)
 		sound:Destroy()
 	end)
 	sound:Play()
+end
+
+-- Loads every sound's audio up front (call once on the client), so none starts late the first
+-- time it plays (e.g. a parry's clang).
+function Sounds.preload()
+	local ContentProvider = game:GetService("ContentProvider")
+	local list: { Instance } = {}
+	for _, spec in SPECS do
+		if spec.Id ~= "" then
+			local sound = Instance.new("Sound")
+			sound.SoundId = spec.Id
+			table.insert(list, sound)
+		end
+	end
+	task.spawn(function()
+		ContentProvider:PreloadAsync(list)
+	end)
 end
 
 -- Plays a kept sound (e.g. a weapon's SlashSound) again, at a slightly different pitch.

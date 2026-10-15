@@ -52,7 +52,9 @@ local TutorialClient = require(script.TutorialClient)
 local Nameplates = require(script.Nameplates)
 local PromptHints = require(script.PromptHints)
 local AdminPanel = require(script.AdminPanel)
+local Sounds = require(ReplicatedStorage.Shared.Sounds)
 
+Sounds.preload() -- every sound's audio loads now, not on its first play
 Gamepad.start() -- first: the rest asks it whether a controller is in use
 CombatInput.start() -- mouse/keyboard and controller; the touch buttons feed it too
 TouchControls.start()
