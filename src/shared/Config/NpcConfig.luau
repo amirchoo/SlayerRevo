@@ -89,7 +89,7 @@ NpcConfig.List = {
 		Lines = {
 			"Welcome to the Sleeping Boar! Warm stew, warm beds, and the best stories this side of the forest.",
 			"Hunters swap tales here at night. Some of them are even true.",
-			"The oldest one goes like this: the night the Orders marched to the Great Arch, a cat sat at the Knight's feet in the plaza. Called her Bonnie. Same lazy stare as ours.",
+			"The oldest one goes like this: the night the Orders marched to the Great Arch, a cat sat at the Knight's feet in the plaza. Called her Bonnie. White, with gray markings, just like ours.",
 		},
 	},
 	{
@@ -209,6 +209,8 @@ export type Pet = {
 
 NpcConfig.Pets = {
 	{
+		-- The town cat: a white girl kitty with gray markings. The townsfolk's lines tell her
+		-- lore (she's been in town as long as anyone remembers, and hunters pet her for luck).
 		Id = "Bonnie",
 		Name = "Bonnie",
 		Title = "Town Cat",

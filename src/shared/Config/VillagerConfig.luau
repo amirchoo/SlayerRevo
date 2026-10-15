@@ -57,7 +57,7 @@ VillagerConfig.Greetings = {
 	"The blacksmith's been hammering since dawn.",
 	"Heard the hunting grounds got rougher lately.",
 	"Welcome to Beginning Town!",
-	"Have you seen my cat? Orange, lazy, likes the campfire.",
+	"Have you seen Bonnie? White with gray patches, usually napping by the statue.",
 	"Bring back something big for the trophy board!",
 	"Pet Bonnie for luck before you leave town!",
 	"Bonnie's asleep by the statue again. Lucky cat.",
