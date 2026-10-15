@@ -50,7 +50,7 @@
 MDgyMzc2Mjgx]]></BinaryString>
 			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 			<bool name="DefinesCapabilities">false</bool>
-			<string name="Name">LesserDemon.ready</string>
+			<string name="Name">LesserDemon</string>
 			<BinaryString name="SerializedOverrides"></BinaryString>
 			<int64 name="SourceAssetId">103732531183387</int64>
 			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>

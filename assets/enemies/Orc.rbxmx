@@ -61,7 +61,7 @@ dGFyUHJldmlld2VyX3N0YWdlAgkAAABDaGVja0JvZHkcAAAAUkJYX0F2YXRhclByZXZpZXdl
 cl90ZXh0dXJlZAMBEAAAAFJCWF9JbXBvcnRNZXRob2QGAAAAAAAAAAA=]]></BinaryString>
 			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
 			<bool name="DefinesCapabilities">false</bool>
-			<string name="Name">Orc.ready_autosetup</string>
+			<string name="Name">Orc</string>
 			<BinaryString name="SerializedOverrides"></BinaryString>
 			<int64 name="SourceAssetId">-1</int64>
 			<SharedString name="Tags">yuZpQdnvvUBOTYh1jqZ2cA==</SharedString>
