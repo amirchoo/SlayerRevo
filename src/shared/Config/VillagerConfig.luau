@@ -59,6 +59,9 @@ VillagerConfig.Greetings = {
 	"Welcome to Beginning Town!",
 	"Have you seen my cat? Orange, lazy, likes the campfire.",
 	"Bring back something big for the trophy board!",
+	"Pet Bonnie for luck before you leave town!",
+	"Bonnie's asleep by the statue again. Lucky cat.",
+	"My grandad swore Bonnie was old when he was a boy.",
 }
 
 -- What they mutter at their stops.
@@ -69,6 +72,7 @@ VillagerConfig.Mutters = {
 	"*hums a tune*",
 	"Those chickens again...",
 	"Busy day at the market.",
+	"Here, Bonnie, Bonnie...",
 }
 
 -- At night they have other things on their mind.

@@ -43,6 +43,7 @@ NpcConfig.List = {
 		ChosenLines = {
 			"That weapon suits you. Learn its rhythm before you learn its strength.",
 			"Short on coin? Greta the butcher pays for any meat you bring back from the fields.",
+			"And before you go, find Bonnie by the statue. Slayers have scratched that cat's ears for luck since before my grandmother was born.",
 			"When you're ready, the north arch leads to the hunting grounds. Come back alive.",
 		},
 		Action = "StarterPick",
@@ -57,6 +58,7 @@ NpcConfig.List = {
 		Pants = Color3.fromRGB(50, 40, 30),
 		Lines = {
 			"Mind the sparks. This forge hasn't gone cold in twenty years.",
+			"Bonnie sneaks in to nap by the coals every winter. Never singed a whisker. Smarter than half my customers.",
 			"I've got weapons for every fighting style. Three hundred coins each.",
 		},
 		Action = "Shop",
@@ -71,6 +73,7 @@ NpcConfig.List = {
 		Pants = Color3.fromRGB(60, 50, 45),
 		Lines = {
 			"Leather, hide, quilted cloth: every piece you wear turns a little of a blow aside.",
+			"Mind you, nothing I stitch turns a blow like Bonnie's luck. Pet her before you head out; the hunters swear by it.",
 			"Full armor sets are two hundred fifty coins each.",
 		},
 		Action = "Shop",
@@ -86,6 +89,7 @@ NpcConfig.List = {
 		Lines = {
 			"Welcome to the Sleeping Boar! Warm stew, warm beds, and the best stories this side of the forest.",
 			"Hunters swap tales here at night. Some of them are even true.",
+			"The oldest one goes like this: the night the Orders marched to the Great Arch, a cat sat at the Knight's feet in the plaza. Called her Bonnie. Same lazy stare as ours.",
 		},
 	},
 	{
@@ -98,6 +102,7 @@ NpcConfig.List = {
 		Pants = Color3.fromRGB(60, 50, 40),
 		Lines = {
 			"The supply cart finally made it through. Nothing fancy yet, but potions keep slayers alive.",
+			"I tried selling Bonnie charms once. Nobody bought one. They all just went and petted the real cat.",
 			"Health and Mana potions are stocked and ready.",
 		},
 		Action = "Shop",
@@ -114,6 +119,7 @@ NpcConfig.List = {
 		Pants = Color3.fromRGB(110, 45, 40),
 		Lines = {
 			"Fresh meat, fair prices. Well, fair for me.",
+			"The best scraps go to Bonnie, and don't you tell her otherwise. She's kept more of you alive than my steaks have.",
 			"Bring me what you hunt out in the fields and I'll pay coin for it. Buying from me costs more, mind.",
 		},
 		Action = "Shop",
@@ -128,6 +134,7 @@ NpcConfig.List = {
 		Pants = Color3.fromRGB(45, 45, 55),
 		Lines = {
 			"The Hunters' Guild keeps track of every beast that threatens this town.",
+			"Our records go back a hundred years, and there's a cat named Bonnie in them on nearly every page. Not once does anyone mention a kitten.",
 			"Check the quest board outside for open bounties, or head north to thin the hunting grounds.",
 		},
 	},
@@ -144,6 +151,7 @@ NpcConfig.List = {
 		Pants = Color3.fromRGB(50, 45, 40),
 		Lines = {
 			"Every slayer in this town learned to fight in my yard. Some of them even listened.",
+			"Blessings from a cat. In my day we called that luck, and trained anyway. ...Still. Pet her.",
 			"Rusty? Say the word and we'll run the drills again, with whatever weapon you're holding.",
 		},
 		Action = "Training",
@@ -158,6 +166,7 @@ NpcConfig.List = {
 		Pants = Color3.fromRGB(55, 55, 60),
 		Lines = {
 			"Halt. Past this arch you're outside the safe zone; nothing out there cares that you're new.",
+			"I ask every hunter who walks through here one thing: did you pet Bonnie? The ones who say no are the ones I worry about.",
 			"Orcs roam close to the road. Further in, something worse. Keep your guard up and your stamina higher.",
 		},
 	},
