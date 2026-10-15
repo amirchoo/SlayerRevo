@@ -454,36 +454,36 @@ local Rapier: ComboWeapon = {
 -- Dagger: a light knife for close work (the mage's sidearm, but anyone can use it). A fast
 -- 4-hit combo mixing slashes and stabs with very little reach; its heavy is a backstab: a
 -- quick crouch, then a short lunge into one deep stab. Guards and parries, but its block
--- absorbs very little. Animations from tools/dagger_anims.py ("" until published).
+-- absorbs very little. Animations from tools/dagger_anims.py.
 local Dagger: ComboWeapon = {
 	ToolName = "Dagger",
 	Hand = "Right",
-	IdleAnimation = "", -- DaggerIdle
+	IdleAnimation = "rbxassetid://72729646632069", -- DaggerIdle
 	AnimationSpeed = 1,
 	Stamina = 4,
-	ModelFit = { Length = 2.6, GripFrom = 0.2 }, -- placeholder fit: check it in hand
+	ModelFit = { Length = 2.6, GripFrom = 0.23 }, -- the hand round the middle of the wooden grip
 	TrailColor = Color3.fromRGB(225, 230, 240),
 	Combo = {
 		-- HitDelay matches each move's "Hit" keyframe in tools/dagger_anims.py.
-		{ Animation = "", Damage = 9, Cooldown = 0.22, HitDelay = 0.1 }, -- DaggerSlash1
-		{ Animation = "", Damage = 9, Cooldown = 0.22, HitDelay = 0.1 }, -- DaggerSlash2
-		{ Animation = "", Damage = 11, Cooldown = 0.24, HitDelay = 0.1 }, -- DaggerStab3
-		{ Animation = "", Damage = 18, Cooldown = 0.45, HitDelay = 0.16, Lunge = 18, Knockback = 10 }, -- DaggerStab4
+		{ Animation = "rbxassetid://116823676876543", Damage = 9, Cooldown = 0.22, HitDelay = 0.1 }, -- DaggerSlash1
+		{ Animation = "rbxassetid://90557310267126", Damage = 9, Cooldown = 0.22, HitDelay = 0.1 }, -- DaggerSlash2
+		{ Animation = "rbxassetid://83346210942030", Damage = 11, Cooldown = 0.24, HitDelay = 0.1 }, -- DaggerStab3
+		{ Animation = "rbxassetid://114949057482513", Damage = 18, Cooldown = 0.45, HitDelay = 0.16, Lunge = 18, Knockback = 10 }, -- DaggerStab4
 	},
 	ComboWindow = 0.7,
 	Range = 4.5, -- very short: you have to be right on them
 	Width = 4.5,
 	Height = 5,
 	Block = {
-		Animation = "", -- DaggerGuard
+		Animation = "rbxassetid://99184131102784", -- DaggerGuard
 		BlockAmount = 8, -- the lightest guard there is
 		ParryWindow = 0.24,
 	},
 	Heavy = {
 		Kind = "Thrust",
 		Stamina = 16,
-		WindUpAnimation = "", -- DaggerWindUp
-		ThrustAnimation = "", -- DaggerBackstab
+		WindUpAnimation = "rbxassetid://85052814385918", -- DaggerWindUp
+		ThrustAnimation = "rbxassetid://118491558524288", -- DaggerBackstab
 		HoldTime = 0.2,
 		FullChargeTime = 0.6, -- quick to ready
 		MaxHold = 2,
