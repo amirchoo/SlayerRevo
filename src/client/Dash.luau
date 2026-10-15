@@ -8,7 +8,8 @@
 -- Each client simulates its own character's movement, so the dash runs here and
 -- replicates to others like normal movement.
 -- Each dash is reported to the server (DashStart), which grants a moment of i-frames
--- (see DashService); a hit dodged that way pops "DODGE".
+-- (see DashService); a hit dodged that way pops "DODGE". Its dust, whoosh, and afterimage
+-- are DashEffects'.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -23,6 +24,7 @@ local Gamepad = require(script.Parent.Gamepad)
 local DamageNumbers = require(script.Parent.DamageNumbers)
 local CombatInput = require(script.Parent.CombatInput)
 local Push = require(script.Parent.Push)
+local DashEffects = require(script.Parent.DashEffects)
 
 local DASH = CombatConfig.Dash
 
@@ -170,6 +172,7 @@ local function tryDash()
 	lastDash = now
 	updateMeter()
 	HudStyle.pop(segments[charges + 1], 0.75) -- squish the one just spent
+	DashEffects.play(character :: Model) -- before the push, so the afterimage stays where it started
 	Push.apply(root, direction, DASH.Speed, DASH.Duration)
 	dashRemote:FireServer() -- the server grants the dash's i-frames
 end

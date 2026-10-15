@@ -307,7 +307,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 	local function playSwingEffects(tool: Tool, step: number)
 		local sound = tool:FindFirstChild("SlashSound", true)
 		if sound and sound:IsA("Sound") then
-			sound:Play()
+			Sounds.replay(sound)
 		end
 
 		swingToken += 1
@@ -477,7 +477,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			while active do
 				local sound = tool:FindFirstChild("SlashSound", true)
 				if sound and sound:IsA("Sound") then
-					sound:Play()
+					Sounds.replay(sound)
 				end
 				task.wait(spin.TickInterval)
 			end
@@ -629,7 +629,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 				for stab = 2, hits do
 					task.delay(stabs.HitDelay + (stab - 1) * stabs.Interval, function()
 						if stabSound and stabSound:IsA("Sound") and tool.Parent == character then
-							stabSound:Play()
+							Sounds.replay(stabSound)
 						end
 					end)
 				end
@@ -648,7 +648,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			end
 			local sound = tool:FindFirstChild("SlashSound", true)
 			if sound and sound:IsA("Sound") then
-				sound:Play()
+				Sounds.replay(sound)
 			end
 			setTrails(tool, true)
 			task.delay(attackTime + TRAIL_AFTER_HIT, function()
@@ -767,7 +767,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			while active do
 				local sound = tool:FindFirstChild("SlashSound", true)
 				if sound and sound:IsA("Sound") then
-					sound:Play()
+					Sounds.replay(sound)
 				end
 				task.wait(rush.TickInterval)
 			end
@@ -832,7 +832,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			task.delay(at, function()
 				local sound = tool:FindFirstChild("SlashSound", true)
 				if active and sound and sound:IsA("Sound") then
-					sound:Play()
+					Sounds.replay(sound)
 				end
 			end)
 		end

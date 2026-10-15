@@ -4,6 +4,8 @@
 -- of invulnerability, during which any damage to the player is dodged (and the player is
 -- told, Dodged). The server keeps its own count of dash charges, refilling like the
 -- client's, so spamming the remote can't buy more invulnerability than real dashes would.
+-- Each real dash is also passed on to the other players (DashEffect), who draw its dust and
+-- afterimage (see client DashEffects); the dasher has already drawn their own.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -20,6 +22,7 @@ local TIMING_SLACK = 0.1 -- network delay makes dashes arrive slightly early or 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local dashRemote = remotes:WaitForChild("DashStart") :: RemoteEvent
 local dodgedRemote = remotes:WaitForChild("Dodged") :: RemoteEvent
+local dashEffectRemote = remotes:WaitForChild("DashEffect") :: RemoteEvent
 
 local DashService = {}
 
@@ -58,6 +61,11 @@ local function onDash(player: Player)
 	state.charges = math.max(state.charges - 1, 0)
 	state.lastDash = now
 	state.invulnerableUntil = now + iframes
+	for _, other in Players:GetPlayers() do
+		if other ~= player then
+			dashEffectRemote:FireClient(other, character)
+		end
+	end
 end
 
 -- Damage filter: a hit during a dash's i-frames is dodged.

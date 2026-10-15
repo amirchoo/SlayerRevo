@@ -83,6 +83,9 @@
         "DashStart": {
           "$className": "RemoteEvent"
         },
+        "DashEffect": {
+          "$className": "RemoteEvent"
+        },
         "Dodged": {
           "$className": "RemoteEvent"
         },

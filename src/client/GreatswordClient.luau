@@ -322,7 +322,7 @@ local function startCharge(state: Equipped)
 		task.delay(GREATSWORD.HitDelay, function()
 			local sound = state.tool:FindFirstChild("SlamSound", true)
 			if sound and sound:IsA("Sound") then
-				sound:Play()
+				Sounds.replay(sound)
 			end
 			shakeCamera(state.humanoid, SHAKE_PER_LEVEL * (level - 1) + 0.1)
 		end)

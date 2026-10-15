@@ -5,6 +5,8 @@
 -- ring + dust), or "Pierce" (thin streak along the blow + a narrow cone of sparks).
 -- Ground smashes (GroundShockwave) draw an expanding ring of dust along the ground and
 -- shake the camera of anyone close enough to feel it.
+-- A parry adds a bright light flash and a fast all-round burst of streaking sparks, so it
+-- reads differently from an ordinary hit.
 -- Everything is built from plain parts and Roblox's bundled particle textures.
 
 local Debris = game:GetService("Debris")
@@ -23,6 +25,10 @@ local REFERENCE_DAMAGE = 25 -- a hit this big draws the effect at its base size
 local SHOCKWAVE_TIME = 0.4
 local SHOCKWAVE_SHAKE = 0.5 -- studs of camera shake at the impact (less further away)
 local SHOCKWAVE_SHAKE_TIME = 0.3
+local PARRY_FLASH_TIME = 0.15
+local PARRY_FLASH_BRIGHTNESS = 5
+local PARRY_FLASH_RANGE = 14
+local PARRY_SPARKS = 20
 
 type Style = "Slash" | "Blunt" | "Pierce"
 type Look = { style: Style, color: Color3, size: number }
@@ -159,6 +165,31 @@ local function pierce(position: Vector3, direction: Vector3, look: Look, scale: 
 	sparks(position, direction, look.color, scale, 22, math.round(8 * scale))
 end
 
+-- A parry: a light flash at the clash and sparks streaking out in every direction.
+local function parryClash(position: Vector3, color: Color3)
+	local attachment = emitterAt(position, Vector3.yAxis)
+	local light = Instance.new("PointLight")
+	light.Color = color
+	light.Brightness = PARRY_FLASH_BRIGHTNESS
+	light.Range = PARRY_FLASH_RANGE
+	light.Shadows = false
+	light.Parent = attachment
+	TweenService:Create(light, TweenInfo.new(PARRY_FLASH_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Brightness = 0 }):Play()
+
+	burst(attachment, {
+		Texture = SPARK_TEXTURE,
+		Color = ColorSequence.new(color),
+		Size = NumberSequence.new(0.25, 0),
+		Squash = NumberSequence.new(-2), -- stretched thin along their flight
+		Orientation = Enum.ParticleOrientation.VelocityParallel,
+		Transparency = NumberSequence.new(0, 1),
+		Lifetime = NumberRange.new(0.2, 0.4),
+		Speed = NumberRange.new(30, 50),
+		SpreadAngle = Vector2.new(180, 180),
+		Drag = 5,
+	}, PARRY_SPARKS)
+end
+
 local function flash(model: Model)
 	if not model.Parent then
 		return
@@ -188,6 +219,9 @@ local function onHit(model: Model?, position: Vector3, direction: Vector3, weapo
 		pierce(position, direction, look, scale)
 	else
 		slash(position, direction, look, scale)
+	end
+	if weapon == "Parry" then
+		parryClash(position, look.color)
 	end
 
 	-- Impact sound from the hit point (3D, so it's quieter further away).

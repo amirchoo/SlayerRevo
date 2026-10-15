@@ -6,12 +6,18 @@
 -- The defaults are stand-ins built from the few sounds bundled with Roblox
 -- (rbxasset://sounds/...), re-pitched to roughly fit, so everything makes some noise
 -- until real sounds are picked.
+--
+-- One-shot sounds (play, replay) vary their pitch a little each time (PITCH_VARIATION) so
+-- repeated hits and swings don't grate; a spec with Steady = true always plays exactly.
 
 export type SoundSpec = {
 	Id: string,
 	Pitch: number, -- playback speed: below 1 = deeper/heavier, above 1 = higher/sharper
 	Volume: number,
+	Steady: boolean?, -- true: never vary the pitch (its pitch carries meaning)
 }
+
+local PITCH_VARIATION = 0.1 -- one-shots play up to 10% higher or lower
 
 local THUD = "rbxasset://sounds/action_jump_land.mp3"
 local WHOOSH = "rbxasset://sounds/action_jump.mp3"
@@ -52,10 +58,13 @@ local SPECS: { [string]: SoundSpec } = {
 	CrossbowHit = { Id = THUD, Pitch = 1.8, Volume = 0.75 },
 	BlunderbussHit = { Id = THUD, Pitch = 2.1, Volume = 0.35 }, -- per pellet, so quieter
 
+	-- Movement.
+	DashWhoosh = { Id = WHOOSH, Pitch = 1.9, Volume = 0.35 }, -- a dash (heard by everyone nearby)
+
 	-- Other feedback.
 	Block = { Id = THUD, Pitch = 1.8, Volume = 0.8 }, -- a blocked hit
 	ParryHit = { Id = BOOM, Pitch = 2.2, Volume = 0.6 }, -- a parried hit (heard by everyone nearby)
-	ChargeLevel = { Id = TICK, Pitch = 1, Volume = 0.8 }, -- greatsword charge level reached (pitch rises per level)
+	ChargeLevel = { Id = TICK, Pitch = 1, Volume = 0.8, Steady = true }, -- greatsword charge level reached (pitch rises per level)
 	Heartbeat = { Id = THUD, Pitch = 0.5, Volume = 0.6 }, -- thumps while your health is low
 
 	-- Town and wildlife (Pro Sound Effects and other free Creator Store sounds).
@@ -75,6 +84,15 @@ local SPECS: { [string]: SoundSpec } = {
 
 local Sounds = {}
 
+local random = Random.new()
+
+local function varied(sound: Sound)
+	local base = sound:GetAttribute("BasePitch")
+	if typeof(base) == "number" then
+		sound.PlaybackSpeed = base * (1 + random:NextNumber(-PITCH_VARIATION, PITCH_VARIATION))
+	end
+end
+
 -- A new Sound for `name` parented to `parent`, or nil if that sound is silenced.
 -- `pitchScale` multiplies the configured pitch (e.g. to rise with charge level).
 function Sounds.create(name: string, parent: Instance, pitchScale: number?): Sound?
@@ -88,6 +106,9 @@ function Sounds.create(name: string, parent: Instance, pitchScale: number?): Sou
 	sound.SoundId = spec.Id
 	sound.PlaybackSpeed = spec.Pitch * (pitchScale or 1)
 	sound.Volume = spec.Volume
+	if not spec.Steady then
+		sound:SetAttribute("BasePitch", sound.PlaybackSpeed) -- what replay varies around
+	end
 	sound.Parent = parent
 	return sound
 end
@@ -98,9 +119,16 @@ function Sounds.play(name: string, parent: Instance, pitchScale: number?)
 	if not sound then
 		return
 	end
+	varied(sound)
 	sound.Ended:Connect(function()
 		sound:Destroy()
 	end)
+	sound:Play()
+end
+
+-- Plays a kept sound (e.g. a weapon's SlashSound) again, at a slightly different pitch.
+function Sounds.replay(sound: Sound)
+	varied(sound)
 	sound:Play()
 end
 
