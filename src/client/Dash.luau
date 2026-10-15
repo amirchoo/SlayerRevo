@@ -172,7 +172,7 @@ local function tryDash()
 	lastDash = now
 	updateMeter()
 	HudStyle.pop(segments[charges + 1], 0.75) -- squish the one just spent
-	DashEffects.play(character :: Model) -- before the push, so the afterimage stays where it started
+	DashEffects.play(character :: Model, direction) -- before the push, so the afterimage stays where it started
 	Push.apply(root, direction, DASH.Speed, DASH.Duration)
 	dashRemote:FireServer() -- the server grants the dash's i-frames
 end

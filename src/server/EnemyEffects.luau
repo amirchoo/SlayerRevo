@@ -14,13 +14,19 @@ local STUN_LABEL_NAME = "StunLabel"
 
 local damageRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DamageDealt") :: RemoteEvent
 
-local flinchAnimation: Animation? = nil
-if EnemyConfig.FlinchAnimation ~= "" then
-	flinchAnimation = Instance.new("Animation")
-	local id = EnemyConfig.FlinchAnimation
-	flinchAnimation.AnimationId = if string.match(id, "^%d+$") then `rbxassetid://{id}` else id
+local function makeAnimation(id: string): Animation?
+	if id == "" then
+		return nil
+	end
+	local animation = Instance.new("Animation")
+	animation.AnimationId = if string.match(id, "^%d+$") then `rbxassetid://{id}` else id
+	return animation
 end
+
+local flinchAnimation = makeAnimation(EnemyConfig.FlinchAnimation)
 local flinchTracks: { [Animator]: AnimationTrack } = setmetatable({}, { __mode = "k" }) :: any
+local parriedAnimation = makeAnimation(EnemyConfig.ParriedAnimation)
+local parriedTracks: { [Animator]: AnimationTrack } = setmetatable({}, { __mode = "k" }) :: any
 
 
 local EnemyEffects = {}
@@ -146,6 +152,33 @@ function EnemyEffects.flinch(model: Model)
 		flinchTracks[animator] = track
 	end
 	track:Play(0.05)
+end
+
+-- Throws `model` into its parried recoil (weapon arm knocked wide, head snapped back) and
+-- holds it there for `duration` seconds (the parry's stun), then lets it recover. It plays
+-- over a flinch, so hits landed in the punish window don't break the open pose.
+function EnemyEffects.recoil(model: Model, duration: number)
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+	if not parriedAnimation or not animator then
+		return
+	end
+	local track = parriedTracks[animator]
+	if not track then
+		track = animator:LoadAnimation(parriedAnimation)
+		track.Priority = Enum.AnimationPriority.Action2
+		track.Looped = false
+		parriedTracks[animator] = track
+	end
+	local playing = track
+	playing:Play(0.03)
+	-- Stretched to end just after the stun, so it's still holding when it's let go.
+	if playing.Length > 0 then
+		playing:AdjustSpeed(playing.Length / (duration + 0.05))
+	end
+	task.delay(duration, function()
+		playing:Stop(0.15)
+	end)
 end
 
 -- Damage over time, by kind (each kind runs separately, so a bleed and a burn can tick

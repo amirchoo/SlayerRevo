@@ -191,6 +191,7 @@ function BlockService.tryParry(target: Model, attacker: Model): boolean
 
 	parryableSince[player] = nil -- one parry per raise
 	EnemyEffects.stun(attacker, BLOCK.ParryStun)
+	EnemyEffects.recoil(attacker, BLOCK.ParryStun)
 	local attackerRoot = attacker:FindFirstChild("HumanoidRootPart")
 	local origin = if attackerRoot and attackerRoot:IsA("BasePart") then attackerRoot.Position else nil
 	guardHitRemote:FireClient(player, knockbackDirection(target, origin), true)

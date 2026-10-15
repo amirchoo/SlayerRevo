@@ -215,23 +215,41 @@ SWINGS = {
             (0.80, NEUTRAL),
         ],
     },
-    # Lesser Demon attack (no weapon: a claw swipe). Rears back with both arms up for a clear
-    # wind-up, then lunges in and rakes down across the body. "hit" matches
-    # LESSER_DEMON.AttackWindup in src/server/EnemyService.luau.
+    # Orc attack (no weapon: a claw swipe). Rears back with both arms up and holds it there,
+    # straining further, as the parry/dodge cue; then snaps through in a few frames and lands
+    # fully extended exactly on the hit (the pose hitstop freezes). "hit" matches the Orc's
+    # AttackWindup in src/shared/Config/EnemyConfig.luau.
     "DemonClaw": {
         "hit": 0.4,
         "plane": ((0.35, 0.85, 0.4), (-0.35, -0.45, -0.8)),
         "keys": [
             (0.00, pose(arm=(0.15, -0.9, -0.3), wrist=0, larm=10, **READY)),
-            (0.12, pose(arm=(0.35, 0.1, -0.95), wrist=-10, chest=-10, lean=5, larm=90, lelbow=30, **READY)),
-            (0.28, pose(arm=(0.35, 0.85, 0.4), wrist=-20, chest=-25, hips=-10, lean=15, larm=165, lelbow=35, **COIL_BACK)),
-            (0.36, pose(arm=(0.3, 0.6, -0.6), wrist=-30, chest=-5, lean=0, larm=130, lelbow=30, drop=0.3,
+            (0.10, pose(arm=(0.35, 0.1, -0.95), wrist=-10, chest=-10, lean=5, larm=90, lelbow=30, **READY)),
+            (0.20, pose(arm=(0.35, 0.85, 0.4), wrist=-20, chest=-25, hips=-10, lean=15, larm=165, lelbow=35, **COIL_BACK)),
+            (0.34, pose(arm=(0.38, 0.8, 0.48), wrist=-25, chest=-30, hips=-12, lean=19, larm=170, lelbow=35, **COIL_BACK)),  # held, straining
+            (0.37, pose(arm=(0.3, 0.6, -0.6), wrist=-30, chest=-5, lean=0, larm=130, lelbow=30, drop=0.3,
                         lleg=(35, -50, 15), rleg=(10, -35, 25))),
-            (0.39, pose(arm=(0.0, 0.05, -1), wrist=-35, chest=10, hips=5, lean=-10, larm=95, lelbow=35, drop=0.4,
-                        lleg=(40, -52, 12), rleg=(-8, -28, 36))),
-            (0.42, pose(arm=(-0.35, -0.45, -0.8), wrist=-40, chest=25, hips=10, lean=-20, larm=60, lelbow=40, **LUNGE_LEFT)),
+            (0.40, pose(arm=(-0.35, -0.45, -0.8), wrist=-40, chest=25, hips=10, lean=-20, larm=60, lelbow=40, **LUNGE_LEFT)),
             (0.65, pose(arm=(-0.4, -0.55, -0.7), wrist=-35, chest=22, hips=8, lean=-17, larm=50, lelbow=40, **LUNGE_LEFT)),
             (1.00, NEUTRAL),
+        ],
+    },
+    # An enemy whose attack was parried: the claw arm is knocked wide up and back, the torso
+    # thrown open, the head snapped back, a stagger step backward; held, wide open, for the
+    # whole stun. 0.5 s long like Blocking.ParryStun (EnemyEffects.recoil stretches it to fit).
+    "EnemyParried": {
+        "hit": None,
+        "plane": None,
+        "keys": [
+            (0.00, pose(arm=(0.3, 0.2, -0.95), wrist=0, blade_lean=(0, 0, -1), larm=60, lelbow=40, head_forward=False, **READY)),
+            (0.05, pose(arm=(0.75, 0.75, 0.5), wrist=0, blade_lean=(0, 0, -1), chest=-22, lean=30, larm=-45, lelbow=55,
+                        head=(32, 8), drop=0.3, lleg=(-22, -30, 52), rleg=(22, -42, 20), head_forward=False)),
+            (0.12, pose(arm=(0.8, 0.7, 0.55), wrist=0, blade_lean=(0, 0, -1), chest=-25, lean=34, larm=-50, lelbow=60,
+                        head=(36, 10), drop=0.35, lleg=(-24, -34, 58), rleg=(24, -46, 22), head_forward=False)),
+            (0.30, pose(arm=(0.75, 0.72, 0.5), wrist=0, blade_lean=(0, 0, -1), chest=-23, lean=30, larm=-45, lelbow=55,
+                        head=(30, 8), drop=0.32, lleg=(-22, -32, 54), rleg=(22, -44, 22), head_forward=False)),
+            (0.50, pose(arm=(0.72, 0.72, 0.45), wrist=0, blade_lean=(0, 0, -1), chest=-22, lean=28, larm=-42, lelbow=55,
+                        head=(28, 8), drop=0.3, lleg=(-22, -30, 52), rleg=(22, -42, 20), head_forward=False)),
         ],
     },
     # --- One-handed axe. Hit times match the Axe section of src/shared/Config/CombatConfig.luau.

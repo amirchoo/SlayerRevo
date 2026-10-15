@@ -133,5 +133,6 @@ EnemyConfig.IdleAnimation = "rbxassetid://507766388" -- Roblox's default R15 idl
 EnemyConfig.WalkAnimation = "rbxassetid://507777826" -- Roblox's default R15 walk
 EnemyConfig.DefaultAttackAnimation = "rbxassetid://522635514" -- used when an enemy's AttackAnimation is ""
 EnemyConfig.FlinchAnimation = "" -- EnemyFlinch (tools/sword_anims.py): the jolt when hit; "" = no flinch
+EnemyConfig.ParriedAnimation = "" -- EnemyParried (tools/sword_anims.py): the recoil held through a parry's stun; "" = none
 
 return EnemyConfig
