@@ -52,14 +52,15 @@ IntroConfig.Shots = {
 		"The Great Arch was the last gate they held. When it fell, so did they."
 	),
 	shot(
-		Vector3.new(-230, 24, -430), Vector3.new(60, 14, -640),
-		Vector3.new(-140, 20, -480), Vector3.new(120, 14, -660),
+		Vector3.new(-230, 34, -430), Vector3.new(60, 18, -640),
+		Vector3.new(-140, 30, -480), Vector3.new(120, 18, -660),
 		7.5,
 		"A hundred years on, orc warbands roam the plains, and older things stir in the mountains beyond."
 	),
 	shot(
-		Vector3.new(-60, 32, 600), Vector3.new(0, 16, 540),
-		Vector3.new(-34, 24, 575), Vector3.new(0, 16, 540),
+		-- Gliding in on the ruined pillars in the southern forest (ground there is ~25-29 high).
+		Vector3.new(-64, 46, 606), Vector3.new(0, 30, 540),
+		Vector3.new(-36, 38, 578), Vector3.new(0, 30, 540),
 		7,
 		"The Orders are gone. But their oaths were never broken. Only forgotten."
 	),
