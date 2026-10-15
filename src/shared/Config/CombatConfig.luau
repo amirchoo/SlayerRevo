@@ -1081,15 +1081,47 @@ return {
 	-- Lock-on (see LockOn): face and follow one enemy, with the camera framing you both.
 	LockOn = {
 		Key = Enum.KeyCode.Q, -- toggles the lock (touch screens get a button)
-		Range = 60, -- studs: how far away a target can be picked
+		Range = 60, -- studs: how far away a target can be picked (and switched to)
 		BreakRange = 90, -- studs: the lock lets go past this
 		MaxAngle = 75, -- degrees from the centre of the view a target can be picked
-		CameraDistance = 12, -- studs behind you
-		CameraHeight = 6.5, -- studs above your middle: just over your shoulder, looking down past your head
-		CameraShoulder = 6, -- studs over your right shoulder, so you're off to the left of the view and don't block the target
-		CameraFocusHeight = 0.5, -- studs above the target's middle the camera aims at
-		CameraFocusShift = 0.45, -- the aim is moved right by this much of CameraShoulder (less = target further right of you)
-		CameraSmoothing = 9, -- higher = the camera catches up faster
+		-- The camera orbits behind you and off to your right, so the line from you to the target
+		-- runs across the screen: you low on the left, the target clear on the right. Up close
+		-- (melee) it's a wide two-shot, so you see the enemy's whole wind-up; with a ranged or
+		-- magic weapon out and the target further than RangedFrom, it closes in over your
+		-- shoulder and aims straight at the target.
+		Melee = {
+			Angle = 34, -- degrees round to your right from straight behind you, up close...
+			FarAngle = 18, -- ...and with the target FarDistance away
+			Distance = 11, -- studs from you, up close...
+			FarDistance = 15, -- ...and with the target FarDistance away
+			Height = 4.5, -- studs above your chest
+			Focus = 0.5, -- how far from you to the target the camera aims (0 you, 1 the target), up close...
+			FarFocus = 0.8, -- ...and far away
+		},
+		Ranged = {
+			Angle = 16,
+			FarAngle = 12,
+			Distance = 8.5,
+			FarDistance = 9.5,
+			Height = 2.2,
+			Focus = 0.85,
+			FarFocus = 1,
+		},
+		FarDistance = 35, -- studs to the target where the Far values are reached
+		RangedFrom = 10, -- studs: closer than this, a ranged weapon uses the melee framing (blended over 10 more)
+		BigTarget = 6, -- studs tall: each stud a target is over this moves the camera...
+		BigBack = 0.9, -- ...this much further back...
+		BigUp = 0.35, -- ...and this much higher
+		TurnSpeed = 11, -- how fast the camera swings round as you and the target move (higher = snappier)
+		FocusSpeed = 16, -- how fast the aim point follows
+		ZoomSpeed = 6, -- how fast distance, height and angle change between framings
+		EnterTime = 0.22, -- seconds the camera takes to glide from where it was into the lock framing
+		-- Switching to another enemy while locked (the one nearest on that side of the screen):
+		SwitchFlick = 110, -- pixels the mouse has to move sideways in a quick flick...
+		SwitchFlickTime = 0.12, -- ...within about this many seconds
+		SwitchStick = 0.75, -- right stick pushed this far left or right (it re-arms back under 0.35)
+		SwitchSwipe = 70, -- pixels a touch swipe across the screen has to cover (in under 0.45 s)
+		SwitchCooldown = 0.25, -- seconds between switches
 	},
 	-- Getting hurt, on your own screen (see DamageFeedback): a red flash and camera shake per
 	-- hit, scaled by the share of max health lost; below LowHealth, a pulsing red vignette,

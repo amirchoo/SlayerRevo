@@ -39,8 +39,8 @@ local function onBuy(player: Player, sellerId: unknown, itemId: unknown)
 		return
 	end
 	local item = ShopConfig.item(itemId)
-	if not item or item.Seller ~= sellerId then
-		return
+	if not item or item.Seller ~= sellerId or item.Category == ShopConfig.SellCategory then
+		return -- not this shop's, or only bought back (Orc Skin)
 	end
 	if item.Weapon then
 		if not InventoryConfig.weapon(item.Weapon) or InventoryService.owns(player, item.Weapon) then

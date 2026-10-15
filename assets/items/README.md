@@ -13,6 +13,9 @@ edge (`--turn-x 90`) so its face shows in the tile:
     python3 -I tools/box_glb.py assets/source/items/CowMeat.glb assets/items/CowMeat.rbxmx --turn-x 90
     python3 -I tools/box_glb.py assets/source/items/ChickenMeat.glb assets/items/ChickenMeat.rbxmx
 
+`OrcSkin` (an orc's drop) is a hand-made placeholder of plain Parts: a green hide with tan
+leather behind, corner flaps and two cords. Swap in a real model under the same name any time.
+
 The cooked food (`CookedCowMeat`, `CookedChickenMeat`) is the same models recolored (browned
 meat, golden fat); swap in your own models under those names any time.
 

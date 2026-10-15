@@ -3,10 +3,12 @@
 -- roam the world around a camp, turn on a player together, surround them (a few attack, the
 -- rest circle), give up if dragged too far from camp, and re-form at a new camp once all are
 -- dead. Single enemies (SpawnPoints, the Training Grounds) chase the nearest player and
--- respawn where they stood. Every attack has a short wind-up, so players can dodge.
+-- respawn where they stood. Giving up heals an enemy to full at once, and a pack walking home
+-- can't be hurt (and heals again once home), so you can't wear one down by kiting it. Every attack has a short wind-up, so players can dodge. A kill
+-- leaves the enemy's Drops on the ground for the killer (LootService).
 -- Sparring enemies (the training camp, spawnSparring) belong to one player: they fight only
 -- that player, even in the safe zone, only that player can hurt them, they give no XP or
--- coins, and they never respawn. A puppet (spawnPuppet) is one with no AI at all: its owner
+-- coins (or drops), and they never respawn. A puppet (spawnPuppet) is one with no AI at all: its owner
 -- (TutorialService) moves it and resolves its attacks.
 -- Looks: the enemy's Model from ServerStorage.EnemyModels (assets/enemies) if it's there,
 -- an R15 character (with a Humanoid and HumanoidRootPart, e.g. made with Avatar Auto Setup);
@@ -21,6 +23,7 @@ local EnemyAnimations = require(script.Parent.EnemyAnimations)
 local EnemyEffects = require(script.Parent.EnemyEffects)
 local HealthService = require(script.Parent.HealthService)
 local HitEffects = require(script.Parent.HitEffects)
+local LootService = require(script.Parent.LootService)
 
 local EnemyConfig = require(ReplicatedStorage.Shared.Config.EnemyConfig)
 local SafeZone = require(ReplicatedStorage.Shared.SafeZone)
@@ -144,6 +147,13 @@ local function attackPlayer(enemy: Model, root: BasePart, kind: EnemyType, attac
 	end)
 end
 
+local function fullHeal(enemy: Model)
+	local _, maxHealth = HealthService.getHealth(enemy)
+	if maxHealth then
+		HealthService.heal(enemy, maxHealth)
+	end
+end
+
 local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vector3, kind: EnemyType)
 	local attackTrack = EnemyAnimations.start(enemy, humanoid, kind) -- idle, walk/run, flinch, parried
 
@@ -180,6 +190,7 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 		end
 	end
 
+	local chasing = false -- a single enemy: had a target last think
 	while enemy.Parent and HealthService.isAlive(enemy) do
 		if EnemyEffects.isStunned(enemy) then
 			humanoid:MoveTo(root.Position)
@@ -227,6 +238,14 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 				target, targetRoot, distance = ownerTarget(owner, root.Position, kind.AggroRange)
 			else
 				target, targetRoot, distance = findNearestCharacter(root.Position, kind.AggroRange)
+			end
+			if target then
+				chasing = true
+			elseif chasing then
+				chasing = false
+				if not owner then
+					fullHeal(enemy) -- gave up on you: back to full health
+				end
 			end
 			if target and targetRoot then
 				if distance > kind.AttackRange then
@@ -409,6 +428,7 @@ local function openSpot(config: EnemyConfig.Pack, random: Random, near: Vector3?
 end
 
 local packRandom = Random.new()
+local dropRandom = Random.new()
 
 local function aliveMembers(pack: PackState): { Model }
 	local alive = {}
@@ -446,16 +466,13 @@ local function validTarget(character: Model?): BasePart?
 	return if root and not inSafeZone(root.Position) then root else nil
 end
 
--- Gives up the hunt: back to camp, healing up on the way.
+-- Gives up the hunt: back to full health at once, then back to camp (unhurtable on the way).
 local function giveUp(pack: PackState)
 	pack.target, pack.targetRoot, pack.hurtBy = nil, nil, nil
 	pack.returning = true
 	pack.roamGoal = pack.camp
 	for _, member in aliveMembers(pack) do
-		local _, maxHealth = HealthService.getHealth(member)
-		if maxHealth then
-			HealthService.heal(member, maxHealth)
-		end
+		fullHeal(member)
 	end
 end
 
@@ -518,6 +535,9 @@ local function thinkPack(pack: PackState)
 	if pack.returning then
 		if flat(centre - pack.camp).Magnitude < 10 then
 			pack.returning = false
+			for _, member in members do
+				fullHeal(member) -- in case anything got through on the way
+			end
 			pack.nextRoam = os.clock() + packRandom:NextNumber(config.RoamPause[1], config.RoamPause[2])
 		end
 		return
@@ -618,13 +638,27 @@ function EnemyService.start()
 			return 0 -- someone else's sparring partner
 		end
 		local pack = packOf[target]
+		if pack and pack.returning then
+			return 0 -- walking home after giving up: can't be worn down on the way
+		end
 		if pack and source and source.Character and not pack.target then
 			pack.hurtBy = source.Character
 		end
 		return amount
 	end)
 
-	HealthService.Died:Connect(function(model: Model)
+	HealthService.Died:Connect(function(model: Model, killer: Player?)
+		local kind = typeOf[model]
+		local root = model:FindFirstChild("HumanoidRootPart")
+		if kind and kind.Drops and killer and not ownerOf[model] and root and root:IsA("BasePart") then
+			for _, drop in kind.Drops do
+				if dropRandom:NextNumber() < drop.Chance then
+					for _ = 1, dropRandom:NextInteger(drop.Min, drop.Max) do
+						LootService.drop(killer, drop.Item, root.Position)
+					end
+				end
+			end
+		end
 		if oneOff[model] then
 			oneOff[model] = nil
 			ownerOf[model] = nil
@@ -650,7 +684,6 @@ function EnemyService.start()
 		if not spawnPoint then
 			return
 		end
-		local kind = typeOf[model]
 		spawnPointOf[model] = nil
 		typeOf[model] = nil
 

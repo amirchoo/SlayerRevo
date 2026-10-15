@@ -1,0 +1,15 @@
+{
+  "userIgnoreFilters": [
+    "src/",
+    "tools/",
+    "assets/source/",
+    "sourcemap.json"
+  ],
+  "showUnsupportedFiles": false,
+  "alwaysUpdateLinks": true,
+  "newLinkFormat": "relative",
+  "useMarkdownLinks": true,
+  "readableLineLength": true,
+  "newFileLocation": "folder",
+  "newFileFolderPath": "notes/tasks"
+}

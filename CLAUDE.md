@@ -18,6 +18,9 @@
 - After editing scripts, run `sh tools/check_syntax.sh` (StyLua parses every script; `rojo build` doesn't),
   so a syntax error can't stop every script from loading in Studio
 - Name RemoteEvents clearly and put them in ReplicatedStorage/Remotes
+- The repo is an Obsidian vault (start page Home.md). After finishing each piece of work, log it in
+  `notes/log/YYYY-MM-DD-<topic>.md` (what was asked, what changed, choices and tuning, what's open,
+  playtested or not), add it to `notes/log/README.md` (newest first), and tick it under Done in `notes/backlog.md`
 
 ## Design
 - Read `docs/design.md` before building any system: it's the source of truth for game direction.
@@ -25,3 +28,7 @@
 - Work one system/phase at a time; don't decide its [TBD] items without asking.
 - 3D models are designed in Claude Design from `docs/model-brief.md`; its last section is the
   steps for getting a delivered .glb into the game.
+
+## Notes (Obsidian vault)
+- The repo is also an Obsidian vault. `notes/backlog.md`, `notes/bugs.md` and `notes/tasks/*.md` hold the user's
+  work queue; when asked to do one, read it first, and tick its checkbox / move it to Done or Fixed when finished.

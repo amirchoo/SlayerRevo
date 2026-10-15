@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "type": "file",
+      "ctime": 1760572800000,
+      "path": "Home.md",
+      "title": "Home"
+    },
+    {
+      "type": "file",
+      "ctime": 1760572800000,
+      "path": "docs/design.md",
+      "title": "Design (source of truth)"
+    },
+    {
+      "type": "file",
+      "ctime": 1760572800000,
+      "path": "notes/backlog.md",
+      "title": "Backlog"
+    },
+    {
+      "type": "file",
+      "ctime": 1760572800000,
+      "path": "notes/bugs.md",
+      "title": "Bugs"
+    }
+  ]
+}

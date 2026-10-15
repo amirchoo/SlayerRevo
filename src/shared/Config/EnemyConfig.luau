@@ -2,6 +2,7 @@
 -- Enemy tuning: stats, attacks, animations, and where each enemy spawns. EnemyService runs
 -- them; a new enemy type starts as a new entry here (plus its model and animations).
 
+local MaterialConfig = require(script.Parent.MaterialConfig)
 local SafeZone = require(script.Parent.Parent.SafeZone)
 
 -- An enemy type's own clips (each "" uses the shared one at the bottom of this file). The walk
@@ -37,6 +38,7 @@ export type EnemyType = {
 	RespawnDelay: number,
 	XP: number, -- given to the player who defeats it (see ProgressionConfig for the level curve)
 	Coins: number?, -- coins given to the killer (defaults to 0 if nil)
+	Drops: { MaterialConfig.Drop }?, -- left on the ground for the killer (not from sparring enemies)
 	-- Only X/Z matter: each spawns dropped onto whatever ground is below, and respawns there.
 	SpawnPoints: { Vector2 },
 	Pack: Pack?, -- roams the world in packs (see Pack) as well as at any SpawnPoints
@@ -52,7 +54,8 @@ export type EnemyType = {
 --   Swarm: the MaxAttackers closest members close in and attack; the rest circle the target
 --     RingRadius studs out, waiting for a gap, so the pack surrounds you rather than piling up.
 --   Leash: a target that drags the pack more than LeashRange from its camp (or reaches the
---     safe zone) is given up; the pack walks home and recovers its health.
+--     safe zone) is given up: the pack heals to full at once and walks home, unhurtable
+--     until it gets there (so it can't be worn down by kiting).
 --   Respawn: once every member is dead, a new pack forms RespawnDelay seconds later at a new
 --     camp, away from players.
 export type Pack = {
@@ -106,6 +109,9 @@ EnemyConfig.Orc = {
 	RespawnDelay = 8,
 	XP = 15,
 	Coins = 5,
+	Drops = {
+		{ Item = "OrcSkin", Chance = 0.6, Min = 1, Max = 1 },
+	},
 	SpawnPoints = {}, -- orcs live in packs (below); the Training Grounds places its own
 	Pack = {
 		Count = 24, -- spread over the whole map, dense enough to run into (was 14: too sparse)

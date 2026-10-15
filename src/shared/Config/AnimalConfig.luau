@@ -6,12 +6,9 @@
 -- Models: assets/animals (made from all-box GLBs by tools/box_glb.py), rigged at spawn from
 -- their Limbs.
 
-export type Drop = {
-	Item: string, -- a MaterialConfig item Id
-	Chance: number, -- 0..1
-	Min: number,
-	Max: number,
-}
+local MaterialConfig = require(script.Parent.MaterialConfig)
+
+export type Drop = MaterialConfig.Drop
 
 -- A part of the model that moves on its own (a sub-Model or Part of that name, or several
 -- Parts). Swing: how the client animates it:

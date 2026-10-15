@@ -5,6 +5,9 @@
 --     place you're in underneath. Tap or click it to open the world map.
 --   World map: the whole world, with place names, you and other players. M opens and closes
 --     it (or tap the minimap / the X); it's a panel, so it closes the backpack and the like.
+-- Both show the living creatures around: a red diamond for each enemy (orcs; sparring ones
+-- only for their owner) and a brown dot for each wild animal (cows, chickens; not the tame
+-- ones in town). Only what has streamed in to this client shows.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,7 +33,10 @@ local COLORS = {
 	Quest = Color3.fromRGB(255, 210, 70),
 	Waypoint = Color3.fromRGB(120, 235, 145),
 	Dim = Color3.fromRGB(10, 10, 15),
+	Enemy = Color3.fromRGB(225, 55, 50),
+	Animal = Color3.fromRGB(150, 100, 55),
 }
+local MOB_SCAN_TIME = 0.25 -- seconds between looks for new or gone enemies and animals
 local LABEL_HEIGHT = { town = 0.034, area = 0.03, ruin = 0.022 } -- of the map's height
 local NEAR_LABEL = 70 -- studs from a ruin's label that count as being there
 local MAP_SCREEN_FRACTION = 0.86 -- of the screen's height
@@ -197,6 +203,79 @@ local function dot(parent: Instance, size: number, color: Color3): Frame
 	return frame
 end
 
+-- The enemies and wild animals the map shows, refreshed every MOB_SCAN_TIME (shared by both
+-- maps; their positions are read fresh each frame).
+type Mob = { model: Model, root: BasePart, enemy: boolean }
+local mobs: { Mob } = {}
+local lastMobScan = -math.huge
+local function currentMobs(): { Mob }
+	local now = os.clock()
+	if now - lastMobScan < MOB_SCAN_TIME then
+		return mobs
+	end
+	lastMobScan = now
+	mobs = {}
+	for _, folderName in { "Enemies", "Animals" } do
+		local folder = workspace:FindFirstChild(folderName)
+		if folder then
+			for _, model in folder:GetChildren() do
+				local owner = model:GetAttribute("SparringOwner") -- the training camp's: only your own
+				local root = if owner == nil or owner == player.UserId then targetRoot(model) else nil
+				if root then
+					table.insert(mobs, { model = model :: Model, root = root, enemy = folderName == "Enemies" })
+				end
+			end
+		end
+	end
+	return mobs
+end
+
+-- A red diamond (enemy) or brown dot (animal).
+local function mobMarker(parent: Instance, size: number, enemy: boolean): Frame
+	local frame = Instance.new("Frame")
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.Size = UDim2.fromOffset(size, size)
+	frame.BackgroundColor3 = if enemy then COLORS.Enemy else COLORS.Animal
+	frame.ZIndex = 3 -- under players, you and the quest marker
+	frame.Parent = parent
+	if enemy then
+		frame.Rotation = 45
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = HudStyle.OUTLINE
+		stroke.Thickness = 1.5
+		stroke.Parent = frame
+	else
+		HudStyle.chunky(frame, size, 1.5)
+	end
+	return frame
+end
+
+-- Keeps one marker per enemy and animal in `parent`; `place(marker, worldXZ)` positions one
+-- and returns false to hide it (e.g. off the minimap).
+local function mobDots(parent: Instance, enemySize: number, animalSize: number): (place: (Frame, Vector2) -> boolean) -> ()
+	local markers: { [Model]: Frame } = {}
+	return function(place)
+		local seen: { [Model]: boolean } = {}
+		for _, mob in currentMobs() do
+			if mob.model.Parent then
+				seen[mob.model] = true
+				local marker = markers[mob.model]
+				if not marker then
+					marker = mobMarker(parent, if mob.enemy then enemySize else animalSize, mob.enemy)
+					markers[mob.model] = marker
+				end
+				marker.Visible = place(marker, flat(mob.root.Position))
+			end
+		end
+		for model, marker in markers do
+			if not seen[model] then
+				marker:Destroy()
+				markers[model] = nil
+			end
+		end
+	end
+end
+
 local function mapButton(parent: Instance, size: number, color: Color3, text: string): TextButton
 	local button = Instance.new("TextButton")
 	button.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -268,6 +347,12 @@ local function buildMinimap(gui: ScreenGui, open: () -> ())
 	image.Size = UDim2.fromOffset(mapPixels.X, mapPixels.Y)
 	image.Parent = window
 
+	local creatures = Instance.new("Frame")
+	creatures.Size = UDim2.fromScale(1, 1)
+	creatures.BackgroundTransparency = 1
+	creatures.Parent = window
+	local updateMobs = mobDots(creatures, 8, 7)
+
 	local others = Instance.new("Frame")
 	others.Size = UDim2.fromScale(1, 1)
 	others.BackgroundTransparency = 1
@@ -329,6 +414,15 @@ local function buildMinimap(gui: ScreenGui, open: () -> ())
 		local here = uv(flat(root.Position))
 		image.Position = UDim2.fromOffset(size / 2 - here.X * mapPixels.X, size / 2 - here.Y * mapPixels.Y)
 		you.Rotation = heading(root.CFrame.LookVector)
+		updateMobs(function(marker, at)
+			-- Only the ones inside the window (not pinned to the rim like players: too many).
+			local offset = (at - flat(root.Position)) * pixelsPerStud
+			if offset.Magnitude > size / 2 - 5 then
+				return false
+			end
+			marker.Position = UDim2.fromOffset(size / 2 + offset.X, size / 2 + offset.Y)
+			return true
+		end)
 		updateOthers(function(marker, at)
 			local offset = (at - flat(root.Position)) * pixelsPerStud
 			-- Players past the edge are pinned to the rim, so you can see which way they are.
@@ -436,6 +530,13 @@ local function buildWorldMap(gui: ScreenGui, close: () -> ()): Frame
 	HudStyle.chunky(closeButton, 22, 3)
 	closeButton.Activated:Connect(close)
 
+	local creatures = Instance.new("Frame")
+	creatures.Size = UDim2.fromScale(1, 1)
+	creatures.BackgroundTransparency = 1
+	creatures.ZIndex = 3
+	creatures.Parent = map
+	local updateMobs = mobDots(creatures, 9, 7)
+
 	local others = Instance.new("Frame")
 	others.Size = UDim2.fromScale(1, 1)
 	others.BackgroundTransparency = 1
@@ -524,6 +625,11 @@ local function buildWorldMap(gui: ScreenGui, close: () -> ()): Frame
 		else
 			you.Visible = false
 		end
+		updateMobs(function(marker, at)
+			local spot = uv(at)
+			marker.Position = UDim2.fromScale(spot.X, spot.Y)
+			return true
+		end)
 		updateOthers(function(marker, at)
 			local spot = uv(at)
 			marker.Position = UDim2.fromScale(spot.X, spot.Y)

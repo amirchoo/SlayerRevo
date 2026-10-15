@@ -2,6 +2,7 @@
 -- Shop stock by NPC. Weapons and armor are permanent; consumables are saved and used later.
 -- The Butcher also buys: an item with a SellPrice can be sold back to its Seller (raw meat,
 -- a material: the main way to earn coins for now). Selling always pays less than buying.
+-- An item in ShopConfig.SellCategory is only bought by the shop, never sold (Orc Skin).
 
 local ArmorConfig = require(script.Parent.ArmorConfig)
 local InventoryConfig = require(script.Parent.InventoryConfig)
@@ -45,7 +46,7 @@ ShopConfig.Shops = {
 	Merchant = { Title = "Merchant Shop", Subtitle = "Potions and supplies for the hunt.", Icon = "Backpack" },
 	Blacksmith = { Title = "Blacksmith", Subtitle = `Weapons for every fighting style. Each costs {BASIC_WEAPON_PRICE} coins.`, Icon = "Swords" },
 	Armorer = { Title = "Armorer", Subtitle = `Armor sets. Each set costs {ARMOR_PRICE} coins.`, Icon = "Shield" },
-	Butcher = { Title = "Butcher", Subtitle = "Raw meat, bought and sold. Hunt cows and chickens outside town.", Icon = "Butcher" },
+	Butcher = { Title = "Butcher", Subtitle = "Raw meat, bought and sold, and orc skins bought. Hunt outside town.", Icon = "Butcher" },
 } :: { [string]: { Title: string, Subtitle: string, Icon: string } }
 
 ShopConfig.Items = {} :: { Item }
@@ -76,6 +77,8 @@ table.insert(ShopConfig.Items, { Id = "CookedChickenMeat", Name = "Roast Chicken
 -- Raw meat at the Butcher (MaterialConfig): bought for more than it sells for.
 table.insert(ShopConfig.Items, { Id = "Meat:CowMeat", Name = "Cow Meat", Category = ShopConfig.MeatCategory, Description = "A raw cut of beef. Cook it at the campfire.", Model = "CowMeat", Icon = "Butcher", Seller = ShopConfig.ButcherNpc, Material = "CowMeat", Price = 35, SellPrice = 15 })
 table.insert(ShopConfig.Items, { Id = "Meat:ChickenMeat", Name = "Chicken Meat", Category = ShopConfig.MeatCategory, Description = "A raw drumstick. Cook it at the campfire.", Model = "ChickenMeat", Icon = "Butcher", Seller = ShopConfig.ButcherNpc, Material = "ChickenMeat", Price = 15, SellPrice = 6 })
+-- Monster parts the Butcher buys but doesn't sell.
+table.insert(ShopConfig.Items, { Id = "Hide:OrcSkin", Name = "Orc Skin", Category = ShopConfig.SellCategory, Description = "A tough green hide, cut from an orc.", Model = "OrcSkin", Icon = "Butcher", Seller = ShopConfig.ButcherNpc, Material = "OrcSkin", Price = 0, SellPrice = 20 })
 
 for _, setId in ArmorConfig.SetOrder do
 	local set = ArmorConfig.Sets[setId]

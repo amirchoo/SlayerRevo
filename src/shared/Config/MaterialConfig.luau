@@ -1,6 +1,7 @@
 --!strict
--- Materials: items gathered in the world (dropped by animals and, later, monsters), kept in
--- the backpack's Materials tab and saved. Nothing uses them yet (cooking comes later).
+-- Materials: items gathered in the world (dropped by animals and enemies), kept in the
+-- backpack's Materials tab and saved. Raw meat is cooked at the campfire (CookingConfig) or
+-- sold to the Butcher; monster parts (Orc Skin) are sold to the Butcher for now (ShopConfig).
 -- Also the tuning for loot on the ground (LootService, LootClient).
 
 export type Material = {
@@ -11,11 +12,21 @@ export type Material = {
 	Icon: string?, -- shown if the Model is missing
 }
 
+-- One line of a drop table (an animal's or enemy's Drops): on a kill, with this Chance, the
+-- killer gets Min..Max of the item on the ground (LootService).
+export type Drop = {
+	Item: string, -- a MaterialConfig item Id
+	Chance: number, -- 0..1
+	Min: number,
+	Max: number,
+}
+
 local MaterialConfig = {}
 
 MaterialConfig.Items = {
 	{ Id = "CowMeat", Name = "Cow Meat", Description = "A raw cut of beef.", Model = "CowMeat", Icon = "Backpack" },
 	{ Id = "ChickenMeat", Name = "Chicken Meat", Description = "A raw drumstick.", Model = "ChickenMeat", Icon = "Backpack" },
+	{ Id = "OrcSkin", Name = "Orc Skin", Description = "A tough green hide, cut from an orc. Greta the butcher pays for these.", Model = "OrcSkin", Icon = "Backpack" },
 } :: { Material }
 
 MaterialConfig.Category = "Materials" -- the backpack tab

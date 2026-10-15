@@ -116,6 +116,9 @@ local function categories(sellerId: string): { Category }
 	for _, item in ShopConfig.Items do
 		if item.Seller == sellerId then
 			buysBack = buysBack or item.SellPrice ~= nil
+			if item.Category == ShopConfig.SellCategory then
+				continue -- bought back only: it's on the Sell tab alone
+			end
 			local listed = false
 			for _, category in list do
 				listed = listed or category.Id == item.Category
