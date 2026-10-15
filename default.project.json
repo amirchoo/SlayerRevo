@@ -309,7 +309,8 @@
         "$path": "assets/shields"
       },
       "EnemyModels": {
-        "$path": "assets/enemies"
+        "$className": "Folder",
+        "$ignoreUnknownInstances": true
       },
       "AnimalModels": {
         "$path": "assets/animals"

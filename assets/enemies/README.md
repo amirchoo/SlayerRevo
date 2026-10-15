@@ -1,6 +1,10 @@
 # Enemy models
 
-Synced to `ServerStorage.EnemyModels`. Each enemy type uses the model named in its `Model`
+**Not synced by Rojo**: Avatar Auto Setup models carry instances Rojo's live sync can't make
+(SurfaceAppearance, WrapTarget, FaceControls...), so it never built them and deleted ones added by
+hand. `ServerStorage.EnemyModels` is left alone by Rojo instead and its models live in the saved
+place: after changing a file here, right-click `ServerStorage › EnemyModels` > Insert from File
+(and delete the old copy). These files are the source copies. Each enemy type uses the model named in its `Model`
 setting in `src/shared/Config/EnemyConfig.luau`: the Orc uses `Orc.rbxmx`, the Lesser Demon
 `LesserDemon.rbxmx`. Without one it's a plain R15 body in the enemy's color.
 
