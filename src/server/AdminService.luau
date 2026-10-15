@@ -9,6 +9,7 @@
 --   "Heal":        refills health, stamina and mana
 --   "Damage":      hurts them by `amount` (to watch regen or test max health)
 --   "Coins":       gives them `amount` coins
+--   "TrainingGrounds": takes them to the Training Grounds (only admins can get there)
 -- Level and coin changes are saved like normal progress.
 
 local Players = game:GetService("Players")
@@ -22,6 +23,7 @@ local ProgressionService = require(script.Parent.ProgressionService)
 local SkillService = require(script.Parent.SkillService)
 local CurrencyService = require(script.Parent.CurrencyService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
+local TrainingGround = require(script.Parent.TrainingGround)
 
 local commandRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AdminCommand") :: RemoteEvent
 
@@ -71,6 +73,8 @@ local function onCommand(player: Player, action: unknown, amount: unknown)
 		if n > 0 then
 			CurrencyService.add(player, n)
 		end
+	elseif action == "TrainingGrounds" then
+		TrainingGround.enter(player)
 	end
 end
 

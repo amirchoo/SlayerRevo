@@ -102,7 +102,7 @@ TownConfig.Buildings = {
 	{ Name = "The Sleeping Boar", Kind = "house", Position = Vector2.new(62, -26), Facing = Vector2.new(0, 1), Size = Vector3.new(23, 10, 28), Scale = 10.5, Roof = ROOF_RED, Walls = WALL_BUTTER, Sign = "The Sleeping Boar", Chimney = true, Asset = "House_1" },
 	{ Name = "House", Kind = "house", Position = Vector2.new(100, -24), Facing = Vector2.new(0, 1), Size = HOUSE_SIZE, Roof = ROOF_GREEN, Walls = WALL_SAGE, Asset = COTTAGE },
 	{ Name = "Item Shop", Kind = "stall", Position = Vector2.new(58, 23), Facing = Vector2.new(0, -1), Size = Vector3.new(17, 9, 21), Scale = 8, Awning = Color3.fromRGB(50, 110, 160), Roof = Color3.fromRGB(50, 110, 160), Walls = WALL_WHITE, Sign = "Item Shop", Asset = "House_1" },
-	{ Name = "Provisions", Kind = "stall", Position = Vector2.new(90, 23), Facing = Vector2.new(0, -1), Size = Vector3.new(17, 9, 21), Scale = 8, Awning = Color3.fromRGB(170, 120, 50), Roof = ROOF_GOLD, Walls = WALL_CREAM, Sign = "Provisions", Asset = "House_1" },
+	{ Name = "Butcher", Kind = "stall", Position = Vector2.new(90, 23), Facing = Vector2.new(0, -1), Size = Vector3.new(17, 9, 21), Scale = 8, Awning = Color3.fromRGB(170, 120, 50), Roof = ROOF_GOLD, Walls = WALL_CREAM, Sign = "Butcher", Asset = "House_1" },
 	{ Name = "House", Kind = "house", Position = Vector2.new(122, 24), Facing = Vector2.new(0, -1), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_SLATE, Walls = WALL_ROSE, Chimney = true, Asset = "House_1" },
 	-- North road, toward the arch.
 	{ Name = "House", Kind = "house", Position = Vector2.new(-24, -66), Facing = Vector2.new(1, 0), Size = HOUSE_SIZE, Scale = HOUSE, Roof = ROOF_GOLD, Walls = WALL_ROSE, Chimney = true, Asset = "House_1" },

@@ -140,6 +140,9 @@
         "ShopBuy": {
           "$className": "RemoteEvent"
         },
+        "ShopSell": {
+          "$className": "RemoteEvent"
+        },
         "ConsumableUse": {
           "$className": "RemoteEvent"
         },

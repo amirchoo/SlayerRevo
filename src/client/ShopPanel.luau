@@ -1,6 +1,7 @@
 --!strict
--- NPC shop panel. Merchant sells consumables, Blacksmith sells weapons, Armorer sells armor.
--- The server checks the seller, spends coins, and grants the item.
+-- NPC shop panel. Merchant sells consumables, Blacksmith sells weapons, Armorer sells armor,
+-- Butcher sells raw meat and buys it back (the Sell tab, for less than it costs).
+-- The server checks the seller, spends (or pays) coins, and grants (or takes) the item.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -30,6 +31,7 @@ local TAB_WIDTH = 170
 local CARD_HEIGHT = 96
 
 local buyRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ShopBuy") :: RemoteEvent
+local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ShopSell") :: RemoteEvent
 local player = Players.LocalPlayer
 
 local ShopPanel = {}
@@ -60,8 +62,9 @@ local function ownsArmor(setId: string): boolean
 	return player:GetAttribute(`OwnsArmor{setId}`) == true
 end
 
-local function consumableCount(itemId: string): number
-	local value = player:GetAttribute("Consumables")
+-- How many of `itemId` an attribute like "CowMeat=3,ChickenMeat=1" lists.
+local function countIn(attribute: string, itemId: string): number
+	local value = player:GetAttribute(attribute)
 	if typeof(value) ~= "string" or value == "" then
 		return 0
 	end
@@ -73,6 +76,14 @@ local function consumableCount(itemId: string): number
 		end
 	end
 	return 0
+end
+
+local function consumableCount(itemId: string): number
+	return countIn("Consumables", itemId)
+end
+
+local function materialCount(materialId: string): number
+	return countIn("Materials", materialId)
 end
 
 local function coins(): number
@@ -98,6 +109,24 @@ local function categories(sellerId: string): { Category }
 	end
 	if used[ShopConfig.ArmorCategory] then
 		table.insert(list, { Id = ShopConfig.ArmorCategory, Icon = "Shield" })
+	end
+	-- Anything else (the Butcher's Meat), under the shop's own icon.
+	local shop = ShopConfig.shop(sellerId)
+	local buysBack = false
+	for _, item in ShopConfig.Items do
+		if item.Seller == sellerId then
+			buysBack = buysBack or item.SellPrice ~= nil
+			local listed = false
+			for _, category in list do
+				listed = listed or category.Id == item.Category
+			end
+			if not listed then
+				table.insert(list, { Id = item.Category, Icon = if shop then shop.Icon else "Backpack" })
+			end
+		end
+	end
+	if buysBack then
+		table.insert(list, { Id = ShopConfig.SellCategory, Icon = "Sparkles" })
 	end
 	return list
 end
@@ -255,6 +284,68 @@ function ShopPanel.start()
 		end
 	end
 
+	local function button(frame: Frame, text: string, active: boolean, color: Color3, height: number, y: number, onActivated: () -> ())
+		local b = Instance.new("TextButton")
+		b.AnchorPoint = Vector2.new(1, 0.5)
+		b.Position = UDim2.new(1, -14, 0.5, y)
+		b.Size = UDim2.fromOffset(118, height)
+		b.BackgroundColor3 = if active then color else BUTTON_LOCKED
+		b.AutoButtonColor = active
+		b.Font = HudStyle.FONT
+		b.TextSize = 17
+		b.TextColor3 = if active then Color3.new(1, 1, 1) else SOFT_TEXT
+		b.Text = text
+		b.Parent = frame
+		HudStyle.chunky(b, 10, 3)
+		Instance.new("UIScale").Parent = b
+		if active then
+			b.Activated:Connect(function()
+				HudStyle.pop(b, 0.88)
+				onActivated()
+			end)
+		end
+	end
+
+	-- A card on the Sell tab: what the shop pays for an item, and buttons to sell one or all.
+	local function sellCard(order: number, item: ShopConfig.Item)
+		local have = if item.Material then materialCount(item.Material) else 0
+		local price = item.SellPrice or 0
+
+		local frame = Instance.new("Frame")
+		frame.LayoutOrder = order
+		frame.Size = UDim2.new(1, 0, 0, CARD_HEIGHT)
+		frame.BackgroundColor3 = CARD_COLOR
+		frame.Parent = list
+		HudStyle.chunky(frame, 14, 3)
+
+		local iconFrame = Instance.new("Frame")
+		iconFrame.Position = UDim2.fromOffset(10, 10)
+		iconFrame.Size = UDim2.fromOffset(CARD_HEIGHT - 20, CARD_HEIGHT - 20)
+		iconFrame.BackgroundColor3 = TAB_COLOR
+		iconFrame.Parent = frame
+		HudStyle.chunky(iconFrame, 10, 2)
+		if not (item.Model and WeaponIcon.showItem(WeaponIcon.viewport(iconFrame), item.Model)) then
+			Icons.image(iconFrame, item.Icon, 12)
+		end
+
+		local nameLabel = label(frame, item.Name, 20)
+		nameLabel.Position = UDim2.fromOffset(CARD_HEIGHT + 4, 12)
+		nameLabel.Size = UDim2.new(1, -CARD_HEIGHT - 150, 0, 24)
+		local detailLabel = label(frame, `Sells for {CurrencyConfig.format(price)} coins each  ·  You have {have}\nAll of them: {CurrencyConfig.format(have * price)} coins`, 13, SOFT_TEXT)
+		detailLabel.Position = UDim2.fromOffset(CARD_HEIGHT + 4, 38)
+		detailLabel.Size = UDim2.new(1, -CARD_HEIGHT - 150, 0, 50)
+		detailLabel.TextWrapped = true
+		detailLabel.TextYAlignment = Enum.TextYAlignment.Top
+
+		local canSell = have > 0
+		button(frame, if canSell then "Sell 1" else "None", canSell, BUTTON_ACTIVE, 34, -20, function()
+			sellRemote:FireServer(activeSeller, item.Id, 1)
+		end)
+		button(frame, "Sell all", canSell, TAB_SELECTED, 34, 20, function()
+			sellRemote:FireServer(activeSeller, item.Id, have)
+		end)
+	end
+
 	local function card(order: number, item: ShopConfig.Item)
 		local info = if item.Weapon then InventoryConfig.weapon(item.Weapon) else nil
 		local owned = item.Weapon ~= nil and ownsWeapon(item.Weapon)
@@ -306,6 +397,8 @@ function ShopPanel.start()
 			detail = `{InventoryConfig.rarityById(set and set.Rarity).Id}  ·  {armorDetail(item.ArmorSet)}`
 		elseif ShopConfig.consumable(item.Id) then
 			detail = `{item.Description}  ·  You own {consumableCount(item.Id)}`
+		elseif item.Material then
+			detail = `{item.Description}  ·  You have {materialCount(item.Material)}`
 		end
 		local detailLabel = label(frame, `{detail}\nCost: {CurrencyConfig.format(item.Price)} coins`, 13, SOFT_TEXT)
 		detailLabel.Position = UDim2.fromOffset(CARD_HEIGHT + 4, 38)
@@ -382,7 +475,12 @@ function ShopPanel.start()
 		end
 		local order = 0
 		for _, item in ShopConfig.Items do
-			if item.Seller == activeSeller and item.Category == selected then
+			if selected == ShopConfig.SellCategory then
+				if ShopConfig.sellable(activeSeller, item.Id) then
+					order += 1
+					sellCard(order, item)
+				end
+			elseif item.Seller == activeSeller and item.Category == selected then
 				order += 1
 				card(order, item)
 			end
@@ -415,6 +513,11 @@ function ShopPanel.start()
 		end
 	end)
 	player:GetAttributeChangedSignal("OwnedWeapons"):Connect(function()
+		if panel.Visible then
+			refreshList()
+		end
+	end)
+	player:GetAttributeChangedSignal("Materials"):Connect(function()
 		if panel.Visible then
 			refreshList()
 		end

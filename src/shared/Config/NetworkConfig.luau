@@ -30,6 +30,7 @@ return {
 		StaffCharge = 12,
 		StaffRelease = 12,
 		ShopBuy = 5,
+		ShopSell = 5,
 		ConsumableUse = 8,
 		QuestStart = 3,
 		QuestCancel = 3,

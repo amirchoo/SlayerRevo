@@ -1,5 +1,7 @@
 --!strict
 -- Shop stock by NPC. Weapons and armor are permanent; consumables are saved and used later.
+-- The Butcher also buys: an item with a SellPrice can be sold back to its Seller (raw meat,
+-- a material: the main way to earn coins for now). Selling always pays less than buying.
 
 local ArmorConfig = require(script.Parent.ArmorConfig)
 local InventoryConfig = require(script.Parent.InventoryConfig)
@@ -17,10 +19,12 @@ export type Item = {
 	Heal: number?,
 	EatTime: number?, -- food: Heal is given gradually over this many seconds, not all at once
 	ManaPercent: number?,
+	Material: string?, -- a material (MaterialConfig) bought one at a time
 	Price: number,
+	SellPrice: number?, -- the Seller buys it back for this many coins each
 }
 
-local BASIC_WEAPON_PRICE = 200
+local BASIC_WEAPON_PRICE = 300 -- every starter (Common) weapon; rarer ones aren't sold
 local ARMOR_PRICE = 250
 
 local ShopConfig = {}
@@ -30,18 +34,26 @@ ShopConfig.ArmorPrice = ARMOR_PRICE
 ShopConfig.MerchantNpc = "Merchant"
 ShopConfig.WeaponSellerNpc = "Blacksmith"
 ShopConfig.ArmorSellerNpc = "Armorer"
+ShopConfig.ButcherNpc = "Butcher"
 ShopConfig.ConsumableCategory = "Consumeables"
 ShopConfig.ArmorCategory = "Armor"
+ShopConfig.MeatCategory = "Meat"
+ShopConfig.SellCategory = "Sell" -- the tab listing what a shop buys back
+ShopConfig.MaxSell = 999 -- most of one thing sold in one go
 
 ShopConfig.Shops = {
 	Merchant = { Title = "Merchant Shop", Subtitle = "Potions and supplies for the hunt.", Icon = "Backpack" },
-	Blacksmith = { Title = "Blacksmith", Subtitle = "Weapons for every fighting style.", Icon = "Swords" },
-	Armorer = { Title = "Armorer", Subtitle = "Armor sets. Each set costs 250 coins.", Icon = "Shield" },
+	Blacksmith = { Title = "Blacksmith", Subtitle = `Weapons for every fighting style. Each costs {BASIC_WEAPON_PRICE} coins.`, Icon = "Swords" },
+	Armorer = { Title = "Armorer", Subtitle = `Armor sets. Each set costs {ARMOR_PRICE} coins.`, Icon = "Shield" },
+	Butcher = { Title = "Butcher", Subtitle = "Raw meat, bought and sold. Hunt cows and chickens outside town.", Icon = "Butcher" },
 } :: { [string]: { Title: string, Subtitle: string, Icon: string } }
 
 ShopConfig.Items = {} :: { Item }
 
 for _, info in InventoryConfig.Weapons do
+	if info.Rarity and info.Rarity ~= InventoryConfig.Rarities[1].Id then
+		continue -- only the starter weapons are sold
+	end
 	table.insert(ShopConfig.Items, {
 		Id = info.Name,
 		Name = info.Name,
@@ -60,6 +72,10 @@ table.insert(ShopConfig.Items, { Id = "MP Potion", Name = "Mana Potion", Categor
 -- it heals over EatTime. Not sold.
 table.insert(ShopConfig.Items, { Id = "CookedCowMeat", Name = "Cooked Steak", Category = ShopConfig.ConsumableCategory, Description = "A juicy grilled steak. Restores 70 HP over 3 seconds.", Icon = "Vitality", Model = "CookedCowMeat", Seller = "", Heal = 70, EatTime = 3, Price = 0 })
 table.insert(ShopConfig.Items, { Id = "CookedChickenMeat", Name = "Roast Chicken", Category = ShopConfig.ConsumableCategory, Description = "A roasted drumstick. Restores 35 HP over 2 seconds.", Icon = "Vitality", Model = "CookedChickenMeat", Seller = "", Heal = 35, EatTime = 2, Price = 0 })
+
+-- Raw meat at the Butcher (MaterialConfig): bought for more than it sells for.
+table.insert(ShopConfig.Items, { Id = "Meat:CowMeat", Name = "Cow Meat", Category = ShopConfig.MeatCategory, Description = "A raw cut of beef. Cook it at the campfire.", Model = "CowMeat", Icon = "Butcher", Seller = ShopConfig.ButcherNpc, Material = "CowMeat", Price = 35, SellPrice = 15 })
+table.insert(ShopConfig.Items, { Id = "Meat:ChickenMeat", Name = "Chicken Meat", Category = ShopConfig.MeatCategory, Description = "A raw drumstick. Cook it at the campfire.", Model = "ChickenMeat", Icon = "Butcher", Seller = ShopConfig.ButcherNpc, Material = "ChickenMeat", Price = 15, SellPrice = 6 })
 
 for _, setId in ArmorConfig.SetOrder do
 	local set = ArmorConfig.Sets[setId]
@@ -87,6 +103,12 @@ end
 function ShopConfig.consumable(id: string): Item?
 	local item = ShopConfig.item(id)
 	return if item and (item.Heal or item.ManaPercent) then item else nil
+end
+
+-- The item if `sellerId` buys it back.
+function ShopConfig.sellable(sellerId: string, id: string): Item?
+	local item = ShopConfig.item(id)
+	return if item and item.Seller == sellerId and item.SellPrice then item else nil
 end
 
 function ShopConfig.shop(sellerId: string): { Title: string, Subtitle: string, Icon: string }?

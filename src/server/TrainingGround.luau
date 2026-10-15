@@ -3,7 +3,9 @@
 -- West side: wooden dummies that reset after "dying" (for testing damage).
 -- East side: a sparring ring with an Orc behind a low wall (for testing
 -- dodging); players can jump the wall, enemies never jump. A grid on the floor marks every
--- 10 studs for judging ranges. Teleport pads link the arena and the hub plaza.
+-- 10 studs for judging ranges. Admins only: there's no way in from town; the admin panel's
+-- "Training Grounds" button brings an admin here (TrainingGround.enter), and a pad in the
+-- arena takes anyone back to the hub plaza.
 -- A button by the ring's wall summons extra Orcs into the ring (up to EXTRA_ORC_LIMIT at once);
 -- unlike the sparring Orc, they don't respawn once beaten.
 
@@ -37,7 +39,7 @@ local SUMMON_AREA = { minX = DIVIDER_X + 12, maxX = 52, minZ = -50, maxZ = 50 } 
 
 local GRID_SPACING = 10
 local PAD_COOLDOWN = 2
-local HUB_PAD = Vector2.new(-14, 16) -- X/Z in the hub plaza, beside the spawn
+local HUB_ARRIVAL = Vector2.new(-14, 8) -- X/Z in the hub plaza where the return pad puts you, beside the spawn
 
 local COLORS = {
 	Floor = Color3.fromRGB(70, 72, 78),
@@ -58,6 +60,7 @@ folder.Name = "TrainingGround"
 
 local dummies: { [Model]: boolean } = {}
 local lastTeleport: { [Player]: number } = {}
+local arenaArrival: CFrame? = nil -- where TrainingGround.enter puts a player (set by buildPads)
 
 local function part(props: { [string]: any }): BasePart
 	local instance = Instance.new(props.ClassName or "Part") :: any
@@ -259,16 +262,28 @@ local function buildSummonButton()
 end
 
 local function buildPads()
-	local hubPad = Vector3.new(HUB_PAD.X, hubGroundAt(HUB_PAD.X, HUB_PAD.Y), HUB_PAD.Y)
 	local arenaPad = CENTER + Vector3.new(-40, 0, 45)
 
-	-- Arrive beside the other pad (not on it), facing somewhere useful.
-	local arenaArrival = CENTER + Vector3.new(-20, 3, 40)
+	-- Arrive beside the return pad (not on it), facing the dummies.
+	local arrival = CENTER + Vector3.new(-20, 3, 40)
 	local dummyRow = CENTER + Vector3.new(-30, 3, DUMMY_ROW_Z)
-	buildPad(hubPad, "Training Grounds", CFrame.lookAt(arenaArrival, Vector3.new(dummyRow.X, arenaArrival.Y, dummyRow.Z)))
+	arenaArrival = CFrame.lookAt(arrival, Vector3.new(dummyRow.X, arrival.Y, dummyRow.Z))
 
-	local hubArrival = hubPad + Vector3.new(0, 3, -8)
+	local hubArrival = Vector3.new(HUB_ARRIVAL.X, hubGroundAt(HUB_ARRIVAL.X, HUB_ARRIVAL.Y) + 3, HUB_ARRIVAL.Y)
 	buildPad(arenaPad, "Return to Hub", CFrame.lookAt(hubArrival, Vector3.new(0, hubArrival.Y, 0)))
+end
+
+-- Takes a player to the arena (the admin panel's button: AdminService checks who may).
+function TrainingGround.enter(player: Player)
+	local character = player.Character
+	if not (arenaArrival and character and HealthService.isAlive(character)) then
+		return
+	end
+	-- Load the arena first, so they don't land before the floor has streamed in.
+	pcall(player.RequestStreamAroundAsync, player, arenaArrival.Position, 5)
+	if player.Character == character then
+		character:PivotTo(arenaArrival)
+	end
 end
 
 function TrainingGround.build()

@@ -207,6 +207,9 @@ function AdminPanel.start()
 		{ label = "Full heal", action = "Heal" },
 		{ label = "Hurt 50", action = "Damage", amount = 50 },
 	})
+	buttonRow(panel, {
+		{ label = "Training Grounds", action = "TrainingGrounds" },
+	})
 	text(panel, "SKILL STATS", 15, SOFT_TEXT)
 	local generalReadout = text(panel, "", 14)
 	text(panel, "WEAPON TREE", 15, SOFT_TEXT)

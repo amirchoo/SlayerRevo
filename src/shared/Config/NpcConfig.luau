@@ -42,7 +42,7 @@ NpcConfig.List = {
 		},
 		ChosenLines = {
 			"That weapon suits you. Learn its rhythm before you learn its strength.",
-			"The Training Grounds pad beside the spawn will take you to dummies and sparring partners.",
+			"Short on coin? Greta the butcher pays for any meat you bring back from the fields.",
 			"When you're ready, the north arch leads to the hunting grounds. Come back alive.",
 		},
 		Action = "StarterPick",
@@ -57,7 +57,7 @@ NpcConfig.List = {
 		Pants = Color3.fromRGB(50, 40, 30),
 		Lines = {
 			"Mind the sparks. This forge hasn't gone cold in twenty years.",
-			"I've got weapons for every fighting style. Two hundred coins each.",
+			"I've got weapons for every fighting style. Three hundred coins each.",
 		},
 		Action = "Shop",
 	},
@@ -99,6 +99,22 @@ NpcConfig.List = {
 		Lines = {
 			"The supply cart finally made it through. Nothing fancy yet, but potions keep slayers alive.",
 			"Health and Mana potions are stocked and ready.",
+		},
+		Action = "Shop",
+	},
+	{
+		-- Runs the stall on the east road (TownConfig's "Butcher"), on the way to the tavern
+		-- yard's cooking fire.
+		Id = "Butcher",
+		Name = "Greta",
+		Title = "Butcher",
+		Position = Vector2.new(88, 10.5),
+		Facing = Vector2.new(0, -1),
+		Shirt = Color3.fromRGB(225, 220, 205),
+		Pants = Color3.fromRGB(110, 45, 40),
+		Lines = {
+			"Fresh meat, fair prices. Well, fair for me.",
+			"Bring me what you hunt out in the fields and I'll pay coin for it. Buying from me costs more, mind.",
 		},
 		Action = "Shop",
 	},
