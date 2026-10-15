@@ -108,14 +108,14 @@ EnemyConfig.Orc = {
 	Coins = 5,
 	SpawnPoints = {}, -- orcs live in packs (below); the Training Grounds places its own
 	Pack = {
-		Count = 14, -- spread over the whole map (the hunting grounds alone had 6)
+		Count = 24, -- spread over the whole map, dense enough to run into (was 14: too sparse)
 		Min = 4,
 		Max = 6,
 		-- The whole map (forest and hunting grounds), short of the mountains along its edge
 		-- (WorldConfig.Mountains.Start); the hub is kept clear by SafeMargin.
 		Area = { Min = Vector2.new(-820, -820), Max = Vector2.new(820, 820) },
 		SafeMargin = 60,
-		CampSpacing = 150,
+		CampSpacing = 120,
 		RoamRadius = 45,
 		RoamSpeed = 0.45,
 		RoamPause = { 3, 8 },
@@ -124,7 +124,7 @@ EnemyConfig.Orc = {
 		LeashRange = 130,
 		MaxAttackers = 3,
 		RingRadius = 11,
-		RespawnDelay = 30,
+		RespawnDelay = 15,
 	},
 } :: EnemyType
 

@@ -87,7 +87,7 @@ AnimalConfig.Cow = {
 	Skittish = 0.15,
 	RoamRadius = 40,
 	RoamPause = { 4, 12 },
-	RespawnDelay = 60,
+	RespawnDelay = 30,
 	XP = 5,
 	Drops = {
 		{ Item = "CowMeat", Chance = 1, Min = 1, Max = 2 },
@@ -103,12 +103,12 @@ AnimalConfig.Cow = {
 	Graze = { Pitch = -0.7, Time = { 2, 4 }, Gap = { 3, 9 } },
 	Call = { Sound = "CowMoo", Gap = { 15, 40 } },
 	Herd = {
-		Count = 6,
+		Count = 12,
 		Min = 2,
 		Max = 4,
 		Area = AREA,
 		SafeMargin = 40,
-		HomeSpacing = 160,
+		HomeSpacing = 120,
 		Spread = 10,
 	},
 } :: AnimalType
@@ -124,7 +124,7 @@ AnimalConfig.Chicken = {
 	Skittish = 0.6,
 	RoamRadius = 25,
 	RoamPause = { 1.5, 5 },
-	RespawnDelay = 40,
+	RespawnDelay = 20,
 	XP = 2,
 	Drops = {
 		{ Item = "ChickenMeat", Chance = 1, Min = 1, Max = 1 },
@@ -139,12 +139,12 @@ AnimalConfig.Chicken = {
 	Graze = { Pitch = -0.9, Time = { 0.12, 0.2 }, Gap = { 0.3, 2.5 } }, -- quick pecks
 	Call = { Sound = "ChickenCluck", Gap = { 6, 20 } },
 	Herd = {
-		Count = 6,
+		Count = 12,
 		Min = 3,
 		Max = 5,
 		Area = AREA,
 		SafeMargin = 30,
-		HomeSpacing = 140,
+		HomeSpacing = 110,
 		Spread = 6,
 	},
 } :: AnimalType
