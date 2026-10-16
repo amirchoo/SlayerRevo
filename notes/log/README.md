@@ -4,6 +4,7 @@ One note per finished piece of work, newest first. Each says what was asked, wha
 the choices made (and where to tune them), and what's still open.
 
 ## 2026-10-17
+- [Performance audit (polish pass step 0)](2026-10-17-perf-audit.md)
 - [Sword whole-body swings, slower tempo; body dash](2026-10-17-sword-whole-body-body-dash.md)
 - [Sword swings with big arcs and holds; dodge roll](2026-10-17-sword-arcs-dodge-roll.md)
 - [Sword swings: whip, stop hard, hold](2026-10-17-sword-swing-easing.md)

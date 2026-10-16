@@ -5,11 +5,13 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 
 ## Next
 - [ ] **MAIN ISSUE:** combat feel and atmosphere like Dueling Grounds, one step per session ([note](tasks/main-issue-dueling-vibe.md))
+- [ ] **Polish and performance pass** for the phone and the Intel Mac, one step per message ([note](tasks/perf-polish.md))
 
 ## Later
 - [ ] 
 
 ## Done
+- [x] Performance audit: part, light, emitter and per-frame counts, plus the top 10 costs (2026-10-17, [log](log/2026-10-17-perf-audit.md))
 - [x] Sword swings use the whole body (overlap, elbow) with a deliberate wind-up; dash is a low body dash, not a roll (2026-10-17, [log](log/2026-10-17-sword-whole-body-body-dash.md))
 - [x] Sword swings rebuilt with big arcs, fast strikes and held follow-through; dash is now a dodge roll (2026-10-17, [log](log/2026-10-17-sword-arcs-dodge-roll.md))
 - [x] Sword swings eased (whip into the hit, stop hard, hold, recover to ready); shared easing in the generator (2026-10-17, [log](log/2026-10-17-sword-swing-easing.md))

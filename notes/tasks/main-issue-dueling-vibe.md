@@ -6,9 +6,16 @@ first unticked step below, ticks it here (with a link to its log note), and logs
 ## Where we left off (end of 2026-10-17 session)
 - **Waiting on the user:**
   - a playtest of the new Sword swings and the body dash
-  - **a decision on Sword, Emberfang and Mace damage.** The slower tempo cut damage per second by about 40%
-    (a full combo takes about 1.95 s, it used to take about 1.2 s). Raise the damage, or keep it slower and heavier?
-  - Ask both first thing.
+  - ~~a decision on Sword, Emberfang and Mace damage~~ **Decided 2026-10-17: raise them back to the old damage
+    per second.** Not applied yet. Proposed (combo time old → new: Sword and Emberfang 1.2 → 1.95 s, ×1.625;
+    Mace 1.55 → 2.45 s, ×1.58):
+
+    | Weapon | Damage now (hits 1, 2, 3) | Proposed |
+    |---|---|---|
+    | Sword | 20, 25, 40 | 33, 41, 65 |
+    | Emberfang | 26, 32, 52 | 42, 52, 85 |
+    | Mace | 25, 30, 55 | 40, 47, 87 |
+  - Ask for a playtest of the swings and dash first thing.
 - **If the Sword feels right, the next step is 1b (Axe)**, using the recipe in step 1: `"overlap": True`,
   a negative `elbow` to cock the wind-up, a deliberate wind-up (hit at about 0.25 s), a big arc out to the side,
   a held follow-through, and HitDelay and Cooldown updated to match.
