@@ -4,6 +4,7 @@ One note per finished piece of work, newest first. Each says what was asked, wha
 the choices made (and where to tune them), and what's still open.
 
 ## 2026-10-17
+- [ShadowMap lighting and an art-direction pass (polish pass step 2)](2026-10-17-shadowmap-art-direction.md)
 - [Effects quality tiers: Low, Medium, High (polish pass step 1)](2026-10-17-quality-tiers.md)
 - [Performance audit (polish pass step 0)](2026-10-17-perf-audit.md)
 - [Sword whole-body swings, slower tempo; body dash](2026-10-17-sword-whole-body-body-dash.md)

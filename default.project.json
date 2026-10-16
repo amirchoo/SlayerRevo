@@ -202,7 +202,7 @@
     },
     "Lighting": {
       "$properties": {
-        "Technology": "Future",
+        "Technology": "ShadowMap",
         "ClockTime": 15.6,
         "GeographicLatitude": 35,
         "Brightness": 2.6,

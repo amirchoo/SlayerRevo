@@ -11,6 +11,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] ShadowMap lighting, with grade, contrast and fog for day, night and the dungeon; phones at graphics 8+ get High (2026-10-17, [log](log/2026-10-17-shadowmap-art-direction.md))
 - [x] Effects quality tiers (Low, Medium, High) by device and FPS; every effect reads the tier (2026-10-17, [log](log/2026-10-17-quality-tiers.md))
 - [x] Performance audit: part, light, emitter and per-frame counts, plus the top 10 costs (2026-10-17, [log](log/2026-10-17-perf-audit.md))
 - [x] Sword swings use the whole body (overlap, elbow) with a deliberate wind-up; dash is a low body dash, not a roll (2026-10-17, [log](log/2026-10-17-sword-whole-body-body-dash.md))

@@ -2,8 +2,10 @@
 -- The game's look: lighting, atmosphere and post effects, applied by server LightingSetup at
 -- start (and in edit mode by tools/apply_lighting.lua). Warm afternoon sun, soft shadows,
 -- gentle color, and a cool haze that fades the far hills and mountains: bright and friendly
--- in town, with depth across the big world. Lighting.Technology isn't scriptable; set it in
--- Studio (Future looks best).
+-- in town, with depth across the big world. Lighting.Technology isn't scriptable; it's set in
+-- Studio (and default.project.json) to ShadowMap: crisp sun and moon shadows, cheap enough for
+-- the baseline phone (iPhone 14). The look comes from art direction, not lighting tech: the
+-- colour grade, contrast, fog that fades the distance, and a few strong lights.
 
 local LightingConfig = {}
 
@@ -19,22 +21,24 @@ LightingConfig.Lighting = {
 	EnvironmentDiffuseScale = 1,
 	EnvironmentSpecularScale = 0.5,
 	GlobalShadows = true,
-	ShadowSoftness = 0.35,
+	ShadowSoftness = 0.2, -- crisp ShadowMap sun shadows (0.35 looked smeared)
 }
 
+-- Fog that fades the far forest into a cool haze, so the near scene reads as the stage (and the
+-- far world that streams in late doesn't pop).
 LightingConfig.Atmosphere = {
-	Density = 0.24,
+	Density = 0.3,
 	Offset = 0.25,
 	Color = Color3.fromRGB(215, 215, 210),
 	Decay = Color3.fromRGB(150, 165, 190),
 	Glare = 0.2,
-	Haze = 0.3,
+	Haze = 0.8,
 }
 
 LightingConfig.Bloom = { Intensity = 0.35, Size = 24, Threshold = 1.8 }
 LightingConfig.ColorCorrection = {
 	Saturation = 0.25,
-	Contrast = 0.1,
+	Contrast = 0.15,
 	Brightness = 0.02,
 	TintColor = Color3.fromRGB(255, 248, 235),
 }
@@ -70,6 +74,16 @@ LightingConfig.DayCycle = {
 			Brightness = 0,
 			TintColor = Color3.fromRGB(220, 230, 255),
 		},
+		-- A cold blue-indigo fog closing in at night, so lamps, torches and hit flashes glow
+		-- warm against it (the duel-night look).
+		Atmosphere = {
+			Density = 0.36,
+			Offset = 0.25,
+			Color = Color3.fromRGB(70, 85, 130),
+			Decay = Color3.fromRGB(35, 45, 85),
+			Glare = 0,
+			Haze = 1.2,
+		},
 	},
 	WindowGlow = Color3.fromRGB(255, 190, 110), -- windows at night
 }
@@ -88,7 +102,7 @@ LightingConfig.Dungeon = {
 		EnvironmentSpecularScale = 0.15,
 	},
 	Atmosphere = {
-		Density = 0.3,
+		Density = 0.38, -- far corridors sink into murk; the torch-lit space near you is the stage
 		Offset = 0,
 		Color = Color3.fromRGB(52, 49, 56),
 		Decay = Color3.fromRGB(22, 21, 24),

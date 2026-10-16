@@ -1,7 +1,7 @@
 --!strict
 -- Effects quality on this screen (Config/QualityConfig): Low, Medium or High. Looks only.
--- Starts from the device: phones and tablets (touch, no keyboard) at Low or Medium, computers
--- up to High, by the player's Roblox graphics level. Then it watches the frame rate: a few
+-- Starts from the device, by the player's Roblox graphics level: phones and tablets (touch, no
+-- keyboard) at Low or Medium (High only at graphics 8+), computers up to High. Then it watches the frame rate: a few
 -- seconds under QualityConfig.Fps.DropBelow drops a tier; a long steady stretch climbs back
 -- (never above the device's tier). Changing the graphics level starts over from the device.
 -- An admin can pin a tier (AdminPanel); Quality.force(nil) goes back to automatic.
@@ -54,6 +54,9 @@ local function deviceTier(): Tier
 	if isTouchDevice() then
 		if level == 0 then
 			return DEVICE.TouchAutomatic
+		end
+		if level >= DEVICE.TouchHighFrom then
+			return "High"
 		end
 		return if level >= DEVICE.TouchMediumFrom then "Medium" else "Low"
 	end

@@ -10,7 +10,10 @@ flicker, stutter). No Studio playtests unless asked.
 - [x] 1. Device-aware quality: shared QualityConfig plus a client Quality module, with Low, Medium and
   High tiers. The tier comes from touch input, the graphics quality level and measured FPS, and
   changes live. Every effect reads it. ([log](../log/2026-10-17-quality-tiers.md))
-- [ ] 2. Lighting: recommend ShadowMap or Future (ask the user), then get the look through art direction.
+- [x] 2. Lighting: ShadowMap (the user's pick; the iPhone 14 is the baseline device), then the look
+  through art direction: grade, contrast and fog by day, night and in the dungeon; phones at graphics
+  8+ get High ([log](../log/2026-10-17-shadowmap-art-direction.md)). The user still needs to set
+  Lighting.Technology to ShadowMap in Studio.
 - [ ] 3. Bake what's still built at startup. Town and World are already saved; still to bake are the
   TrainingGround, the TrainingStands, the ClassHall and the NPC rigs. Keep the generators as tools.
 - [ ] 4. Streaming and density:

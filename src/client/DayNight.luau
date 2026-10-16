@@ -1,7 +1,7 @@
 --!strict
 -- Day and night on this screen (LightingConfig.DayCycle; the time comes from shared DayCycle,
 -- so everyone sees the same sky). Turns the clock, shifts the light toward a moonlit blue at
--- night (with a cooler, punchier grade, crisper shadows and shinier surfaces), and lights the
+-- night (with a cooler, punchier grade, a blue fog, crisper shadows and shinier surfaces), and lights the
 -- town after dark: lamp and lantern lights in workspace.Town switch on
 -- (lights by a fire, like the campfire, stay on), and windows glow. Looks only.
 -- The intro holds the clock at its own time while it plays (DayNight.hold). In a dungeon run
@@ -133,6 +133,16 @@ local function update()
 		grade.Contrast = dayGrade.Contrast + (nightGrade.Contrast - dayGrade.Contrast) * night
 		grade.Brightness = dayGrade.Brightness + (nightGrade.Brightness - dayGrade.Brightness) * night
 		grade.TintColor = dayGrade.TintColor:Lerp(nightGrade.TintColor, night)
+	end
+	local fog = Lighting:FindFirstChild("Atmosphere")
+	if fog and fog:IsA("Atmosphere") then
+		local dayFog, nightFog = LightingConfig.Atmosphere, NIGHT.Atmosphere
+		fog.Density = dayFog.Density + (nightFog.Density - dayFog.Density) * night
+		fog.Offset = dayFog.Offset + (nightFog.Offset - dayFog.Offset) * night
+		fog.Haze = dayFog.Haze + (nightFog.Haze - dayFog.Haze) * night
+		fog.Glare = dayFog.Glare + (nightFog.Glare - dayFog.Glare) * night
+		fog.Color = dayFog.Color:Lerp(nightFog.Color, night)
+		fog.Decay = dayFog.Decay:Lerp(nightFog.Decay, night)
 	end
 	local shouldLight = night >= CYCLE.LightsOn
 	if shouldLight ~= lit then
