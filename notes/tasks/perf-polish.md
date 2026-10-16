@@ -5,6 +5,8 @@ on a phone and an Intel Mac. One step per message: Claude explains the change, w
 OK, does it, logs it, and lists what to check on the phone and PC (FPS with Shift+F5, load time,
 flicker, stutter). No Studio playtests unless asked.
 
+**Continue from the handoff:** [perf-polish-handoff](perf-polish-handoff.md) (state, the next step, and its open question).
+
 ## Steps
 - [x] 0. Audit, no changes ([log](../log/2026-10-17-perf-audit.md))
 - [x] 1. Device-aware quality: shared QualityConfig plus a client Quality module, with Low, Medium and
