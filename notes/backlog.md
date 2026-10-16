@@ -4,13 +4,14 @@ Ideas and features to build, most important first. Ask Claude Code to "do the to
 or turn an item into a task note (notes/tasks/) when it needs more detail.
 
 ## Next
-- [ ] **MAIN ISSUE:** combat feel and atmosphere like Dueling Grounds, one step per session ([note](tasks/main-issue-dueling-vibe.md))
-- [ ] **Polish and performance pass** for the phone and the Intel Mac, one step per message ([note](tasks/perf-polish.md))
+- [ ] **Priority 0: Polish and performance pass (lag)** for the phone and the Intel Mac, one step per message ([note](tasks/perf-polish.md))
+- [ ] **Priority 1: MAIN ISSUE:** combat feel and atmosphere like Dueling Grounds, one step per session ([note](tasks/main-issue-dueling-vibe.md))
 
 ## Later
 - [ ] 
 
 ## Done
+- [x] Startup cleanup: Workspace clutter out, dungeon layout in ServerStorage, statues and stands hold weapons from server start (2026-10-17, [log](log/2026-10-17-startup-bake-cleanup.md))
 - [x] ShadowMap lighting, with grade, contrast and fog for day, night and the dungeon; phones at graphics 8+ get High (2026-10-17, [log](log/2026-10-17-shadowmap-art-direction.md))
 - [x] Effects quality tiers (Low, Medium, High) by device and FPS; every effect reads the tier (2026-10-17, [log](log/2026-10-17-quality-tiers.md))
 - [x] Performance audit: part, light, emitter and per-frame counts, plus the top 10 costs (2026-10-17, [log](log/2026-10-17-perf-audit.md))

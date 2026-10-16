@@ -957,6 +957,7 @@ function StaffService.start()
 	local templates: { [Caster]: Tool } = {}
 	for _, caster in CASTERS do
 		templates[caster] = createCaster(caster)
+		InventoryService.register(templates[caster])
 	end
 	local function giveAll(player: Player)
 		for _, caster in CASTERS do

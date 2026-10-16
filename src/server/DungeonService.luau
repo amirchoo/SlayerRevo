@@ -21,6 +21,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
 local BossService = require(script.Parent.BossService)
 local DungeonBuilder = require(script.Parent.DungeonBuilder)
@@ -362,7 +363,8 @@ local function onExit(prompt: ProximityPrompt, run: Run)
 	end)
 end
 
--- The layouts saved in the place (workspace.DungeonLayouts), by dungeon id, taken at start.
+-- The layouts saved in the place (ServerStorage.DungeonLayouts, or workspace.DungeonLayouts
+-- straight after tools/dungeon_layout.lua), by dungeon id, taken at start.
 local layouts: { [string]: DungeonBuilder.Layout } = {}
 
 -- Slots and players whose run is being built (carving its terrain takes a moment).
@@ -549,9 +551,10 @@ end
 
 function DungeonService.start()
 	folder.Parent = workspace
-	local saved = workspace:FindFirstChild("DungeonLayouts")
+	local inStorage = ServerStorage:FindFirstChild("DungeonLayouts")
+	local inWorld = workspace:FindFirstChild("DungeonLayouts")
 	for _, dungeon in DungeonConfig.Dungeons do
-		local layout = saved and saved:FindFirstChild(dungeon.Id)
+		local layout = (inStorage and inStorage:FindFirstChild(dungeon.Id)) or (inWorld and inWorld:FindFirstChild(dungeon.Id))
 		if layout then
 			layouts[dungeon.Id] = DungeonBuilder.loadLayout(layout)
 		end

@@ -52,8 +52,8 @@ local COLORS = {
 
 local TrainingStands = {}
 
--- Welds a display copy of `name` into the mannequin's hands, once the first one exists
--- (InventoryService makes it when the first player joins).
+-- Welds a display copy of `name` into the mannequin's hands, once it exists (the weapon
+-- services register it with InventoryService at server start).
 local function holdWeapon(mannequin: Model, name: string)
 	local found = InventoryService.displayCopy(name)
 	while not found do
@@ -180,6 +180,7 @@ local function buildStand(parent: Instance, stand: Stand, index: number)
 
 	local model = Instance.new("Model")
 	model.Name = `{stand.Set}Stand`
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- never arrives half-built
 	local pedestal = Instance.new("Part")
 	pedestal.Name = "Pedestal"
 	pedestal.Size = Vector3.new(4, 0.5, 3)

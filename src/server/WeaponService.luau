@@ -820,6 +820,7 @@ end
 
 -- Gives a combo weapon to every player on each spawn (the Backpack resets on respawn).
 local function distribute(config: ComboWeapon, template: Tool)
+	InventoryService.register(template)
 	local function onPlayerAdded(player: Player)
 		player.CharacterAdded:Connect(function()
 			giveWeapon(player, config, template)

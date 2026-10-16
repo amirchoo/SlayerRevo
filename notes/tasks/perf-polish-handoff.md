@@ -17,10 +17,11 @@ proposes the next step.
 - **Auto mode** is set for new sessions in `.claude/settings.local.json` (git-ignored).
 
 ## State
-- All work is committed and pushed. Last commit: `3fa118b`.
+- **Priority:** this pass (lag) is **priority 0**; the main issue is priority 1 (the user's call, 2026-10-17).
 - **Waiting on the user (Studio):**
-  - set **Lighting → Technology → ShadowMap**, then publish (scripts and Rojo can't set it)
-  - playtest steps 1 and 2 on the phone and the Mac (checklists at the end of each log)
+  - set **Lighting → Technology → ShadowMap**
+  - **save and publish** the place (step 3 moved things in it; see its log's "To do")
+  - playtest steps 1–3 on the phone and the Mac (checklists at the end of each log)
 - [x] 0. Audit ([log](../log/2026-10-17-perf-audit.md)). Counts, the top 10 costs, and what's built at startup.
 - [x] 1. Quality tiers ([log](../log/2026-10-17-quality-tiers.md)).
   - [Quality.luau](../../src/client/Quality.luau) and [QualityConfig.luau](../../src/shared/Config/QualityConfig.luau).
@@ -28,28 +29,16 @@ proposes the next step.
   - The console prints `[Quality] <tier> (<why>)`.
   - The admin panel can pin a tier.
 - [x] 2. ShadowMap and the art-direction pass ([log](../log/2026-10-17-shadowmap-art-direction.md)).
-  - LightingConfig day, night and dungeon fog, plus grade.
-  - DayNight blends the night fog.
-  - Phones at graphics 8+ get High.
+- [x] 3. Startup content and Workspace cleanup ([log](../log/2026-10-17-startup-bake-cleanup.md)).
+  - Clutter is in `ServerStorage.UnusedFromWorkspace`; "Destroyed house" (kept) is in `workspace.World`;
+    the old "Terrain" model is `MountainBackdrop`.
+  - The Grimgorg layout and its TerrainRegion are in `ServerStorage.DungeonLayouts`.
+  - Weapons are registered at server start (`InventoryService.register`), so the statues and stands
+    hold them right away.
+  - The training ground, stands and Hall were left code-built on purpose (see the log).
 
-## Next: step 3 (proposed, not yet OK'd)
-The town (`workspace.Town`) and forest (`workspace.World`) are **already saved in the place**:
-TownBuilder and WorldBuilder return at once when a saved copy exists. What's left:
-1. **TrainingGround:** bake the arena, dummies, pads and button into the place. The server only wires
-   up their behaviour (dummy health reset, pads, summon button, sparring orcs).
-2. **TrainingStands (11 mannequins) and ClassHall (Hall of Oaths, 10 statues):** they pop in after
-   join. Bake them as finished models; their prompts and choice logic stay in code.
-3. **Dungeon layout:** `DungeonBuilder.loadLayout` copies the saved terrain region at server start,
-   clears it, and destroys `workspace.DungeonLayouts`. Instead, keep the layout out of Workspace
-   (for example in ServerStorage plus a saved TerrainRegion), so it never streams to clients and
-   startup is lighter.
-4. **Clutter in Workspace:**
-   - delete or move: the 7 `Hammer*` KeyframeSequences, the "Relaxed Scene" Sound,
-     the Model named "Terrain", and the Baseplate under the ground
-   - **keep the `Rig`** (the Animation Editor needs it for publishing; see the memory
-     "Loading and publishing animations")
-   - **"Destroyed house": ask the user** whether to delete it or keep it for the world (the question was asked, not answered yet)
-- Keep the generators as tools for rebuilding.
+## Next: step 4 (proposed, not yet OK'd)
+See below. It's the biggest lag win: the 953 trees and PinkFlower's 7,320 SurfaceAppearances.
 
 ## Steps after that (from [[perf-polish]])
 4. **Streaming and density:** streaming radii (Studio can't read them from a plugin script, so check in the

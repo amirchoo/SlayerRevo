@@ -1,5 +1,7 @@
 # Polish and performance pass (phone and Intel Mac)
 
+**Priority 0** (the user's call, 2026-10-17): lag fixes come before the main issue (priority 1).
+
 Opened 2026-10-17. Goal: look polished (Dueling Grounds-level) and run smoothly, with fast loading,
 on a phone and an Intel Mac. One step per message: Claude explains the change, waits for the user's
 OK, does it, logs it, and lists what to check on the phone and PC (FPS with Shift+F5, load time,
@@ -16,8 +18,10 @@ flicker, stutter). No Studio playtests unless asked.
   through art direction: grade, contrast and fog by day, night and in the dungeon; phones at graphics
   8+ get High ([log](../log/2026-10-17-shadowmap-art-direction.md)). The user still needs to set
   Lighting.Technology to ShadowMap in Studio.
-- [ ] 3. Bake what's still built at startup. Town and World are already saved; still to bake are the
-  TrainingGround, the TrainingStands, the ClassHall and the NPC rigs. Keep the generators as tools.
+- [x] 3. Startup content: Workspace clutter moved out, the dungeon layout kept in ServerStorage,
+  and weapons registered at server start so the stands and the Hall's statues don't pop in.
+  The training ground, stands and Hall stay code-built (they're built before anyone joins).
+  ([log](../log/2026-10-17-startup-bake-cleanup.md))
 - [ ] 4. Streaming and density:
   - streaming radii
   - fog

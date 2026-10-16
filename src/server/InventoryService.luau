@@ -156,8 +156,14 @@ local function publish(player: Player)
 	player:SetAttribute("OwnedWeapons", table.concat(owned, ","))
 end
 
--- A fresh copy of weapon `name` (the whole Tool, scripts and all), or nil until the first one
--- has been handed out (when the first player joins).
+-- Makes weapon `template`'s display copy and backpack preview now, at server start, so the
+-- Training Grounds stands and the Hall of Oaths' statues hold their weapons before anyone joins.
+function InventoryService.register(template: Tool)
+	addPreview(template)
+end
+
+-- A fresh copy of weapon `name` (the whole Tool, scripts and all), or nil until it's been
+-- registered (at server start) or first handed out.
 function InventoryService.displayCopy(name: string): Tool?
 	local template = displayTemplates[name]
 	return if template then template:Clone() else nil

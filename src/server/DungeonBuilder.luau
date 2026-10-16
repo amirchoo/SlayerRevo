@@ -911,7 +911,6 @@ function DungeonBuilder.layoutRegion(saved: Instance): DungeonTerrain.Region?
 	return { cframe = CFrame.new(low + size / 2), size = size }
 end
 
--- Takes a saved layout out of the world (its terrain and the folder) and returns it for runs.
 -- Its Decor and Working are Folders (an older save's Models are read the same way).
 local function asFolder(container: Instance?): Folder?
 	if not container then
@@ -925,6 +924,10 @@ local function asFolder(container: Instance?): Folder?
 	return folder
 end
 
+-- Takes a saved layout and returns it for runs. One kept in ServerStorage carries its terrain as
+-- a TerrainRegion child named "Terrain" (it never reaches clients, and the server start skips the
+-- copy); one still in the world (just made by tools/dungeon_layout.lua) has its terrain copied
+-- and cleared out of it.
 function DungeonBuilder.loadLayout(saved: Instance): Layout?
 	local origin = saved:GetAttribute("Origin")
 	local region = DungeonBuilder.layoutRegion(saved)
@@ -934,15 +937,19 @@ function DungeonBuilder.loadLayout(saved: Instance): Layout?
 		warn(`[DungeonBuilder] the saved layout {saved:GetFullName()} is missing its Decor folder or attributes; generating runs instead`)
 		return nil
 	end
+	local savedTerrain = saved:FindFirstChild("Terrain")
 	local layout: Layout = {
-		terrain = DungeonTerrain.copy(region),
+		terrain = if savedTerrain and savedTerrain:IsA("TerrainRegion") then savedTerrain else DungeonTerrain.copy(region),
 		decor = asFolder(decor) :: Folder,
 		working = asFolder(working),
 		origin = origin,
 		regionLow = region.cframe.Position - region.size / 2,
 		regionSize = region.size,
 	}
-	DungeonTerrain.clear(region)
+	if layout.terrain ~= savedTerrain then
+		DungeonTerrain.clear(region)
+	end
+	layout.terrain.Parent = nil -- kept for runs; the rest of the saved copy goes
 	saved:Destroy()
 	return layout
 end

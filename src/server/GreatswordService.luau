@@ -247,6 +247,7 @@ end
 function GreatswordService.start()
 	local template = createGreatsword()
 	WeaponModels.apply(template, GREATSWORD.ModelFit) -- a real model, if one's been added (assets/weapons)
+	InventoryService.register(template)
 
 	local function onPlayerAdded(player: Player)
 		-- The Backpack is reset on every respawn, so hand out a fresh one each time.
