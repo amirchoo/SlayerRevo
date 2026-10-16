@@ -29,6 +29,11 @@
 - 3D models are designed in Claude Design from `docs/model-brief.md`; its last section is the
   steps for getting a delivered .glb into the game.
 
+## Main issue
+- `notes/tasks/main-issue-dueling-vibe.md` is the current main issue (combat feel and atmosphere like
+  Dueling Grounds). When the user says "do the main issue", read it, do the first unticked step,
+  then tick it there with a link to its log note.
+
 ## Notes (Obsidian vault)
 - The repo is also an Obsidian vault. `notes/backlog.md`, `notes/bugs.md` and `notes/tasks/*.md` hold the user's
   work queue; when asked to do one, read it first, and tick its checkbox / move it to Done or Fixed when finished.

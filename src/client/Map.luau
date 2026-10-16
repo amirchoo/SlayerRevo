@@ -686,16 +686,21 @@ function Map.start()
 	local minimap: Frame
 	local worldMap: Frame
 
+	-- No map in a dungeon run (DungeonService sets the "Dungeon" attribute): you find your own way.
+	local function inDungeon(): boolean
+		return typeof(player:GetAttribute("Dungeon")) == "string"
+	end
+
 	local function close()
 		if worldMap.Visible then
 			worldMap.Visible = false
-			minimap.Visible = true
+			minimap.Visible = not inDungeon()
 			Panels.closed("Map")
 			Gamepad.unfocus(worldMap)
 		end
 	end
 	local function open()
-		if not worldMap.Visible then
+		if not worldMap.Visible and not inDungeon() then
 			Panels.opened("Map") -- closes the backpack and the like
 			worldMap.Visible = true
 			minimap.Visible = false
@@ -707,6 +712,12 @@ function Map.start()
 	minimap = buildMinimap(gui, open)
 	worldMap = buildWorldMap(fullGui, close)
 	Panels.register("Map", close)
+	local function onDungeonChanged()
+		close()
+		minimap.Visible = not inDungeon()
+	end
+	player:GetAttributeChangedSignal("Dungeon"):Connect(onDungeonChanged)
+	onDungeonChanged()
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if input.KeyCode == Enum.KeyCode.DPadLeft and (worldMap.Visible or not Gamepad.inMenu()) then

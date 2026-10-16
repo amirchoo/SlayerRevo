@@ -14,7 +14,12 @@
 --   Phases: below each phase's HealthBelow the next one takes over (more attacks, shorter
 --     recovery, faster). Each change shows its Banner to the players in the fight.
 --   Stagger: Poise damage taken (from anything) knocks it down for StunTime (its Stunned
---     clip) and the count starts again; a parried attack does the same.
+--     clip) and the count starts again. Parries count too: a parried blow does the parrying
+--     player no harm, and the ParriesToStun-th parry (counted across attacks and players, back
+--     to 0 after any stagger) knocks it down.
+--   Sounds (BossSounds, client): its voice (Sounds: Roar at the intro, Enrage at each phase
+--     change, Hurt when struck, Stunned, Death) and each attack's cues (At seconds into the
+--     clip at normal speed), all names in shared/Sounds.
 --   Wipe: when no player in the fight is alive, it heals to full and goes back to Dormant
 --     at its spot.
 
@@ -37,8 +42,9 @@ export type Shape = {
 --   Telegraph: shown on the ground from the attack's start until its first hit (red, so it
 --     can be dodged); Lead adds that many seconds of standing still before the clip starts.
 --   Aim: the boss keeps turning to its target until this time, then commits.
---   Parryable: a parry on a blow stops the attack and staggers the boss; otherwise blocking
---     only absorbs (Unparryable attacks are telegraphed instead).
+--   Parryable: a parry on a blow deflects it and counts toward a stagger (ParriesToStun);
+--     otherwise blocking only absorbs (Unparryable attacks are telegraphed instead).
+export type SoundCue = { At: number, Sound: string }
 export type Attack = {
 	Clip: string, -- name in Clips
 	Shape: Shape,
@@ -55,6 +61,7 @@ export type Attack = {
 	-- MeleeRange, behind), or Far (past FarRange). Weight among the attacks that fit.
 	When: { Near: number?, Behind: number?, Far: number? },
 	Phase: number, -- the first phase it's used in
+	Sounds: { SoundCue }?, -- played from the boss as the clip reaches each At
 }
 
 export type Phase = {
@@ -80,6 +87,7 @@ export type Boss = {
 	MeleeRange: number,
 	FarRange: number,
 	Poise: number, -- damage that staggers it
+	ParriesToStun: number, -- parried blows that stagger it
 	StunTime: number,
 	HurtAbove: number, -- a single hit dealing this much makes it flinch (Hurt clip), when not attacking
 	XP: number,
@@ -99,6 +107,7 @@ export type Boss = {
 	},
 	Phases: { Phase },
 	Attacks: { [string]: Attack },
+	Sounds: { Roar: string?, Enrage: string?, Hurt: string?, Stunned: string?, Death: string? },
 }
 
 local BossConfig = {}
@@ -122,6 +131,7 @@ BossConfig.Grimgorg = {
 	MeleeRange = 14,
 	FarRange = 24,
 	Poise = 450,
+	ParriesToStun = 5,
 	StunTime = 2.4,
 	HurtAbove = 45,
 	XP = 400,
@@ -137,6 +147,13 @@ BossConfig.Grimgorg = {
 		-- Guesses (the clips don't say): tune until the feet stop sliding.
 		WalkClipSpeed = 8,
 		RunClipSpeed = 17,
+	},
+	Sounds = {
+		Roar = "GrimgorgRoar",
+		Enrage = "GrimgorgEnrage",
+		Hurt = "GrimgorgHurt",
+		Stunned = "GrimgorgStunned",
+		Death = "GrimgorgDeath",
 	},
 	Phases = {
 		{ HealthBelow = 1, Recovery = 1.3, Speed = 1 },
@@ -157,6 +174,12 @@ BossConfig.Grimgorg = {
 			Cooldown = 0,
 			When = { Near = 3 },
 			Phase = 1,
+			Sounds = {
+				{ At = 0.05, Sound = "GrimgorgAttack" },
+				{ At = 0.3, Sound = "GrimgorgSwing" },
+				{ At = 1.1, Sound = "GrimgorgSwing" },
+				{ At = 1.38, Sound = "GrimgorgSwing" },
+			},
 		},
 		-- Both fists overhead, slammed into the ground ahead.
 		Overhead = {
@@ -171,6 +194,10 @@ BossConfig.Grimgorg = {
 			Cooldown = 5,
 			When = { Near = 2 },
 			Phase = 1,
+			Sounds = {
+				{ At = 0.3, Sound = "GrimgorgAttack" },
+				{ At = 1.4, Sound = "GrimgorgSlam" },
+			},
 		},
 		-- Spins on the spot, tail out, hitting all around.
 		TailSwipe = {
@@ -186,6 +213,11 @@ BossConfig.Grimgorg = {
 			Cooldown = 6,
 			When = { Near = 1, Behind = 5 },
 			Phase = 1,
+			Sounds = {
+				{ At = 0, Sound = "GrimgorgAttack" },
+				{ At = 0.45, Sound = "GrimgorgTail" },
+				{ At = 0.8, Sound = "GrimgorgTail" },
+			},
 		},
 		-- Gathers fire in his maw, then breathes it in a straight line.
 		Beam = {
@@ -199,6 +231,11 @@ BossConfig.Grimgorg = {
 			Cooldown = 8,
 			When = { Far = 4 },
 			Phase = 2,
+			Sounds = {
+				{ At = 0.2, Sound = "GrimgorgAttack" },
+				{ At = 1.4, Sound = "GrimgorgBeam" },
+				{ At = 1.7, Sound = "GrimgorgBeam" },
+			},
 		},
 	},
 } :: Boss

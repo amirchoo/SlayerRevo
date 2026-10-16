@@ -4,10 +4,11 @@
 -- While locked:
 --   * your character keeps facing the target, so moving circles around it, and swings and
 --     guards always point at it
---   * the camera orbits behind you and off to your right, so you're low on the left and the
---     target is clear on the right. Up close it's a wide two-shot (you see the enemy's whole
---     wind-up, to time a parry); with a ranged or magic weapon out it closes in over your
---     shoulder and aims straight at the target. It pulls back for big targets, swings round
+--   * the camera sits behind you and to your right, aimed at the target: it's centre screen
+--     with you lower left (a duel framing, so you see the enemy's whole wind-up to time a
+--     parry). Up close it's high and further round, so a near enemy shows above your head
+--     and clear of your body and weapon; further off it drops in nearly straight behind you.
+--     With a ranged or magic weapon out it closes in over your shoulder. It pulls back for big targets, swings round
 --     smoothly as you circle, and doesn't clip through walls
 --   * flick the mouse sideways, push the right stick left or right, or swipe across the
 --     screen to switch to the next enemy on that side
@@ -384,7 +385,7 @@ function LockOn.start()
 		local big = math.max(0, targetHeight - LOCK.BigTarget)
 		local wantAngle = lerp(lerp(M.Angle, M.FarAngle, far), lerp(R.Angle, R.FarAngle, far), ranged)
 		local wantDistance = lerp(lerp(M.Distance, M.FarDistance, far), lerp(R.Distance, R.FarDistance, far), ranged) + big * LOCK.BigBack
-		local wantHeight = lerp(M.Height, R.Height, ranged) + big * LOCK.BigUp
+		local wantHeight = lerp(lerp(M.Height, M.FarHeight, far), lerp(R.Height, R.FarHeight, far), ranged) + big * LOCK.BigUp
 		local wantFocus = lerp(lerp(M.Focus, M.FarFocus, far), lerp(R.Focus, R.FarFocus, far), ranged)
 
 		local zoom = 1 - math.exp(-LOCK.ZoomSpeed * dt)

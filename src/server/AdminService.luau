@@ -10,6 +10,7 @@
 --   "Damage":      hurts them by `amount` (to watch regen or test max health)
 --   "Coins":       gives them `amount` coins
 --   "TrainingGrounds": takes them to the Training Grounds (only admins can get there)
+--   "GodMode":     toggles the "GodMode" attribute: no damage taken at all (for playtesting)
 -- Level and coin changes are saved like normal progress.
 
 local Players = game:GetService("Players")
@@ -75,6 +76,8 @@ local function onCommand(player: Player, action: unknown, amount: unknown)
 		end
 	elseif action == "TrainingGrounds" then
 		TrainingGround.enter(player)
+	elseif action == "GodMode" then
+		player:SetAttribute("GodMode", player:GetAttribute("GodMode") ~= true)
 	end
 end
 
@@ -87,6 +90,14 @@ function AdminService.start()
 		onPlayerAdded(player)
 	end
 	RemoteGuard.connect(commandRemote, onCommand)
+	-- God mode: an admin who turned it on takes no damage (re-checked as admin in case).
+	HealthService.addDamageFilter(function(target, amount)
+		local owner = Players:GetPlayerFromCharacter(target)
+		if owner and owner:GetAttribute("GodMode") == true and AdminService.isAdmin(owner) then
+			return 0
+		end
+		return amount
+	end)
 end
 
 return AdminService

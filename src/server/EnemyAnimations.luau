@@ -62,9 +62,10 @@ function EnemyAnimations.start(enemy: Model, humanoid: Humanoid, kind: EnemyType
 		if not current.IsPlaying then
 			current:Play(0.2)
 		end
-		-- Match the cycle to the ground speed (the shared R15 walk just plays as it is).
+		-- Match the cycle to the ground speed (the shared R15 walk just plays as it is). A
+		-- scaled-up enemy's stride is longer by its Scale.
 		if own then
-			local clipSpeed = if running then own.RunClipSpeed else own.WalkClipSpeed
+			local clipSpeed = (if running then own.RunClipSpeed else own.WalkClipSpeed) * (kind.Scale or 1)
 			current:AdjustSpeed(math.clamp(speed / clipSpeed, MIN_RATE, MAX_RATE))
 		end
 	end)

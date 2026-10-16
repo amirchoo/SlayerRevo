@@ -81,9 +81,61 @@ local SPECS: { [string]: SoundSpec } = {
 	CowMoo = { Id = "rbxassetid://138223429", Pitch = 1, Volume = 0.5 },
 	Sizzle = { Id = "rbxassetid://6383276435", Pitch = 1, Volume = 0.6 }, -- meat cooking on the campfire
 	Eat = { Id = "rbxassetid://6830313781", Pitch = 1, Volume = 0.6 }, -- eating cooked meat
+
+	-- Loot.
+	CoinPickup = { Id = "rbxassetid://113730061669739", Pitch = 1.1, Volume = 0.45 }, -- each gold coin picked up (alternatives: 4612374807, 93529351909119)
+
+	-- Grimgorg (BossSounds plays them from him: BossConfig.Grimgorg Sounds and attack cues).
+	-- Pro Sound Effects creature voices, pitched down for a big brute.
+	GrimgorgRoar = { Id = "rbxassetid://9113980319", Pitch = 0.8, Volume = 1 }, -- waking up for the fight
+	GrimgorgEnrage = { Id = "rbxassetid://114600180172960", Pitch = 0.85, Volume = 1 }, -- "Grimgorg is furious!" / "enraged!"
+	GrimgorgAttack = { Id = "rbxassetid://9114628321", Pitch = 0.8, Volume = 0.8 }, -- a growl as an attack winds up
+	GrimgorgHurt = { Id = "rbxassetid://9113973119", Pitch = 0.7, Volume = 0.75 }, -- a grunt when he's struck
+	GrimgorgStunned = { Id = "rbxassetid://9114628321", Pitch = 0.6, Volume = 0.9 }, -- a dazed groan, knocked down
+	GrimgorgDeath = { Id = "rbxassetid://9113980319", Pitch = 0.6, Volume = 1 }, -- a long dying roar
+	GrimgorgSwing = { Id = "rbxassetid://127747416982963", Pitch = 0.6, Volume = 0.7 }, -- his claws through the air
+	GrimgorgTail = { Id = "rbxassetid://127747416982963", Pitch = 0.45, Volume = 0.8 }, -- the tail sweeping round
+	GrimgorgSlam = { Id = "rbxassetid://140277245983305", Pitch = 0.7, Volume = 1 }, -- both fists into the ground
+	GrimgorgBeam = { Id = "rbxassetid://9114463219", Pitch = 0.7, Volume = 1 }, -- the fire he breathes
+
+	-- Ambience loops (Soundscape fades them in and out by where you are).
+	WindWilds = { Id = "rbxassetid://5799870105", Pitch = 1, Volume = 0.35 }, -- out in the wilds, away from town
+	CaveAmbience = { Id = "rbxassetid://273398061", Pitch = 1, Volume = 0.55 }, -- a dungeon's low cave hum
+	CaveTrickle = { Id = "rbxassetid://9120505297", Pitch = 0.9, Volume = 0.25 }, -- water trickling in the dungeon
+}
+
+-- Music (Soundscape): a playlist for each kind of place, shuffled, crossfading when you move
+-- between them. A boss can have its own ("Boss:<Id>"), else the fight plays Boss. Free licensed tracks from the Creator Store (DistroKid and APM catalogues).
+-- Swap an Id for any other track; Volume is relative to the music's overall volume.
+export type Track = { Id: string, Volume: number }
+local MUSIC: { [string]: { Track } } = {
+	Town = { -- Beginning Town (the safe zone)
+		{ Id = "rbxassetid://130353416723748", Volume = 1 }, -- The Miller's Drowsy Afternoon
+		{ Id = "rbxassetid://99458479340541", Volume = 1 }, -- Leaves on the Old Bridge
+		{ Id = "rbxassetid://103096106070474", Volume = 1 }, -- Fog Along the Village Path
+	},
+	Wilds = { -- the hills, plain and mountains outside town
+		{ Id = "rbxassetid://1846227339", Volume = 1 }, -- Soaring Wings E
+		{ Id = "rbxassetid://113669032614533", Volume = 1 }, -- sweeping
+	},
+	Dungeon = { -- inside a dungeon run
+		{ Id = "rbxassetid://79559833217506", Volume = 1 }, -- burial
+		{ Id = "rbxassetid://73717467615712", Volume = 1 }, -- Disturb
+		{ Id = "rbxassetid://110872532745784", Volume = 1 }, -- Grave for a mage
+	},
+	Boss = { -- a boss fight (a boss without a playlist of its own)
+		{ Id = "rbxassetid://128007000574959", Volume = 1 }, -- Epic Boss Battle
+		{ Id = "rbxassetid://84099904594509", Volume = 1 }, -- First Phase
+	},
+	["Boss:Grimgorg"] = { -- fighting Grimgorg ("Boss:" .. its BossConfig Id)
+		{ Id = "rbxassetid://9043171470", Volume = 1 }, -- Edge Of Extinction (orchestra, choir, pounding drums)
+		{ Id = "rbxassetid://1841476670", Volume = 1 }, -- Drums of Combat a
+	},
 }
 
 local Sounds = {}
+
+Sounds.Music = MUSIC
 
 local random = Random.new()
 

@@ -5,8 +5,10 @@
 -- ring + dust), or "Pierce" (thin streak along the blow + a narrow cone of sparks).
 -- Ground smashes (GroundShockwave) draw an expanding ring of dust along the ground and
 -- shake the camera of anyone close enough to feel it.
--- A parry adds a bright light flash and a fast all-round burst of streaking sparks, so it
--- reads differently from an ordinary hit.
+-- Every hit also flashes a brief light that splashes over the ground and a bright flare streak
+-- facing the camera at the impact, in the weapon's color, so each blow pops on screen (the
+-- feel of a dueling game). A parry is the showpiece: a bigger, longer gold flash that floods
+-- the floor, a wide flare with a cross glint, and a fast all-round burst of streaking sparks.
 -- Everything is built from plain parts and Roblox's bundled particle textures.
 
 local Debris = game:GetService("Debris")
@@ -26,10 +28,17 @@ local REFERENCE_DAMAGE = 25 -- a hit this big draws the effect at its base size
 local SHOCKWAVE_TIME = 0.4
 local SHOCKWAVE_SHAKE = 0.5 -- studs of camera shake at the impact (less further away)
 local SHOCKWAVE_SHAKE_TIME = 0.3
-local PARRY_FLASH_TIME = 0.15
-local PARRY_FLASH_BRIGHTNESS = 5
-local PARRY_FLASH_RANGE = 14
-local PARRY_SPARKS = 20
+local PARRY_FLASH_TIME = 0.3
+local PARRY_FLASH_BRIGHTNESS = 8
+local PARRY_FLASH_RANGE = 22
+local PARRY_SPARKS = 28
+local HIT_LIGHT_TIME = 0.14
+local HIT_LIGHT_BRIGHTNESS = 2.5 -- at base size; bigger hits are brighter
+local HIT_LIGHT_RANGE = 9
+local MAX_HIT_LIGHTS = 6 -- lights at once (a blunderbuss blast is many hits)
+local FLARE_TIME = 0.16
+local FLARE_LENGTH = 5 -- studs across at base size
+local PARRY_FLARE_TIME = 0.28
 
 type Style = "Slash" | "Blunt" | "Pierce"
 type Look = { style: Style, color: Color3, size: number }
@@ -57,7 +66,7 @@ local LOOKS: { [string]: Look } = {
 	Crossbow = { style = "Pierce", color = Color3.fromRGB(215, 220, 230), size = 0.9 },
 	Blunderbuss = { style = "Blunt", color = Color3.fromRGB(255, 200, 120), size = 0.5 }, -- per pellet
 	DemonClaw = { style = "Slash", color = Color3.fromRGB(255, 70, 60), size = 0.9 }, -- enemies hitting players
-	Parry = { style = "Blunt", color = Color3.fromRGB(255, 235, 150), size = 1.3 }, -- a parried enemy (see BlockService)
+	Parry = { style = "Blunt", color = Color3.fromRGB(255, 185, 70), size = 1.3 }, -- a parried enemy (see BlockService)
 }
 local DEFAULT_LOOK: Look = { style = "Slash", color = Color3.new(1, 1, 1), size = 1 }
 
@@ -67,6 +76,7 @@ local shockwaveRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("
 local HitEffectsClient = {}
 
 local random = Random.new()
+local hitLights = 0
 
 local function effectPart(size: Vector3, cframe: CFrame, color: Color3, shape: Enum.PartType?): Part
 	local part = Instance.new("Part")
@@ -167,6 +177,74 @@ local function pierce(position: Vector3, direction: Vector3, look: Look, scale: 
 	sparks(position, direction, look.color, scale, 22, math.round(8 * scale))
 end
 
+-- A light at the impact that fades fast, so the blow lights up the ground and bodies around it.
+local function impactLight(position: Vector3, color: Color3, brightness: number, range: number, time: number)
+	if hitLights >= MAX_HIT_LIGHTS then
+		return
+	end
+	hitLights += 1
+	local attachment = emitterAt(position, Vector3.yAxis)
+	local light = Instance.new("PointLight")
+	light.Color = color
+	light.Brightness = brightness
+	light.Range = range
+	light.Shadows = false
+	light.Parent = attachment
+	TweenService:Create(light, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Brightness = 0 }):Play()
+	task.delay(time, function()
+		hitLights -= 1
+	end)
+end
+
+-- One glowing bar of a flare: bright in the middle, fading out to both ends.
+local function flareBar(billboard: BillboardGui, color: Color3, thickness: number, rotation: number): Frame
+	local bar = Instance.new("Frame")
+	bar.AnchorPoint = Vector2.new(0.5, 0.5)
+	bar.Position = UDim2.fromScale(0.5, 0.5)
+	bar.Size = UDim2.fromScale(1, thickness)
+	bar.Rotation = rotation
+	bar.BorderSizePixel = 0
+	bar.BackgroundColor3 = Color3.new(1, 1, 1)
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, color),
+		ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
+		ColorSequenceKeypoint.new(1, color),
+	})
+	gradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	gradient.Parent = bar
+	bar.Parent = billboard
+	return bar
+end
+
+-- A flare streak facing the camera at the impact: a thin glowing line (and, for `cross`, a
+-- shorter upright one) that stretches and thins out as it fades.
+local function flare(position: Vector3, color: Color3, length: number, time: number, cross: boolean)
+	local attachment = emitterAt(position, Vector3.yAxis)
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromScale(length * 0.6, length * 0.6)
+	billboard.LightInfluence = 0
+	billboard.AlwaysOnTop = true -- drawn over the bodies at the clash, it's gone in a blink
+	billboard.Parent = attachment
+	local tilt = random:NextNumber(-14, 14)
+	local bars = { flareBar(billboard, color, 0.07, tilt) }
+	if cross then
+		local upright = flareBar(billboard, color, 0.05, tilt + 90)
+		upright.Size = UDim2.fromScale(0.45, 0.05)
+		table.insert(bars, upright)
+	end
+	local info = TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(billboard, info, { Size = UDim2.fromScale(length, length) }):Play()
+	for _, bar in bars do
+		TweenService:Create(bar, info, { BackgroundTransparency = 1, Size = UDim2.fromScale(bar.Size.X.Scale, 0.005) }):Play()
+	end
+	Debris:AddItem(billboard, time)
+end
+
 -- A parry: a light flash at the clash and sparks streaking out in every direction.
 local function parryClash(position: Vector3, color: Color3)
 	local attachment = emitterAt(position, Vector3.yAxis)
@@ -177,6 +255,7 @@ local function parryClash(position: Vector3, color: Color3)
 	light.Shadows = false
 	light.Parent = attachment
 	TweenService:Create(light, TweenInfo.new(PARRY_FLASH_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Brightness = 0 }):Play()
+	flare(position, color, FLARE_LENGTH * 2.6, PARRY_FLARE_TIME, true)
 
 	burst(attachment, {
 		Texture = SPARK_TEXTURE,
@@ -224,6 +303,10 @@ local function onHit(model: Model?, position: Vector3, direction: Vector3, weapo
 	end
 	if weapon == "Parry" then
 		parryClash(position, look.color)
+	else
+		local size = math.min(scale, 1.6)
+		impactLight(position, look.color, HIT_LIGHT_BRIGHTNESS * size, HIT_LIGHT_RANGE * size, HIT_LIGHT_TIME)
+		flare(position, look.color, FLARE_LENGTH * size, FLARE_TIME, false)
 	end
 
 	if weapon == "Parry" and ParryPredict.consume(model) then

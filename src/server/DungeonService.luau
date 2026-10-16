@@ -4,12 +4,15 @@
 -- the land, its boss standing dormant in the arena (BossService). Runs belong to the player
 -- who entered; a party will share one once parties exist (Run.members is already a list).
 --
--- Each run is watched a few times a second: a member walking into an orc room that isn't
--- cleared seals it and drops its orcs (EnemyService.spawnOnFloor: no respawn, normal XP,
--- coins and drops); once they're dead both doors open. If no member is alive in a room that's
--- being fought, its orcs are cleared away and its entrance opens again. Walking into the arena
--- seals it and wakes the boss; beating it opens the arena and a way out, and a wipe (BossService
--- resets the boss) opens it again. A member who dies comes back in the entry hall.
+-- A run starts with its orc patrols walking their routes (EnemyService.spawnOnFloor, finding
+-- their way with DungeonGrid.route; no respawn, normal XP, coins and drops). Each run is
+-- watched a few times a second: a member walking into a war room that isn't cleared seals its
+-- gates and drops its orcs; once they're dead its gates open. If no member is alive in a room
+-- that's being fought, its orcs are cleared away and its gates open again. Once every war room
+-- is cleared the arena's gate opens; walking into the arena seals it and wakes the boss;
+-- beating it opens the arena and a way out, and a wipe (BossService resets the boss) opens it
+-- again. A chest gives every member coins (placeholder loot), once per run. A member who dies
+-- comes back in the entry hall.
 --
 -- While in a run a player has a "Dungeon" attribute (the dungeon's DisplayName; ZoneBanner
 -- shows it). Leaving by a way out puts them back at the cave mouth; teleporting away some
@@ -21,8 +24,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BossService = require(script.Parent.BossService)
 local DungeonBuilder = require(script.Parent.DungeonBuilder)
+local DungeonGrid = require(script.Parent.DungeonGrid)
 local EnemyService = require(script.Parent.EnemyService)
 local HealthService = require(script.Parent.HealthService)
+local LootService = require(script.Parent.LootService)
 
 local BossConfig = require(ReplicatedStorage.Shared.Config.BossConfig)
 local DungeonConfig = require(ReplicatedStorage.Shared.Config.DungeonConfig)
@@ -33,15 +38,21 @@ type Dungeon = DungeonConfig.Dungeon
 local dungeonEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DungeonEvent") :: RemoteEvent
 
 local WATCH_INTERVAL = 0.25
-local DOOR_MARGIN = 6 -- studs past a room's doorway before it counts as walking in
+local DOOR_MARGIN = 3 -- studs past a room's edge before it counts as walking in
+local SEAL_HINT_RANGE = 14 -- studs from the shut arena gate that say what's left to clear
+local SEAL_HINT_EVERY = 6 -- seconds between those
+local PATROL_STAGGER = 1.2 -- seconds between a patrol's members setting off
 local ARENA_MARGIN = 10 -- studs inside the arena's wall before the boss wakes
 local STRAY_DISTANCE = 700 -- a member this far from the run (alive) has left it some other way
 local PROMPT_COOLDOWN = 2
+local LID_DELAY = 0.35 -- seconds after a chest starts opening before its coins burst out
+local chestRandom = Random.new()
 
 type RoomState = {
 	config: DungeonConfig.Room,
-	gates: { entry: DungeonBuilder.Gate, exit: DungeonBuilder.Gate },
-	spawns: { Vector3 },
+	gates: { DungeonBuilder.Gate },
+	spawns: { Vector3 }, -- none: not a war room
+	visited: boolean, -- someone has walked in (its name has been shown)
 	cleared: boolean,
 	fighting: boolean,
 	wave: number, -- bumped each time the room starts or resets, so late spawns of an old wave are dropped
@@ -53,9 +64,13 @@ type Run = {
 	dungeon: Dungeon,
 	slot: number,
 	origin: Vector3,
+	grid: DungeonGrid.Grid,
 	built: DungeonBuilder.Built,
 	members: { Player },
 	rooms: { RoomState },
+	patrols: { Model },
+	arenaOpen: boolean, -- every war room is cleared
+	lastSealHint: number,
 	fight: BossService.Fight?,
 	beaten: boolean,
 	ended: boolean,
@@ -131,12 +146,26 @@ local function outside(dungeon: Dungeon): CFrame
 end
 
 local function inRoom(run: Run, room: RoomState, position: Vector3): boolean
-	local offset = position - run.origin
-	local c, size = room.config.Center, room.config.Size
-	return math.abs(offset.X - c.X) < size.X / 2
-		and offset.Z < c.Y + size.Y / 2 - DOOR_MARGIN
-		and offset.Z > c.Y - size.Y / 2
-		and math.abs(offset.Y) < room.config.Height
+	local grid, config = run.grid, room.config
+	local half = grid.cell / 2 - DOOR_MARGIN
+	local low = DungeonGrid.position(grid, config.From.X, config.From.Y) - Vector3.new(half, 0, half)
+	local high = DungeonGrid.position(grid, config.To.X, config.To.Y) + Vector3.new(half, 0, half)
+	return position.X > low.X
+		and position.X < high.X
+		and position.Z > low.Z
+		and position.Z < high.Z
+		and math.abs(position.Y - run.origin.Y) < run.dungeon.RoomHeight
+end
+
+-- How a run's orcs find their way: round its walls, through its open gates.
+local function roam(run: Run, route: { Vector3 }?, sight: boolean): EnemyService.Roam
+	return {
+		route = route,
+		sight = sight,
+		navigate = function(from: Vector3, to: Vector3): Vector3?
+			return DungeonGrid.route(run.grid, from, to)
+		end,
+	}
 end
 
 local function inArena(run: Run, position: Vector3): boolean
@@ -164,10 +193,15 @@ local function endRun(run: Run)
 	for _, room in run.rooms do
 		clearOrcs(room)
 	end
+	for _, orc in run.patrols do
+		if orc.Parent then
+			orc:Destroy()
+		end
+	end
 	if run.fight then
 		run.fight:destroy()
 	end
-	run.built.folder:Destroy()
+	DungeonBuilder.clear(run.built)
 end
 
 -- Takes `player` out of their run (back to the cave mouth if `toEntrance`).
@@ -195,14 +229,16 @@ local function startRoom(run: Run, room: RoomState)
 	room.wave += 1
 	room.spawned = 0
 	local wave = room.wave
-	DungeonBuilder.setGate(room.gates.entry, false)
+	for _, gate in room.gates do
+		DungeonBuilder.setGate(gate, false)
+	end
 	tell(run, "Banner", { text = room.config.Name, small = true })
 	for i, spawn in room.spawns do
 		task.delay(0.3 + i * 0.25, function()
 			if run.ended or room.wave ~= wave then
 				return
 			end
-			local orc = EnemyService.spawnOnFloor(spawn, EnemyConfig.Orc)
+			local orc = EnemyService.spawnOnFloor(spawn, EnemyConfig.Orc, roam(run, nil, false))
 			if run.ended or room.wave ~= wave then
 				if orc then
 					orc:Destroy()
@@ -230,7 +266,7 @@ local function watch(run: Run)
 	end
 
 	for _, room in run.rooms do
-		if room.cleared then
+		if room.cleared and room.visited then
 			continue
 		end
 		local someoneInside = false
@@ -239,6 +275,15 @@ local function watch(run: Run)
 			if root and inRoom(run, room, root.Position) then
 				someoneInside = true
 			end
+		end
+		if someoneInside and not room.visited then
+			room.visited = true
+			if room.cleared then
+				tell(run, "Banner", { text = room.config.Name, small = true }) -- not a war room
+			end
+		end
+		if room.cleared then
+			continue
 		end
 		if room.fighting then
 			local spawned = room.spawned >= #room.spawns
@@ -252,23 +297,52 @@ local function watch(run: Run)
 				room.fighting = false
 				room.cleared = true
 				table.clear(room.orcs)
-				DungeonBuilder.setGate(room.gates.entry, true)
-				DungeonBuilder.setGate(room.gates.exit, true)
-				tell(run, "Banner", { text = "The way is open", small = true })
+				for _, gate in room.gates do
+					DungeonBuilder.setGate(gate, true)
+				end
+				tell(run, "Banner", { text = `{room.config.Name} cleared`, small = true })
 			elseif not someoneInside then
 				-- Everyone fighting here fell: the room empties and opens again.
 				room.fighting = false
 				room.wave += 1
 				clearOrcs(room)
-				DungeonBuilder.setGate(room.gates.entry, true)
+				for _, gate in room.gates do
+					DungeonBuilder.setGate(gate, true)
+				end
 			end
 		elseif someoneInside then
 			startRoom(run, room)
 		end
 	end
 
+	-- The arena's gate: shut until every war room is cleared.
+	if not run.arenaOpen then
+		local left = {}
+		for _, room in run.rooms do
+			if not room.cleared then
+				table.insert(left, room.config.Name)
+			end
+		end
+		if #left == 0 then
+			run.arenaOpen = true
+			DungeonBuilder.setGate(run.built.arenaGate, true)
+			local boss = BossConfig[run.dungeon.Boss] :: BossConfig.Boss?
+			tell(run, "Banner", { text = `A gate grinds open: {if boss then boss.DisplayName else "the boss"} awaits` })
+		elseif os.clock() - run.lastSealHint > SEAL_HINT_EVERY then
+			local gateAt = run.built.arenaCenter + Vector3.new(0, 0, run.dungeon.Arena.Radius)
+			for _, player in run.members do
+				local root = aliveRoot(player)
+				if root and (root.Position - gateAt).Magnitude < SEAL_HINT_RANGE then
+					run.lastSealHint = os.clock()
+					tell(run, "Banner", { text = `Sealed. Still to clear: {table.concat(left, ", ")}`, small = true })
+					break
+				end
+			end
+		end
+	end
+
 	local fight = run.fight
-	if fight and not run.beaten and fight.model:GetAttribute("BossState") == "Dormant" then
+	if fight and run.arenaOpen and not run.beaten and fight.model:GetAttribute("BossState") == "Dormant" then
 		for _, player in run.members do
 			local root = aliveRoot(player)
 			if root and inArena(run, root.Position) then
@@ -288,13 +362,20 @@ local function onExit(prompt: ProximityPrompt, run: Run)
 	end)
 end
 
+-- The layouts saved in the place (workspace.DungeonLayouts), by dungeon id, taken at start.
+local layouts: { [string]: DungeonBuilder.Layout } = {}
+
+-- Slots and players whose run is being built (carving its terrain takes a moment).
+local building: { [number]: boolean } = {}
+local entering: { [Player]: boolean } = {}
+
 local function startRun(player: Player, dungeon: Dungeon)
-	if runOf[player] then
+	if runOf[player] or entering[player] then
 		return
 	end
 	local slot
 	for i = 1, DungeonConfig.Slots do
-		if not runs[i] then
+		if not runs[i] and not building[i] then
 			slot = i
 			break
 		end
@@ -303,26 +384,89 @@ local function startRun(player: Player, dungeon: Dungeon)
 		dungeonEvent:FireClient(player, "Banner", { text = "The lair is full; try again soon", small = true })
 		return
 	end
+	building[slot] = true
+	entering[player] = true
 	local origin = DungeonConfig.Origin + Vector3.new(DungeonConfig.Spacing * (slot - 1), 0, 0)
-	local built = DungeonBuilder.build(dungeon, origin, `{dungeon.Id}Run{slot}`)
+	local grid = DungeonGrid.new(dungeon, origin)
+	local built = DungeonBuilder.build(dungeon, grid, `{dungeon.Id}Run{slot}`, layouts[dungeon.Id])
+	building[slot] = nil
+	entering[player] = nil
+	if not player.Parent then -- left while it was being built
+		DungeonBuilder.clear(built)
+		return
+	end
 	local run: Run = {
 		dungeon = dungeon,
 		slot = slot,
 		origin = origin,
+		grid = grid,
 		built = built,
 		members = { player },
 		rooms = {},
+		patrols = {},
+		arenaOpen = false,
+		lastSealHint = 0,
 		fight = nil,
 		beaten = false,
 		ended = false,
 	}
 	for i, room in dungeon.Rooms do
-		table.insert(run.rooms, { config = room, gates = built.roomGates[i], spawns = built.orcSpawns[i], cleared = (room.Orcs or 0) == 0, fighting = false, wave = 0, spawned = 0, orcs = {} })
+		local spawns = built.orcSpawns[i]
+		table.insert(run.rooms, { config = room, gates = built.roomGates[i], spawns = spawns, visited = false, cleared = #spawns == 0, fighting = false, wave = 0, spawned = 0, orcs = {} })
 	end
 	runs[slot] = run
 	runOf[player] = run
 	built.folder.Parent = folder
 	onExit(built.exitPrompt, run)
+
+	-- Patrols set off along their routes, a little apart.
+	for _, patrol in dungeon.Patrols do
+		local route = {}
+		for k = 1, #patrol.Route do
+			local spot = DungeonGrid.find(grid, string.sub(patrol.Route, k, k))[1]
+			if spot then
+				table.insert(route, DungeonGrid.position(grid, spot.X, spot.Y))
+			else
+				warn(`[DungeonService] {dungeon.Id}: no waypoint {string.sub(patrol.Route, k, k)} on the map`)
+			end
+		end
+		if #route == 0 then
+			continue
+		end
+		for i = 1, patrol.Orcs do
+			task.delay((i - 1) * PATROL_STAGGER, function()
+				if run.ended then
+					return
+				end
+				local orc = EnemyService.spawnOnFloor(route[1] + Vector3.new(0, 6, 0), EnemyConfig.Orc, roam(run, route, true))
+				if orc and run.ended then
+					orc:Destroy()
+				elseif orc then
+					table.insert(run.patrols, orc)
+				end
+			end)
+		end
+	end
+
+	-- Chests, once per run: gold coins spill out for everyone in the run (each their own pile,
+	-- worth their own random total), picked up by walking through them.
+	local loot = dungeon.ChestCoins
+	for _, chest in built.chests do
+		local opened = false
+		chest.prompt.Triggered:Connect(function(opener)
+			if opened or runOf[opener] ~= run or not aliveRoot(opener) then
+				return
+			end
+			opened = true
+			chest.open()
+			tell(run, "Banner", { text = "The chest spills gold!", small = true })
+			task.delay(LID_DELAY, function()
+				for _, member in run.members do
+					LootService.dropCoins(member, chestRandom:NextInteger(loot.Min, loot.Max), chest.position + Vector3.new(0, 2, 0), chest.front, loot.Shown)
+				end
+			end)
+		end)
+	end
 
 	local boss = BossConfig[dungeon.Boss] :: BossConfig.Boss?
 	if boss then
@@ -355,12 +499,22 @@ local function startRun(player: Player, dungeon: Dungeon)
 	end)
 end
 
--- The cave mouth for `dungeon`, on the ground at its Entrance.
+-- The cave mouth for `dungeon`: the one saved in the place (workspace.DungeonLayouts,
+-- `<Id>Entrance`) if there is one, else built on the ground at its Entrance.
 local function placeEntrance(dungeon: Dungeon)
-	local x, z = dungeon.Entrance.X, dungeon.Entrance.Y
-	local ground = Vector3.new(x, groundAt(x, z), z)
-	local prompt, doorway = DungeonBuilder.entrance(dungeon, ground, folder)
-	local facing = Vector3.new(dungeon.EntranceFacing.X, 0, dungeon.EntranceFacing.Y).Unit
+	local saved = workspace:FindFirstChild("DungeonLayouts")
+	local model = saved and saved:FindFirstChild(dungeon.Id .. "Entrance")
+	local prompt, doorway, mouth
+	if model then
+		prompt, doorway, mouth = DungeonBuilder.savedEntrance(dungeon, model)
+	end
+	if not prompt or not doorway or not mouth then
+		local x, z = dungeon.Entrance.X, dungeon.Entrance.Y
+		local ground = Vector3.new(x, groundAt(x, z), z)
+		prompt, doorway = DungeonBuilder.entrance(dungeon, ground, folder)
+		mouth = CFrame.lookAt(ground, ground + Vector3.new(dungeon.EntranceFacing.X, 0, dungeon.EntranceFacing.Y))
+	end
+	local ground, facing = mouth.Position, mouth.LookVector
 	entrances[dungeon.Id] = CFrame.lookAt(ground, ground - facing) -- looking into the cave
 	local function enter(player: Player)
 		local now = os.clock()
@@ -395,7 +549,12 @@ end
 
 function DungeonService.start()
 	folder.Parent = workspace
+	local saved = workspace:FindFirstChild("DungeonLayouts")
 	for _, dungeon in DungeonConfig.Dungeons do
+		local layout = saved and saved:FindFirstChild(dungeon.Id)
+		if layout then
+			layouts[dungeon.Id] = DungeonBuilder.loadLayout(layout)
+		end
 		task.spawn(placeEntrance, dungeon)
 	end
 

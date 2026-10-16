@@ -3,7 +3,7 @@
 --   * cloth marked "Sway" (flags, banners, washing) swings in the wind; models marked "Spin"
 --     (the windmill's sails) turn about their pivot's look direction;
 --   * the blacksmith works the anvil by day (clangs and sparks), the campfire crackles;
---   * birdsong by day and crickets at night; the bell tower tolls at dawn and dusk;
+--   * birdsong by day and crickets at night (hushed in a dungeon run); the bell tower tolls at dawn and dusk;
 --   * little flocks of birds peck about TownConfig.BirdSpots and fly off when you come close,
 --     coming back a while later.
 -- Things further than ANIMATE_RANGE from the camera are left still.
@@ -150,11 +150,12 @@ local function startSounds()
 	while true do
 		local clock = DayCycle.clock()
 		local night = DayCycle.night(clock)
+		local outside = if typeof(player:GetAttribute("Dungeon")) == "string" then 0 else 1 -- none in a dungeon
 		if birds then
-			birds.Volume = birdVolume * (1 - night)
+			birds.Volume = birdVolume * (1 - night) * outside
 		end
 		if crickets then
-			crickets.Volume = cricketVolume * night
+			crickets.Volume = cricketVolume * night * outside
 		end
 
 		-- Places in town (looked up until they've streamed in).

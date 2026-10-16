@@ -1,11 +1,14 @@
 --!strict
 -- Day and night on this screen (LightingConfig.DayCycle; the time comes from shared DayCycle,
 -- so everyone sees the same sky). Turns the clock, shifts the light toward a moonlit blue at
--- night, and lights the town after dark: lamp and lantern lights in workspace.Town switch on
+-- night (with a cooler, punchier grade, crisper shadows and shinier surfaces), and lights the
+-- town after dark: lamp and lantern lights in workspace.Town switch on
 -- (lights by a fire, like the campfire, stay on), and windows glow. Looks only.
--- The intro holds the clock at its own time while it plays (DayNight.hold).
+-- The intro holds the clock at its own time while it plays (DayNight.hold). In a dungeon run
+-- (the "Dungeon" attribute) the light and effects switch to LightingConfig.Dungeon instead.
 
 local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -18,7 +21,38 @@ local NIGHT = CYCLE.Night
 local UPDATE_INTERVAL = 0.1 -- seconds between lighting updates
 local WINDOW_NAMES = { Windows = true, Window = true } -- House_1/Blacksmith models; part-built houses
 
+local DUNGEON = LightingConfig.Dungeon
+-- The effects in Lighting (LightingSetup makes one of each), by class and their LightingConfig key
+-- (also their name: there are other ColorCorrectionEffects, like LowHealthGrade).
+local EFFECTS = { Atmosphere = "Atmosphere", BloomEffect = "Bloom", ColorCorrectionEffect = "ColorCorrection", SunRaysEffect = "SunRays" }
+
+local player = Players.LocalPlayer
+
 local DayNight = {}
+
+local inDungeon = false
+
+local function set(instance: Instance, properties: { [string]: any })
+	for key, value in properties do
+		(instance :: any)[key] = value
+	end
+end
+
+-- Puts the effects (and the environment light) to the dungeon's look, or back to the world's.
+local function setDungeonLook(on: boolean)
+	inDungeon = on
+	for className, key in EFFECTS do
+		local named = Lighting:FindFirstChild(key)
+		local effect = if named and named:IsA(className) then named else nil
+		local look = if on then (DUNGEON :: any)[key] else (LightingConfig :: any)[key]
+		if effect and look then
+			set(effect, look)
+		end
+	end
+	local world = LightingConfig.Lighting
+	Lighting.EnvironmentDiffuseScale = if on then DUNGEON.Lighting.EnvironmentDiffuseScale else world.EnvironmentDiffuseScale
+	Lighting.EnvironmentSpecularScale = if on then DUNGEON.Lighting.EnvironmentSpecularScale else world.EnvironmentSpecularScale
+end
 
 local heldClock: number? = nil
 local nightLights: { [Light]: boolean } = {}
@@ -72,11 +106,34 @@ local function update()
 	local clock = heldClock or DayCycle.clock()
 	local night = DayCycle.night(clock)
 	Lighting.ClockTime = clock
+	local dungeon = typeof(player:GetAttribute("Dungeon")) == "string"
+	if dungeon ~= inDungeon then
+		setDungeonLook(dungeon)
+	end
+	if dungeon then
+		local look = DUNGEON.Lighting
+		Lighting.Brightness = look.Brightness
+		Lighting.Ambient = look.Ambient
+		Lighting.OutdoorAmbient = look.OutdoorAmbient
+		Lighting.ColorShift_Top = look.ColorShift_Top
+		Lighting.ExposureCompensation = look.ExposureCompensation
+		return
+	end
 	Lighting.Brightness = DAY.Brightness + (NIGHT.Brightness - DAY.Brightness) * night
 	Lighting.Ambient = DAY.Ambient:Lerp(NIGHT.Ambient, night)
 	Lighting.OutdoorAmbient = DAY.OutdoorAmbient:Lerp(NIGHT.OutdoorAmbient, night)
 	Lighting.ColorShift_Top = DAY.ColorShift_Top:Lerp(NIGHT.ColorShift_Top, night)
 	Lighting.ExposureCompensation = DAY.ExposureCompensation + (NIGHT.ExposureCompensation - DAY.ExposureCompensation) * night
+	Lighting.ShadowSoftness = DAY.ShadowSoftness + (NIGHT.ShadowSoftness - DAY.ShadowSoftness) * night
+	Lighting.EnvironmentSpecularScale = DAY.EnvironmentSpecularScale + (NIGHT.EnvironmentSpecularScale - DAY.EnvironmentSpecularScale) * night
+	local grade = Lighting:FindFirstChild("ColorCorrection")
+	if grade and grade:IsA("ColorCorrectionEffect") then
+		local dayGrade, nightGrade = LightingConfig.ColorCorrection, NIGHT.ColorCorrection
+		grade.Saturation = dayGrade.Saturation + (nightGrade.Saturation - dayGrade.Saturation) * night
+		grade.Contrast = dayGrade.Contrast + (nightGrade.Contrast - dayGrade.Contrast) * night
+		grade.Brightness = dayGrade.Brightness + (nightGrade.Brightness - dayGrade.Brightness) * night
+		grade.TintColor = dayGrade.TintColor:Lerp(nightGrade.TintColor, night)
+	end
 	local shouldLight = night >= CYCLE.LightsOn
 	if shouldLight ~= lit then
 		setLit(shouldLight)

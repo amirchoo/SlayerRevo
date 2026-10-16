@@ -5,7 +5,8 @@
 -- dead. Single enemies (SpawnPoints, the Training Grounds) chase the nearest player and
 -- respawn where they stood. Giving up heals an enemy to full at once, and a pack walking home
 -- can't be hurt (and heals again once home), so you can't wear one down by kiting it. Every attack has a short wind-up, so players can dodge. A kill
--- leaves the enemy's Drops on the ground for the killer (LootService).
+-- leaves the enemy's Drops on the ground for the killer (LootService). A dead enemy keeps its
+-- body whole: it topples over, lies there, then fades away (it never falls apart).
 -- Sparring enemies (the training camp, spawnSparring) belong to one player: they fight only
 -- that player, even in the safe zone, only that player can hurt them, they give no XP or
 -- coins (or drops), and they never respawn. A puppet (spawnPuppet) is one with no AI at all: its owner
@@ -17,6 +18,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
+local TweenService = game:GetService("TweenService")
 
 local BlockService = require(script.Parent.BlockService)
 local EnemyAnimations = require(script.Parent.EnemyAnimations)
@@ -49,9 +51,24 @@ local oneOff: { [Model]: boolean } = {}
 -- Sparring enemies: the one player each fights (and the only one who can hurt it).
 local ownerOf: { [Model]: Player } = {}
 
+-- How a dungeon's orc gets about (spawnOnFloor): a patrol route it walks while it has no
+-- target, a way round walls (the next point to walk to on the way somewhere; nil when
+-- there's no way), and whether it must see a player to notice them.
+export type Roam = {
+	route: { Vector3 }?,
+	navigate: ((from: Vector3, to: Vector3) -> Vector3?)?,
+	sight: boolean?,
+}
+local roamOf: { [Model]: Roam } = {}
+local PATROL_PAUSE = { 1, 3 } -- seconds a patroller stands at each waypoint
+local PATROL_SPEED = 0.45 -- of WalkSpeed
+local SIGHT_HEIGHT = 1.5 -- studs above the root that sight lines start and end
+
 -- The ground under X/Z: the highest thing below SPAWN_RAY_HEIGHT, or below `fromY` (within
 -- DROP_REACH) for floors up in the sky, like a dungeon's.
 local DROP_REACH = 40
+local DEATH_TIP = TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+local DEATH_FADE = TweenInfo.new(0.8)
 local function groundCFrame(spawnPoint: Vector2, fromY: number?): CFrame
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -158,8 +175,27 @@ local function fullHeal(enemy: Model)
 	end
 end
 
+-- Whether `root` has a clear line to `target` (nothing but enemies in the way).
+local function canSee(root: BasePart, target: Model, targetRoot: BasePart): boolean
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { enemiesFolder, target }
+	local from = root.Position + Vector3.new(0, SIGHT_HEIGHT, 0)
+	local to = targetRoot.Position + Vector3.new(0, SIGHT_HEIGHT, 0)
+	return workspace:Raycast(from, to - from, params) == nil
+end
+
 local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vector3, kind: EnemyType)
 	local attackTrack = EnemyAnimations.start(enemy, humanoid, kind) -- idle, walk/run, flinch, parried
+	local roam = roamOf[enemy]
+	local waypoint = 1 -- the patrol waypoint it's walking to
+	local pauseUntil: number? = nil
+	-- Walks toward `goal`, round walls if it knows the way (and stands still if there's none).
+	local function head(goal: Vector3)
+		local navigate = roam and roam.navigate
+		local step = if navigate then navigate(root.Position, goal) else goal
+		humanoid:MoveTo(step or root.Position)
+	end
 
 	local lastAttack = 0
 	local stuckSince: number? = nil
@@ -242,6 +278,10 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 				target, targetRoot, distance = ownerTarget(owner, root.Position, kind.AggroRange)
 			else
 				target, targetRoot, distance = findNearestCharacter(root.Position, kind.AggroRange)
+				-- A dungeon orc notices you only if it can see you (once on you, it follows).
+				if target and targetRoot and roam and roam.sight and not chasing and not canSee(root, target, targetRoot) then
+					target, targetRoot = nil, nil
+				end
 			end
 			if target then
 				chasing = true
@@ -251,12 +291,27 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 					fullHeal(enemy) -- gave up on you: back to full health
 				end
 			end
+			local route = roam and roam.route
 			if target and targetRoot then
 				if distance > kind.AttackRange then
-					humanoid:MoveTo(targetRoot.Position)
+					head(targetRoot.Position)
 				else
 					humanoid:MoveTo(root.Position)
 					tryAttack(target, targetRoot)
+				end
+			elseif route and #route > 0 then
+				-- Walk the patrol, standing a moment at each waypoint.
+				local point = route[waypoint]
+				if flat(point - root.Position).Magnitude < 3 then
+					humanoid:MoveTo(root.Position)
+					pauseUntil = pauseUntil or os.clock() + math.random() * (PATROL_PAUSE[2] - PATROL_PAUSE[1]) + PATROL_PAUSE[1]
+					if os.clock() >= (pauseUntil :: number) then
+						waypoint = waypoint % #route + 1
+						pauseUntil = nil
+					end
+				else
+					humanoid.WalkSpeed *= PATROL_SPEED
+					head(point)
 				end
 			elseif (root.Position - home).Magnitude > 4 then
 				humanoid:MoveTo(home) -- no target: walk back to the spawn point
@@ -321,7 +376,7 @@ local function idOf(kind: EnemyType): string
 	return kind.DisplayName
 end
 
-local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?, once: boolean?, owner: Player?, puppet: boolean?, fromY: number?): Model?
+local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?, once: boolean?, owner: Player?, puppet: boolean?, fromY: number?, roam: Roam?): Model?
 	local enemy = modelFromTemplate(kind) or plainBody(kind)
 	if not enemy then
 		return nil
@@ -337,6 +392,7 @@ local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?
 	humanoid.WalkSpeed = kind.WalkSpeed
 	-- The name and health bar are drawn by the client (EnemyHealthBars), not the Humanoid.
 	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	humanoid.BreakJointsOnDeath = false -- dies whole (see topple), not in pieces
 
 	-- Only HealthService changes health; drop any default regen script.
 	local regen = enemy:FindFirstChild("Health")
@@ -367,6 +423,12 @@ local function spawnEnemy(spawnPoint: Vector2, kind: EnemyType, pack: PackState?
 		spawnPointOf[enemy] = spawnPoint -- respawns here (pack members re-form as a pack instead)
 	end
 	typeOf[enemy] = kind
+	if roam then
+		roamOf[enemy] = roam
+		enemy.Destroying:Once(function()
+			roamOf[enemy] = nil
+		end)
+	end
 	HealthService.register(enemy, kind.MaxHealth)
 	enemy:SetAttribute("XPReward", kind.XP) -- ProgressionService gives it to whoever defeats it
 	enemy:SetAttribute("CoinReward", kind.Coins or 0) -- CurrencyService gives it to whoever defeats it
@@ -623,8 +685,9 @@ end
 
 -- Like spawnOnce, but dropped onto the floor just below `position` (not the land's ground), for
 -- floors up in the sky like a dungeon's. Yields while the model loads.
-function EnemyService.spawnOnFloor(position: Vector3, kind: EnemyType): Model?
-	return spawnEnemy(Vector2.new(position.X, position.Z), kind, nil, true, nil, nil, position.Y)
+-- `roam` (dungeon orcs): see Roam.
+function EnemyService.spawnOnFloor(position: Vector3, kind: EnemyType, roam: Roam?): Model?
+	return spawnEnemy(Vector2.new(position.X, position.Z), kind, nil, true, nil, nil, position.Y, roam)
 end
 
 -- A sparring enemy for `owner` (see the top): chases and attacks only them. Never respawns.
@@ -657,8 +720,52 @@ function EnemyService.start()
 		return amount
 	end)
 
+	-- A dead body stops where it is and tips over onto its side, whole.
+	local function topple(model: Model)
+		local humanoid = model:FindFirstChildOfClass("Humanoid")
+		local root = model:FindFirstChild("HumanoidRootPart")
+		if not humanoid or not root or not root:IsA("BasePart") then
+			return
+		end
+		local animator = humanoid:FindFirstChildOfClass("Animator")
+		if animator then
+			for _, track in animator:GetPlayingAnimationTracks() do
+				track:Stop(0.2)
+			end
+		end
+		root.Anchored = true
+		local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+		local yaw = if look.Magnitude > 0.01 then CFrame.lookAlong(Vector3.zero, look.Unit) else CFrame.identity
+		local lying = root.Position.Y - humanoid.HipHeight - root.Size.Y / 2 + root.Size.X / 2
+		local fallen = CFrame.new(root.Position.X, lying, root.Position.Z) * yaw * CFrame.Angles(0, 0, math.rad(90))
+		TweenService:Create(root, DEATH_TIP, { CFrame = fallen }):Play()
+	end
+
+	-- Fades the body out and clears it away, `after` seconds from now (then runs `andThen`).
+	local function clearBody(model: Model, after: number, andThen: (() -> ())?)
+		task.delay(math.max(0, after - DEATH_FADE.Time), function()
+			for _, part in model:GetDescendants() do
+				if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+					TweenService:Create(part, DEATH_FADE, { Transparency = 1 }):Play()
+				elseif part:IsA("Decal") then
+					TweenService:Create(part, DEATH_FADE, { Transparency = 1 }):Play()
+				end
+			end
+			task.wait(DEATH_FADE.Time)
+			if model.Parent then
+				model:Destroy()
+			end
+			if andThen then
+				andThen()
+			end
+		end)
+	end
+
 	HealthService.Died:Connect(function(model: Model, killer: Player?)
 		local kind = typeOf[model]
+		if kind then
+			topple(model)
+		end
 		local root = model:FindFirstChild("HumanoidRootPart")
 		if kind and kind.Drops and killer and not ownerOf[model] and root and root:IsA("BasePart") then
 			for _, drop in kind.Drops do
@@ -672,22 +779,14 @@ function EnemyService.start()
 		if oneOff[model] then
 			oneOff[model] = nil
 			ownerOf[model] = nil
-			task.delay(typeOf[model].RespawnDelay, function() -- leave the body a moment, like the others
-				if model.Parent then
-					model:Destroy()
-				end
-			end)
+			clearBody(model, typeOf[model].RespawnDelay) -- leave the body a moment, like the others
 			typeOf[model] = nil
 			return
 		end
 		local pack = packOf[model]
 		if pack then
 			-- Pack members don't respawn alone (the pack re-forms); clear the body away.
-			task.delay(pack.kind.RespawnDelay, function()
-				if model.Parent then
-					model:Destroy()
-				end
-			end)
+			clearBody(model, pack.kind.RespawnDelay)
 			return
 		end
 		local spawnPoint = spawnPointOf[model]
@@ -697,8 +796,7 @@ function EnemyService.start()
 		spawnPointOf[model] = nil
 		typeOf[model] = nil
 
-		task.delay(kind.RespawnDelay, function()
-			model:Destroy()
+		clearBody(model, kind.RespawnDelay, function()
 			spawnEnemy(spawnPoint, kind)
 		end)
 	end)

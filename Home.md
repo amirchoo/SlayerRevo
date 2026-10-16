@@ -3,6 +3,7 @@
 Start page for the Obsidian vault. Code under `src/` and `tools/` is hidden here; edit it in VS Code.
 
 ## Work
+- **[Main issue: combat feel and atmosphere like Dueling Grounds](notes/tasks/main-issue-dueling-vibe.md)**: one step per session
 - [Backlog](notes/backlog.md): features and ideas, most important first
 - [Bugs](notes/bugs.md): found while playtesting
 - [Tasks](notes/tasks/README.md): one note per task (Cmd+Option+T inserts the template)

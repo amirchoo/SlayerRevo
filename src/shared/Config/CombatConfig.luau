@@ -234,9 +234,9 @@ local Sword: ComboWeapon = {
 	ModelFit = { Length = 5.2, GripFrom = 0.11 },
 	Combo = {
 		-- HitDelay matches each swing's "Hit" keyframe in tools/sword_anims.py.
-		{ Animation = "rbxassetid://140482095490161", Damage = 20, Cooldown = 0.3, HitDelay = 0.15 },
-		{ Animation = "rbxassetid://125447325276884", Damage = 25, Cooldown = 0.3, HitDelay = 0.13 },
-		{ Animation = "rbxassetid://112266188901588", Damage = 40, Cooldown = 0.6, HitDelay = 0.27 },
+		{ Animation = "rbxassetid://101378158511989", Damage = 20, Cooldown = 0.55, HitDelay = 0.26 }, -- SwordSwing1
+		{ Animation = "rbxassetid://100925354916925", Damage = 25, Cooldown = 0.55, HitDelay = 0.24 }, -- SwordSwing2
+		{ Animation = "rbxassetid://78373052274628", Damage = 40, Cooldown = 0.85, HitDelay = 0.4 }, -- SwordSwing3
 	},
 	ComboWindow = 0.8,
 	Range = 6,
@@ -274,9 +274,9 @@ local Emberfang: ComboWeapon = {
 	ModelFit = { Length = 5.4, GripFrom = 0.12 }, -- the hand on the grip wrap
 	TrailColor = Color3.fromRGB(255, 120, 40),
 	Combo = {
-		{ Animation = Sword.Combo[1].Animation, Damage = 26, Cooldown = 0.3, HitDelay = 0.15 },
-		{ Animation = Sword.Combo[2].Animation, Damage = 32, Cooldown = 0.3, HitDelay = 0.13 },
-		{ Animation = Sword.Combo[3].Animation, Damage = 52, Cooldown = 0.6, HitDelay = 0.27 },
+		{ Animation = Sword.Combo[1].Animation, Damage = 26, Cooldown = 0.55, HitDelay = 0.26 },
+		{ Animation = Sword.Combo[2].Animation, Damage = 32, Cooldown = 0.55, HitDelay = 0.24 },
+		{ Animation = Sword.Combo[3].Animation, Damage = 52, Cooldown = 0.85, HitDelay = 0.4 },
 	},
 	ComboWindow = 0.8,
 	Range = 6.5,
@@ -314,13 +314,13 @@ local Mace: ComboWeapon = {
 	ModelFit = { Length = 4.4, GripFrom = 0.14 },
 	Combo = {
 		-- Slower animations land later: the sword's HitDelays divided by MACE_SPEED.
-		{ Animation = Sword.Combo[1].Animation, Damage = 25, Cooldown = 0.4, HitDelay = 0.15 / MACE_SPEED },
-		{ Animation = Sword.Combo[2].Animation, Damage = 30, Cooldown = 0.4, HitDelay = 0.13 / MACE_SPEED },
+		{ Animation = Sword.Combo[1].Animation, Damage = 25, Cooldown = 0.7, HitDelay = 0.26 / MACE_SPEED },
+		{ Animation = Sword.Combo[2].Animation, Damage = 30, Cooldown = 0.7, HitDelay = 0.24 / MACE_SPEED },
 		{
 			Animation = Sword.Combo[3].Animation,
 			Damage = 55,
-			Cooldown = 0.75,
-			HitDelay = 0.27 / MACE_SPEED,
+			Cooldown = 1.05,
+			HitDelay = 0.4 / MACE_SPEED,
 			Knockback = 30,
 			Stun = 1.5, -- stunned enemies stop moving and their wind-up attack is cancelled
 		},
@@ -1084,19 +1084,23 @@ return {
 		Range = 60, -- studs: how far away a target can be picked (and switched to)
 		BreakRange = 90, -- studs: the lock lets go past this
 		MaxAngle = 75, -- degrees from the centre of the view a target can be picked
-		-- The camera orbits behind you and off to your right, so the line from you to the target
-		-- runs across the screen: you low on the left, the target clear on the right. Up close
-		-- (melee) it's a wide two-shot, so you see the enemy's whole wind-up; with a ranged or
-		-- magic weapon out and the target further than RangedFrom, it closes in over your
-		-- shoulder and aims straight at the target.
+		-- The camera sits behind you and a little to your right, aimed at the target. With a
+		-- ranged or magic weapon out and the target further than RangedFrom, it closes in over
+		-- your shoulder.
+		-- Melee is a duel framing (after Dueling Grounds), aimed at the target so it sits centre
+		-- screen. Up close (where most fights are) the camera is high and further round to your
+		-- right, looking down past your left side, so the enemy shows above your head and to the
+		-- right of your body and weapon (its whole wind-up stays in view to time a parry); as it
+		-- gets further away it drops lower and swings in nearly straight behind you.
 		Melee = {
-			Angle = 34, -- degrees round to your right from straight behind you, up close...
-			FarAngle = 18, -- ...and with the target FarDistance away
+			Angle = 28, -- degrees round to your right from straight behind you, up close...
+			FarAngle = 10, -- ...and with the target FarDistance away
 			Distance = 11, -- studs from you, up close...
-			FarDistance = 15, -- ...and with the target FarDistance away
-			Height = 4.5, -- studs above your chest
-			Focus = 0.5, -- how far from you to the target the camera aims (0 you, 1 the target), up close...
-			FarFocus = 0.8, -- ...and far away
+			FarDistance = 12, -- ...and with the target FarDistance away
+			Height = 7, -- studs above your chest, up close...
+			FarHeight = 3.5, -- ...and far away
+			Focus = 0.9, -- how far from you to the target the camera aims (0 you, 1 the target), up close...
+			FarFocus = 1, -- ...and far away
 		},
 		Ranged = {
 			Angle = 16,
@@ -1104,6 +1108,7 @@ return {
 			Distance = 8.5,
 			FarDistance = 9.5,
 			Height = 2.2,
+			FarHeight = 2.2,
 			Focus = 0.85,
 			FarFocus = 1,
 		},
@@ -1165,8 +1170,8 @@ return {
 		Key = Enum.KeyCode.V,
 		MaxCharges = 2,
 		RechargeTime = 5, -- seconds to refill one charge
-		Speed = 60, -- studs/s during the dash
-		Duration = 0.18, -- seconds (Speed x Duration is about how far you go: ~11 studs)
+		Speed = 52, -- studs/s during the dash
+		Duration = 0.21, -- seconds (Speed x Duration is about how far you go: ~11 studs); about as long as DashEffects holds its pose
 		MinInterval = 0.25, -- seconds between dashes, so one press can't use both charges
 		IFrameTime = 0.25, -- seconds after a dash starts that incoming hits are dodged
 	},

@@ -4,12 +4,29 @@ Ideas and features to build, most important first. Ask Claude Code to "do the to
 or turn an item into a task note (notes/tasks/) when it needs more detail.
 
 ## Next
-- [ ] 
+- [ ] **MAIN ISSUE:** combat feel and atmosphere like Dueling Grounds, one step per session ([note](tasks/main-issue-dueling-vibe.md))
 
 ## Later
 - [ ] 
 
 ## Done
+- [x] Sword swings use the whole body (overlap, elbow) with a deliberate wind-up; dash is a low body dash, not a roll (2026-10-17, [log](log/2026-10-17-sword-whole-body-body-dash.md))
+- [x] Sword swings rebuilt with big arcs, fast strikes and held follow-through; dash is now a dodge roll (2026-10-17, [log](log/2026-10-17-sword-arcs-dodge-roll.md))
+- [x] Sword swings eased (whip into the hit, stop hard, hold, recover to ready); shared easing in the generator (2026-10-17, [log](log/2026-10-17-sword-swing-easing.md))
+- [x] Lock-on: enemy visible up close (higher, further round); orcs topple and fade instead of breaking apart (2026-10-17, [log](log/2026-10-17-lock-on-close-range-orc-death.md))
+- [x] Hits light up and flare, bigger gold parry flash, moonlit night grade (2026-10-17, [log](log/2026-10-17-hit-flares-night-grade.md))
+- [x] Arena floor no longer glitches with terrain; players carry a light in the dark; torches cast no shadows (2026-10-17, [log](log/2026-10-17-arena-floor-player-light.md))
+- [x] Dungeon playtest fixes (moved layout, too dark), admin god mode, orcs player-sized (2026-10-17, [log](log/2026-10-17-dungeon-playtest-fixes.md))
+- [x] Dungeon gates, chests and exit editable in Studio like the town (2026-10-17, [log](log/2026-10-17-dungeon-working-parts.md))
+- [x] Lock-on camera: duel framing like Dueling Grounds (2026-10-17, [log](log/2026-10-17-duel-lock-on-camera.md))
+- [x] Grimgorg sounds and boss music; 5 parries to stun him (2026-10-17, [log](log/2026-10-17-grimgorg-sounds-parries.md))
+- [x] Music by place, background ambience, coin pickup sound (2026-10-17, [log](log/2026-10-17-music-ambience.md))
+- [x] Dungeon chests spill spinning gold coins, random total per player (2026-10-17, [log](log/2026-10-17-chest-coins.md))
+- [x] Dungeon gates hug the rock; grim, dark dungeon lighting (2026-10-17, [log](log/2026-10-17-dungeon-gates-ambience.md))
+- [x] Dungeon and its entrance editable in Studio: saved layouts in workspace.DungeonLayouts (2026-10-17, [log](log/2026-10-17-dungeon-layouts.md))
+- [x] Dungeon carved from terrain like the land's rock; no map inside a run (2026-10-17, [log](log/2026-10-17-dungeon-terrain.md))
+- [x] Dungeon props (chest, torch, crate, brazier, portcullis, cave rocks, crystals, cave mouth) from Toolbox models (2026-10-17, [log](log/2026-10-17-dungeon-assets.md))
+- [x] Grimgorg's Lair remade as a maze: patrols, chests, hidden nook, sealed arena (2026-10-16, [log](log/2026-10-16-grimgorg-maze.md))
 - [x] Map waypoint at Grimgorg's Lair, unlocked by reaching it (2026-10-16, [log](log/2026-10-16-dungeon-waypoint.md))
 - [x] Grimgorg's Lair: dungeon with orc rooms and the Grimgorg boss fight (2026-10-16, [log](log/2026-10-16-grimgorg-lair.md))
 - [x] Lock-on rework: target switching, new camera (2026-10-16, [log](log/2026-10-16-lock-on-rework.md))

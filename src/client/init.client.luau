@@ -40,12 +40,15 @@ local Intro = require(script.Intro)
 local AnimalAnimator = require(script.AnimalAnimator)
 local PetAnimator = require(script.PetAnimator)
 local BossAnimator = require(script.BossAnimator)
+local BossSounds = require(script.BossSounds)
 local DungeonHud = require(script.DungeonHud)
 local PetCutscene = require(script.PetCutscene)
 local BuffDisplay = require(script.BuffDisplay)
 local LootClient = require(script.LootClient)
 local DayNight = require(script.DayNight)
 local TownAmbience = require(script.TownAmbience)
+local Soundscape = require(script.Soundscape)
+local PlayerLight = require(script.PlayerLight)
 local VillagerChat = require(script.VillagerChat)
 local VillagerAnimator = require(script.VillagerAnimator)
 local CookingPanel = require(script.CookingPanel)
@@ -110,11 +113,14 @@ Nameplates.start()
 task.spawn(AnimalAnimator.start) -- waits for the Animals folder
 task.spawn(PetAnimator.start) -- waits for the Pets folder
 task.spawn(BossAnimator.start) -- waits for the Enemies folder
+BossSounds.start() -- a boss's roars, growls and attack sounds
 DungeonHud.start() -- the boss bar, room banners and attack telegraphs in a dungeon run
 PetCutscene.start()
 task.spawn(LootClient.start) -- waits for the Loot folder
 DayNight.start()
 TownAmbience.start()
+Soundscape.start() -- music by place (town, wilds, dungeon, boss) and background ambience
+PlayerLight.start() -- a warm glow on everyone in the dark (dungeons, nights out of town)
 task.spawn(VillagerChat.start) -- waits for the Villagers folder
 task.spawn(VillagerAnimator.start) -- waits for the Villagers folder
 CookingPanel.start()

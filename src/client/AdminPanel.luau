@@ -1,7 +1,8 @@
 --!strict
 -- The admin panel (see server AdminService): the ` key toggles it, for players the server marked
 -- "Admin" (everyone in Studio). Buttons ask the server to change your level (each level is a
--- skill point), reset your skills, heal, hurt you, or give coins (AdminCommand).
+-- skill point), reset your skills, heal, hurt you, give coins, or toggle god mode (no damage
+-- taken; shown on the status line) (AdminCommand).
 -- Below them, a live readout of every skill-driven stat, to check the skill trees work:
 -- for stats the server publishes (max health, stamina, mana, block charges) it shows the
 -- real value next to what your skills say it should be, red if they don't match. Then the
@@ -209,6 +210,7 @@ function AdminPanel.start()
 	})
 	buttonRow(panel, {
 		{ label = "Training Grounds", action = "TrainingGrounds" },
+		{ label = "God mode", action = "GodMode" },
 	})
 	text(panel, "SKILL STATS", 15, SOFT_TEXT)
 	local generalReadout = text(panel, "", 14)
@@ -217,7 +219,8 @@ function AdminPanel.start()
 
 	local function refresh()
 		local points = player:GetAttribute("SkillPoints")
-		status.Text = `Level {SkillMath.level(player)} · {if typeof(points) == "number" then points else "?"} unspent points`
+		local god = if player:GetAttribute("GodMode") == true then ` · <font color="#{GOOD:ToHex()}">GOD MODE</font>` else ""
+		status.Text = `Level {SkillMath.level(player)} · {if typeof(points) == "number" then points else "?"} unspent points{god}`
 		generalReadout.Text = table.concat(generalLines(), "\n")
 		weaponReadout.Text = table.concat(weaponLines(), "\n")
 	end

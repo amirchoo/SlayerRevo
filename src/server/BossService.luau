@@ -73,6 +73,7 @@ type State = {
 	busy: boolean, -- attacking, staggered or flinching: not choosing what to do next
 	target: Model?,
 	poise: number,
+	parries: number, -- parried blows since its last stagger (ParriesToStun knocks it down)
 	lastUsed: { [string]: number },
 	lastHurt: number,
 }
@@ -179,15 +180,29 @@ end
 local stagger: (boss: State) -> ()
 
 -- One blow of `attack` landing now: everyone in the shape (not already in `struck`) takes
--- `damage`. Returns true if it was parried (the attack stops).
+-- `damage`, unless they parry it. Each parry counts; the ParriesToStun-th staggers the boss
+-- and returns true (the attack stops). Until then a parried blow just misses that player.
 local function land(boss: State, attack: Attack, damage: number, struck: { [Model]: boolean }): boolean
 	for _, character in present(boss) do
 		local root = rootOf(character)
 		if root and not struck[character] and inShape(boss, attack.Shape, root.Position) then
 			struck[character] = true
 			if attack.Parryable and BlockService.tryParry(character, boss.model) then
-				stagger(boss)
-				return true
+				boss.parries += 1
+				local needed = boss.config.ParriesToStun
+				local player = Players:GetPlayerFromCharacter(character)
+				if boss.parries >= needed then
+					if player then
+						bossEvent:FireClient(player, "Banner", { text = `{boss.config.DisplayName} is staggered!`, small = true })
+					end
+					stagger(boss)
+					return true
+				end
+				boss.model:SetAttribute("Parries", boss.parries)
+				if player then
+					bossEvent:FireClient(player, "Banner", { text = `Parried! {boss.parries}/{needed}`, small = true })
+				end
+				continue
 			end
 			local dealt = HealthService.damage(character, damage, nil, boss.root.Position)
 			if dealt > 0 then
@@ -305,6 +320,8 @@ stagger = function(boss: State)
 	local token = boss.token
 	boss.busy = true
 	boss.poise = 0
+	boss.parries = 0
+	boss.model:SetAttribute("Parries", 0)
 	boss.humanoid:MoveTo(boss.root.Position)
 	setAction(boss, boss.config.Animations.Stunned)
 	task.delay(boss.config.StunTime, function()
@@ -387,6 +404,8 @@ local function reset(boss: State)
 	boss.busy = false
 	boss.target = nil
 	boss.poise = 0
+	boss.parries = 0
+	boss.model:SetAttribute("Parries", 0)
 	boss.phase = 1
 	table.clear(boss.lastUsed)
 	boss.model:SetAttribute("Phase", 1)
@@ -559,6 +578,7 @@ function BossService.spawn(config: Boss, at: CFrame, fighters: () -> { Player },
 		busy = false,
 		target = nil,
 		poise = 0,
+		parries = 0,
 		lastUsed = {},
 		lastHurt = 0,
 	}
