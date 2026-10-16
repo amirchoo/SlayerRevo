@@ -58,7 +58,16 @@ pass (lag) is priority 0**, and the [[main-issue-dueling-vibe]] is priority 1.
 
 ## Checks
 - `sh tools/check_syntax.sh`: all scripts parse.
-- Not playtested.
+- **Playtested in Studio by Claude** (the user asked, away from the Mac), with the edits in the open,
+  unsaved place:
+  - all 11 stands hold their weapons and stream Atomic; all 10 Hall of Oaths statues hold theirs
+  - walking into the Grimgorg cave mouth started a run built from the ServerStorage copy: terrain
+    floor (Cobblestone), walls and Slate ceiling; 3 gates, 4 chests with Open prompts, 46 torches,
+    the Leave prompt
+  - the ServerStorage layout is taken at start, and is still in the edit place after stopping
+  - no script errors in the output (only old asset warnings: an ID of the wrong asset type, and a 502)
+- **Not checked:** whether the TerrainRegion survives saving and publishing (only the open place
+  was tested), and anything on the phone.
 
 ## What to check (phone and PC)
 - **Hall of Oaths (new player intro):** every statue holds its weapon right away, with nothing
