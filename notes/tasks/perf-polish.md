@@ -22,11 +22,10 @@ flicker, stutter). No Studio playtests unless asked.
   and weapons registered at server start so the stands and the Hall's statues don't pop in.
   The training ground, stands and Hall stay code-built (they're built before anyone joins).
   ([log](../log/2026-10-17-startup-bake-cleanup.md))
-- [ ] 4. Streaming and density:
-  - streaming radii
-  - fog
-  - ModelStreamingMode
-  - fewer trees and bushes on Low, and simpler models
+- [x] 4. Streaming and density: PinkFlower clumps swapped for single-piece HogWeed (7,280 fewer
+  SurfaceAppearances), World and Town models stream Atomic, walk-through plant parts out of physics
+  and raycasts, fewer small plants on Low and Medium (client WorldDensity). The streaming radius is
+  the user's to set in Properties (see the log). ([log](../log/2026-10-17-streaming-density.md))
 - [ ] 5. Lights and particles:
   - few shadow casters
   - cut the dungeon's 240 emitters

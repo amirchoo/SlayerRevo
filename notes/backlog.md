@@ -11,6 +11,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] Streaming and density: daisy clumps simplified, models stream whole, decor out of physics, fewer plants on lower tiers (2026-10-17, [log](log/2026-10-17-streaming-density.md))
 - [x] Startup cleanup: Workspace clutter out, dungeon layout in ServerStorage, statues and stands hold weapons from server start (2026-10-17, [log](log/2026-10-17-startup-bake-cleanup.md))
 - [x] ShadowMap lighting, with grade, contrast and fog for day, night and the dungeon; phones at graphics 8+ get High (2026-10-17, [log](log/2026-10-17-shadowmap-art-direction.md))
 - [x] Effects quality tiers (Low, Medium, High) by device and FPS; every effect reads the tier (2026-10-17, [log](log/2026-10-17-quality-tiers.md))

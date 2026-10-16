@@ -15,6 +15,7 @@ export type Settings = {
 	SunRays: boolean,
 	AmbienceRange: number, -- studs from the camera that town cloth sways and the windmill turns (0: still)
 	Birds: boolean, -- the town's little bird flocks
+	Decor: number, -- share of the world's grass, small flowers and bushes drawn, 0..1 (client WorldDensity)
 }
 
 local QualityConfig = {}
@@ -32,6 +33,7 @@ QualityConfig.Tiers = {
 		SunRays = false,
 		AmbienceRange = 0,
 		Birds = false,
+		Decor = 0.4,
 	},
 	Medium = {
 		Particles = 0.65,
@@ -43,6 +45,7 @@ QualityConfig.Tiers = {
 		SunRays = false,
 		AmbienceRange = 90,
 		Birds = true,
+		Decor = 0.75,
 	},
 	High = {
 		Particles = 1,
@@ -54,6 +57,7 @@ QualityConfig.Tiers = {
 		SunRays = true,
 		AmbienceRange = 180,
 		Birds = true,
+		Decor = 1,
 	},
 } :: { [Tier]: Settings }
 

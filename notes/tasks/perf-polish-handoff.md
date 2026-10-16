@@ -21,7 +21,8 @@ proposes the next step.
 - **Waiting on the user (Studio):**
   - set **Lighting → Technology → ShadowMap**
   - **save and publish** the place (step 3 moved things in it; see its log's "To do")
-  - playtest steps 1–3 on the phone and the Mac (checklists at the end of each log)
+  - playtest steps 1–4 on the phone and the Mac (checklists at the end of each log)
+  - set the streaming properties on Workspace (step 4's log, "To do")
 - [x] 0. Audit ([log](../log/2026-10-17-perf-audit.md)). Counts, the top 10 costs, and what's built at startup.
 - [x] 1. Quality tiers ([log](../log/2026-10-17-quality-tiers.md)).
   - [Quality.luau](../../src/client/Quality.luau) and [QualityConfig.luau](../../src/shared/Config/QualityConfig.luau).
@@ -37,8 +38,16 @@ proposes the next step.
     hold them right away.
   - The training ground, stands and Hall were left code-built on purpose (see the log).
 
-## Next: step 4 (proposed, not yet OK'd)
-See below. It's the biggest lag win: the 953 trees and PinkFlower's 7,320 SurfaceAppearances.
+- [x] 4. Streaming and density ([log](../log/2026-10-17-streaming-density.md)).
+  - PinkFlower → HogWeed (originals in `ServerStorage.UnusedFromWorkspace.PinkFlowers`).
+  - World and Town models Atomic, MountainBackdrop Persistent.
+  - Walk-through plant parts have CanTouch, CanQuery off and Box collision.
+  - Client [WorldDensity](../../src/client/WorldDensity.luau) thins small plants by `QualityConfig` `Decor`.
+  - Testing gotcha: `execute_luau` on the client gets its **own copy** of required modules, so
+    `Quality.force` there doesn't reach the game's copy.
+
+## Next: step 5 (proposed, not yet OK'd)
+Lights and particles (below).
 
 ## Steps after that (from [[perf-polish]])
 4. **Streaming and density:** streaming radii (Studio can't read them from a plugin script, so check in the

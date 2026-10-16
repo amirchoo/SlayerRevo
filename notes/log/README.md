@@ -4,6 +4,7 @@ One note per finished piece of work, newest first. Each says what was asked, wha
 the choices made (and where to tune them), and what's still open.
 
 ## 2026-10-17
+- [Streaming and density (polish pass step 4)](2026-10-17-streaming-density.md)
 - [Startup content and Workspace cleanup (polish pass step 3)](2026-10-17-startup-bake-cleanup.md)
 - [ShadowMap lighting and an art-direction pass (polish pass step 2)](2026-10-17-shadowmap-art-direction.md)
 - [Effects quality tiers: Low, Medium, High (polish pass step 1)](2026-10-17-quality-tiers.md)
