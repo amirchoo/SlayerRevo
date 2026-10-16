@@ -20,6 +20,7 @@ local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 local CombatInput = require(script.Parent.CombatInput)
 local ParryPredict = require(script.Parent.ParryPredict)
+local Quality = require(script.Parent.Quality)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local Stamina = require(ReplicatedStorage.Shared.Stamina)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
@@ -198,7 +199,7 @@ local function swing(state: Equipped)
 	local trail = state.tool:FindFirstChild("SwingTrail", true)
 	task.delay(math.max(move.HitDelay - SWING_TRAIL_BEFORE_HIT, 0), function()
 		if equipped == state and trail and trail:IsA("Trail") then
-			trail.Enabled = true
+			trail.Enabled = Quality.settings().Trails
 		end
 		Sounds.play("GreatswordSwing", state.root, if step == #combo then 0.92 else 1.04) -- the finisher a touch heavier
 	end)
@@ -317,7 +318,7 @@ local function startCharge(state: Equipped)
 		end
 		local trail = state.tool:FindFirstChild("SwingTrail", true)
 		if trail and trail:IsA("Trail") then
-			trail.Enabled = true
+			trail.Enabled = Quality.settings().Trails
 		end
 
 		task.delay(GREATSWORD.HitDelay, function()

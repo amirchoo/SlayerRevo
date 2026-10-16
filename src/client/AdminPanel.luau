@@ -7,6 +7,7 @@
 -- for stats the server publishes (max health, stamina, mana, block charges) it shows the
 -- real value next to what your skills say it should be, red if they don't match. Then the
 -- bonuses from the equipped weapon's tree. Stays open over the skill screen.
+-- Also the effects quality tier (client Quality), with buttons to pin one for testing.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,6 +18,7 @@ local PlayerConfig = require(ReplicatedStorage.Shared.Config.PlayerConfig)
 local SkillTrees = require(ReplicatedStorage.Shared.Config.SkillTrees)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local HudStyle = require(script.Parent.HudStyle)
+local Quality = require(script.Parent.Quality)
 
 local TOGGLE_KEY = Enum.KeyCode.Backquote -- the ` key left of 1 (F-keys need Fn on a Mac)
 local WIDTH = 320
@@ -69,7 +71,8 @@ local function text(parent: Instance, value: string, size: number, color: Color3
 	return label
 end
 
-local function buttonRow(parent: Instance, buttons: { { label: string, action: string, amount: number? } })
+-- A row of buttons that run `run` here on this screen.
+local function localRow(parent: Instance, buttons: { { label: string, run: () -> () } })
 	local row = Instance.new("Frame")
 	row.BackgroundTransparency = 1
 	row.Size = UDim2.new(1, 0, 0, 30)
@@ -92,10 +95,22 @@ local function buttonRow(parent: Instance, buttons: { { label: string, action: s
 		local corner = Instance.new("UICorner")
 		corner.CornerRadius = UDim.new(0, 6)
 		corner.Parent = button
-		button.Activated:Connect(function()
-			commandRemote:FireServer(info.action, info.amount)
-		end)
+		button.Activated:Connect(info.run)
 	end
+end
+
+-- A row of buttons that each send an AdminCommand to the server.
+local function buttonRow(parent: Instance, buttons: { { label: string, action: string, amount: number? } })
+	local row: { { label: string, run: () -> () } } = {}
+	for _, info in buttons do
+		table.insert(row, {
+			label = info.label,
+			run = function()
+				commandRemote:FireServer(info.action, info.amount)
+			end,
+		})
+	end
+	localRow(parent, row)
 end
 
 -- "real (expected)" for a stat the server publishes; red when the skill bonus didn't reach it.
@@ -212,6 +227,22 @@ function AdminPanel.start()
 		{ label = "Training Grounds", action = "TrainingGrounds" },
 		{ label = "God mode", action = "GodMode" },
 	})
+	-- Effects quality (client Quality): the tier and why; the buttons pin one, Auto lets it choose.
+	local qualityLine = text(panel, "", 14)
+	localRow(panel, {
+		{ label = "Auto", run = function()
+			Quality.force(nil)
+		end },
+		{ label = "Low", run = function()
+			Quality.force("Low")
+		end },
+		{ label = "Med", run = function()
+			Quality.force("Medium")
+		end },
+		{ label = "High", run = function()
+			Quality.force("High")
+		end },
+	})
 	text(panel, "SKILL STATS", 15, SOFT_TEXT)
 	local generalReadout = text(panel, "", 14)
 	text(panel, "WEAPON TREE", 15, SOFT_TEXT)
@@ -221,6 +252,7 @@ function AdminPanel.start()
 		local points = player:GetAttribute("SkillPoints")
 		local god = if player:GetAttribute("GodMode") == true then ` · <font color="#{GOOD:ToHex()}">GOD MODE</font>` else ""
 		status.Text = `Level {SkillMath.level(player)} · {if typeof(points) == "number" then points else "?"} unspent points{god}`
+		qualityLine.Text = `Quality: {Quality.describe()}`
 		generalReadout.Text = table.concat(generalLines(), "\n")
 		weaponReadout.Text = table.concat(weaponLines(), "\n")
 	end

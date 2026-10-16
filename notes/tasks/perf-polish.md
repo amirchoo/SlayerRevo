@@ -7,9 +7,9 @@ flicker, stutter). No Studio playtests unless asked.
 
 ## Steps
 - [x] 0. Audit, no changes ([log](../log/2026-10-17-perf-audit.md))
-- [ ] 1. Device-aware quality: shared QualityConfig plus a client Quality module, with Low, Medium and
+- [x] 1. Device-aware quality: shared QualityConfig plus a client Quality module, with Low, Medium and
   High tiers. The tier comes from touch input, the graphics quality level and measured FPS, and
-  changes live. Every effect reads it.
+  changes live. Every effect reads it. ([log](../log/2026-10-17-quality-tiers.md))
 - [ ] 2. Lighting: recommend ShadowMap or Future (ask the user), then get the look through art direction.
 - [ ] 3. Bake what's still built at startup. Town and World are already saved; still to bake are the
   TrainingGround, the TrainingStands, the ClassHall and the NPC rigs. Keep the generators as tools.

@@ -6,7 +6,8 @@
 --   * birdsong by day and crickets at night (hushed in a dungeon run); the bell tower tolls at dawn and dusk;
 --   * little flocks of birds peck about TownConfig.BirdSpots and fly off when you come close,
 --     coming back a while later.
--- Things further than ANIMATE_RANGE from the camera are left still.
+-- Things further than ANIMATE_RANGE from the camera are left still; Quality shortens that range
+-- (nothing sways on Low) and hides the birds on Low.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,6 +18,7 @@ local DayCycle = require(ReplicatedStorage.Shared.DayCycle)
 local LightingConfig = require(ReplicatedStorage.Shared.Config.LightingConfig)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local TownConfig = require(ReplicatedStorage.Shared.Config.TownConfig)
+local Quality = require(script.Parent.Quality)
 
 local ANIMATE_RANGE = 180 -- studs from the camera
 local WIND_SPEED = 1.7 -- radians per second of the sway
@@ -68,9 +70,12 @@ local function unwatch(descendant: Instance)
 	end
 end
 
-local function animateScenery(now: number, eye: Vector3)
+local function animateScenery(now: number, eye: Vector3, range: number)
+	if range <= 0 then
+		return
+	end
 	for _, item in swaying do
-		if (item.rest.Position - eye).Magnitude <= ANIMATE_RANGE then
+		if (item.rest.Position - eye).Magnitude <= range then
 			local half = item.part.Size.Y / 2
 			local t = now * WIND_SPEED + item.phase
 			-- Hinged at its top edge: a slow swing with a little flutter on top.
@@ -80,7 +85,7 @@ local function animateScenery(now: number, eye: Vector3)
 		end
 	end
 	for _, item in spinning do
-		if (item.rest.Position - eye).Magnitude <= ANIMATE_RANGE * 1.5 then
+		if (item.rest.Position - eye).Magnitude <= range * 1.5 then
 			item.model:PivotTo(item.rest * CFrame.Angles(0, 0, now * item.speed))
 		end
 	end
@@ -187,7 +192,7 @@ local function startSounds()
 			if eye and (anvil.Position - eye).Magnitude <= ANVIL_RANGE then
 				local names = { "AnvilClang", "AnvilClang2", "AnvilClang3" }
 				Sounds.play(names[random:NextInteger(1, #names)], anvil, random:NextNumber(0.95, 1.05))
-				sparks:Emit(random:NextInteger(8, 16))
+				sparks:Emit(math.max(1, math.round(random:NextInteger(8, 16) * Quality.settings().Particles)))
 			end
 		end
 
@@ -396,8 +401,32 @@ function TownAmbience.start()
 	task.spawn(startSounds)
 
 	local flocks: { Flock }? = nil
+	local birdsShown = true
+	-- Birds come and go with the Quality tier (none on Low).
+	local function showBirds(shown: boolean)
+		birdsShown = shown
+		if not flocks then
+			return
+		end
+		local now = os.clock()
+		for _, flock in flocks do
+			flock.scaredAt = nil
+			for _, bird in flock.birds do
+				bird.model.Parent = if shown then workspace.CurrentCamera else nil
+				if shown then
+					land(flock, bird, now)
+				end
+			end
+		end
+	end
 	task.delay(3, function()
 		flocks = startBirds() -- once the town has had a moment to stream in under them
+		showBirds(Quality.settings().Birds)
+	end)
+	Quality.onChange(function(settings)
+		if settings.Birds ~= birdsShown then
+			showBirds(settings.Birds)
+		end
 	end)
 	RunService.RenderStepped:Connect(function(dt)
 		local eye = cameraPosition()
@@ -405,8 +434,9 @@ function TownAmbience.start()
 			return
 		end
 		local now = os.clock()
-		animateScenery(now, eye)
-		if flocks then
+		local range = math.min(ANIMATE_RANGE, Quality.settings().AmbienceRange)
+		animateScenery(now, eye, range)
+		if flocks and birdsShown then
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart")
 			local scare = if root and root:IsA("BasePart") then root.Position else nil

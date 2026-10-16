@@ -10,6 +10,8 @@
 -- feel of a dueling game). A parry is the showpiece: a bigger, longer gold flash that floods
 -- the floor, a wide flare with a cross glint, and a fast all-round burst of streaking sparks.
 -- Everything is built from plain parts and Roblox's bundled particle textures.
+-- Quality scales the particle counts and how many impact lights show at once (none on Low,
+-- where hits still flash and flare).
 
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
@@ -19,6 +21,7 @@ local TweenService = game:GetService("TweenService")
 
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local ParryPredict = require(script.Parent.ParryPredict)
+local Quality = require(script.Parent.Quality)
 
 local SPARK_TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
 local DUST_TEXTURE = "rbxasset://textures/particles/smoke_main.dds"
@@ -115,6 +118,7 @@ local function emitterAt(position: Vector3, direction: Vector3): Attachment
 end
 
 local function burst(attachment: Attachment, props: { [string]: any }, count: number)
+	count = math.max(1, math.round(count * Quality.settings().Particles))
 	local emitter = Instance.new("ParticleEmitter") :: any
 	emitter.Enabled = false
 	emitter.LightEmission = 1
@@ -179,7 +183,7 @@ end
 
 -- A light at the impact that fades fast, so the blow lights up the ground and bodies around it.
 local function impactLight(position: Vector3, color: Color3, brightness: number, range: number, time: number)
-	if hitLights >= MAX_HIT_LIGHTS then
+	if hitLights >= math.min(MAX_HIT_LIGHTS, Quality.settings().HitLights) then
 		return
 	end
 	hitLights += 1
@@ -248,13 +252,15 @@ end
 -- A parry: a light flash at the clash and sparks streaking out in every direction.
 local function parryClash(position: Vector3, color: Color3)
 	local attachment = emitterAt(position, Vector3.yAxis)
-	local light = Instance.new("PointLight")
-	light.Color = color
-	light.Brightness = PARRY_FLASH_BRIGHTNESS
-	light.Range = PARRY_FLASH_RANGE
-	light.Shadows = false
-	light.Parent = attachment
-	TweenService:Create(light, TweenInfo.new(PARRY_FLASH_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Brightness = 0 }):Play()
+	if Quality.settings().ParryLight then
+		local light = Instance.new("PointLight")
+		light.Color = color
+		light.Brightness = PARRY_FLASH_BRIGHTNESS
+		light.Range = PARRY_FLASH_RANGE
+		light.Shadows = false
+		light.Parent = attachment
+		TweenService:Create(light, TweenInfo.new(PARRY_FLASH_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Brightness = 0 }):Play()
+	end
 	flare(position, color, FLARE_LENGTH * 2.6, PARRY_FLARE_TIME, true)
 
 	burst(attachment, {

@@ -42,6 +42,7 @@ local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local CombatInput = require(script.Parent.CombatInput)
 local ParryPredict = require(script.Parent.ParryPredict)
 local Push = require(script.Parent.Push)
+local Quality = require(script.Parent.Quality)
 
 type ComboWeapon = CombatConfig.ComboWeapon
 type SpinHeavy = CombatConfig.SpinHeavy
@@ -79,11 +80,11 @@ local blockRemote = remotes:WaitForChild("SwordBlock") :: RemoteEvent
 
 local ComboWeaponClient = {}
 
--- Turns the swing trails on or off (both blades' for a dual-wielded weapon).
+-- Turns the swing trails on or off (both blades' for a dual-wielded weapon). Never on at Low quality.
 local function setTrails(tool: Tool, enabled: boolean)
 	for _, descendant in tool:GetDescendants() do
 		if descendant.Name == "SwingTrail" and descendant:IsA("Trail") then
-			descendant.Enabled = enabled
+			descendant.Enabled = enabled and Quality.settings().Trails
 		end
 	end
 end

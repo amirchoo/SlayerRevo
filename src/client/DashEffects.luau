@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
+local Quality = require(script.Parent.Quality)
 
 local DUST_TEXTURE = "rbxasset://textures/particles/smoke_main.dds"
 local DUST_COLOR = Color3.fromRGB(170, 160, 145)
@@ -57,7 +58,7 @@ local function dust(root: BasePart, humanoid: Humanoid)
 	emitter.Acceleration = Vector3.new(0, -4, 0)
 	emitter.Drag = 5
 	emitter.Parent = attachment
-	emitter:Emit(DUST_COUNT)
+	emitter:Emit(math.max(1, math.round(DUST_COUNT * Quality.settings().Particles)))
 end
 
 -- A see-through neon copy of every visible part of `character`, left where it stands.

@@ -4,6 +4,7 @@ One note per finished piece of work, newest first. Each says what was asked, wha
 the choices made (and where to tune them), and what's still open.
 
 ## 2026-10-17
+- [Effects quality tiers: Low, Medium, High (polish pass step 1)](2026-10-17-quality-tiers.md)
 - [Performance audit (polish pass step 0)](2026-10-17-perf-audit.md)
 - [Sword whole-body swings, slower tempo; body dash](2026-10-17-sword-whole-body-body-dash.md)
 - [Sword swings with big arcs and holds; dodge roll](2026-10-17-sword-arcs-dodge-roll.md)

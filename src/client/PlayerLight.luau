@@ -3,7 +3,7 @@
 -- caves and the wilds at night aren't pitch black. Looks only: each screen lights everyone's
 -- character itself. Full in a dungeon run (the player's "Dungeon" attribute), and at night
 -- (DayCycle) out of the safe zone; dimmer in town at night; off by day. Only the MaxLit
--- characters nearest the camera are lit; the light fades in and out.
+-- characters nearest the camera are lit (fewer at lower Quality); the light fades in and out.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 local DayCycle = require(ReplicatedStorage.Shared.DayCycle)
 local LightingConfig = require(ReplicatedStorage.Shared.Config.LightingConfig)
 local SafeZone = require(ReplicatedStorage.Shared.SafeZone)
+local Quality = require(script.Parent.Quality)
 
 local CONFIG = LightingConfig.PlayerLight
 local CHECK_INTERVAL = 0.25 -- seconds between choosing who's lit and how much
@@ -77,10 +78,11 @@ local function choose()
 	table.sort(nearest, function(a, b)
 		return a.distance < b.distance
 	end)
+	local maxLit = math.min(CONFIG.MaxLit, Quality.settings().PlayerLights)
 	local seen: { [Player]: boolean } = {}
 	for index, entry in nearest do
 		local glow = glowOf(entry.player, entry.root)
-		glow.target = if index <= CONFIG.MaxLit then strength(entry.player, entry.root, night) else 0
+		glow.target = if index <= maxLit then strength(entry.player, entry.root, night) else 0
 		seen[entry.player] = true
 	end
 	for player, glow in glows do
