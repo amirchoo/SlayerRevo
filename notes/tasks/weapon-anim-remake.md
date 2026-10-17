@@ -35,9 +35,9 @@ battlegrounds steps ([[battlegrounds-combat]]).
 ## Weapons (the user may reorder; their own weapon, the Rapier, goes first after the Sword)
 - [x] **Sword** combo: SwordSwing1–3 (+ Moving twins). [log](../log/2026-10-18-sword-combo-exaggerated.md).
   Published 2026-10-18 over the existing IDs.
-- [ ] **Sword** rest: SwordIdle (kept: the combo starts from it), SwordGuard, SwordSpin, SwordWalk
-  (+ the idle ↔ walk switch, `WeaponWalk`). **Authored 2026-10-18, waiting on the user's look and publish**
-  ([log](../log/2026-10-18-sword-rest-walk.md)).
+- [x] **Sword** rest: SwordIdle (kept: the combo starts from it), SwordGuard, SwordSpin, SwordWalk
+  (+ the idle ↔ walk switch, `WeaponWalk`). Published 2026-10-18; SwordWalk is 101807525981698 (Emberfang
+  shares it) ([log](../log/2026-10-18-sword-rest-walk.md)).
   Emberfang reuses all of the Sword's.
 - [ ] **Rapier:** RapierIdle, RapierThrust1–3, RapierWindUp, RapierFlurry.
 - [ ] **Spear:** SpearIdle, SpearThrust1–3, SpearWindUp, SpearLunge.

@@ -58,7 +58,8 @@ Blender's IK solves the limbs. Key options: `ease` per key, `{group: ease}` per 
    - edge leads ≥ ~0.8; tip speed at the hit ~250–300 studs/s for a sword cut.
 3. Fix what it flags (the fixes that worked are below), re-run, then author for real and **look at**
    the preview sheets (`build/anim_preview/<Clip>/behind_sheet.png`, side too).
-4. Run `combo.sh` for the whole combo and its frame-by-frame check, and open it for the user. Still
+4. Run `combo.sh` for the whole combo and its frame-by-frame check. **No preview videos for the user**
+   (the user, 2026-10-18: they cost tokens); say what changed and let them judge it in Studio. Still
    renders can't catch keying bugs: check the saved file plays back right.
 5. When the user likes it: stage into `Workspace.Rig.AnimSaves` (temporary `src/server/AnimImport/`
    folder, then delete it on disk and in Studio), and give them the table of clips and the existing

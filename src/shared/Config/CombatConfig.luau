@@ -241,7 +241,7 @@ local Sword: ComboWeapon = {
 	ToolName = "Sword",
 	Hand = "Right",
 	IdleAnimation = "rbxassetid://128056004893251", -- SwordIdle (katana-style, 2026-10-18)
-	WalkAnimation = "", -- SwordWalk: the blade low and trailing (2026-10-18); "" until published
+	WalkAnimation = "rbxassetid://101807525981698", -- SwordWalk: the blade low and trailing (2026-10-18)
 	AnimationSpeed = 1,
 	Stamina = 8,
 	ModelFit = { Length = 5.2, GripFrom = 0.11 },
@@ -283,6 +283,7 @@ local Emberfang: ComboWeapon = {
 	ToolName = "Emberfang",
 	Hand = "Right",
 	IdleAnimation = Sword.IdleAnimation,
+	WalkAnimation = Sword.WalkAnimation,
 	AnimationSpeed = 1,
 	Stamina = 7,
 	ModelFit = { Length = 5.4, GripFrom = 0.12 }, -- the hand on the grip wrap

@@ -39,5 +39,6 @@ spanning) and what that means in our style. It also covers what makes a weapon r
 ## Open
 - **Staged** in `Workspace.Rig.AnimSaves` (2026-10-18); the temporary import folder is deleted on disk and
   in Studio. **The user publishes** SwordGuard and SwordSpin over their IDs, SwordWalk as a new asset;
-  then its ID goes in `Sword.WalkAnimation` (and Emberfang's).
+  then its ID goes in `Sword.WalkAnimation` (and Emberfang's). **Published 2026-10-18:** SwordWalk is
+  `rbxassetid://101807525981698`, set on the Sword and Emberfang.
 - Not playtested (skip-playtests rule).
