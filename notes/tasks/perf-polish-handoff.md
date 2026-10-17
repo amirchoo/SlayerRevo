@@ -1,6 +1,6 @@
 # Handoff: polish and performance pass (continue from here)
 
-Updated 2026-10-17 at the end of the second session (steps 3–4 done; steps 0–2 were the first).
+Updated 2026-10-17 in the third session (step 5 done; 3–4 the second session, 0–2 the first).
 **Say "continue the perf pass" in a new session**: Claude reads this note and [[perf-polish]], then
 proposes the next step.
 
@@ -19,7 +19,8 @@ proposes the next step.
 
 ## State
 - **Priority:** this pass (lag) is **priority 0**; the main issue is priority 1 (the user's call, 2026-10-17).
-- **The place is saved** (the user confirmed 2026-10-17), so steps 3 and 4 are kept.
+- **The place is saved** (the user confirmed 2026-10-17), so steps 3 and 4 are kept. Step 5's shadow
+  trim and PrioritizeLightingQuality need another save (ask the user if it was done).
 - **Startup asset errors, checked 2026-10-17 (third session):**
   - `rbxassetid://203785492` is an **audio** asset ("Pop Close Sound", 2015, by Zyleak), loaded as another
     type. It isn't in the repo, the saved place, or the live server/client in a playtest (all asset
@@ -61,22 +62,22 @@ proposes the next step.
   - Testing gotcha: `execute_luau` on the client gets its **own copy** of required modules, so
     `Quality.force` there doesn't reach the game's copy.
 
-## Next: step 5 (proposed, not yet OK'd)
-Lights and particles. Start by proposing it, then wait for the OK:
-- The dungeon runs: 46 torches with 5 emitters each (230 emitters, about 40,000 particles/s). Cut
-  emitters per torch (for example Fire1–3 down to one fire plus smoke), not just their Rate.
-- Shadow casters: about 33k tree leaves cast shadows on ShadowMap. Options: leaves stop casting
-  shadows and the trunk and a few big leaves keep them, or tier it (Low none).
-- The town's 42 night PointLights and the dungeon's 58 lights: keep a few strong ones.
-- PlayerLight is already tiered (2/4/8).
+- [x] 5. Lights and particles ([log](../log/2026-10-17-lights-particles.md)).
+  - Shadow trim is a place edit via [tools/trim_shadows.lua](../../tools/trim_shadows.lua) (rerun it after
+    placing new trees).
+  - `QualityConfig` `TorchFlames` and `WorldLights`; client [LightBudget](../../src/client/LightBudget.luau)
+    owns `Enabled` on torch lights and town lamps (DayNight sets "wanted" at night).
 
-## Steps after that (from [[perf-polish]])
+## Next: step 6 (propose it, then wait for the OK)
+
 6. **Animation:**
    - Joint posing in code every frame in DashEffects, StaffClient, CookingPose, VillagerAnimator,
      AnimalAnimator and PetAnimator.
    - Make HitFeel's hitstop always restore track speed (it currently skips tracks that stopped or
      were changed mid-freeze).
    - Check animation priorities and fades.
+
+## Steps after that (from [[perf-polish]])
 7. **Enemies:** about 230 server-moved Humanoids (orcs, animals, villagers). AI ticks: 0.2, 0.25, 0.3.
    Update far ones less often.
 8. **Loading:**

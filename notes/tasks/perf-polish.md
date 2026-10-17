@@ -26,11 +26,11 @@ flicker, stutter). No Studio playtests unless asked.
   SurfaceAppearances), World and Town models stream Atomic, walk-through plant parts out of physics
   and raycasts, fewer small plants on Low and Medium (client WorldDensity). The streaming radius is
   the user's to set in Properties (see the log). ([log](../log/2026-10-17-streaming-density.md))
-- [ ] 5. Lights and particles:
-  - few shadow casters
-  - cut the dungeon's 240 emitters
-  - PlayerLight on the nearest few characters
-  - short-lived hit effects
+- [x] 5. Lights and particles: shadow casters 52k → 11k (trees keep trunk and 6 biggest leaf
+  clumps; grass, bushes, paths off), torch emitters tiered (`TorchFlames`, Fire1 only on High),
+  only the nearest torch lights and town lamps lit (client LightBudget), PrioritizeLightingQuality
+  off (= ShadowMap). Hit effects and PlayerLight were already fine.
+  ([log](../log/2026-10-17-lights-particles.md))
 - [ ] 6. Animation smoothness:
   - replace per-frame joint posing with clips
   - make sure hitstop always restores track speed

@@ -6,8 +6,8 @@
 -- (never above the device's tier). Changing the graphics level starts over from the device.
 -- An admin can pin a tier (AdminPanel); Quality.force(nil) goes back to automatic.
 -- Effects read Quality.settings() when they draw, or Quality.onChange to adjust live. This
--- module itself scales the world's particle emitters (town smoke, dungeon torches) and turns
--- Bloom and SunRays on or off.
+-- module itself scales the world's particle emitters (town smoke, dungeon torches: those by
+-- QualityConfig TorchFlames too) and turns Bloom and SunRays on or off.
 
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -68,13 +68,20 @@ local function deviceTier(): Tier
 	return if level >= DEVICE.PcMediumFrom then "Medium" else "Low"
 end
 
+-- A dungeon torch's emitter (its share comes from TorchFlames, not just Particles).
+local function isTorchEmitter(emitter: ParticleEmitter): boolean
+	local dungeons = workspace:FindFirstChild("Dungeons")
+	return dungeons ~= nil and emitter:IsDescendantOf(dungeons) and emitter:FindFirstAncestor("Torch") ~= nil
+end
+
 local function scaleEmitter(emitter: ParticleEmitter, settings: Settings)
 	local base = baseRates[emitter]
 	if base == nil then
 		base = emitter.Rate
 		baseRates[emitter] = base
 	end
-	emitter.Rate = base * settings.Particles
+	local share = if isTorchEmitter(emitter) then settings.TorchFlames[emitter.Name] or 0 else 1
+	emitter.Rate = base * settings.Particles * share
 end
 
 local function applyWorld(settings: Settings)

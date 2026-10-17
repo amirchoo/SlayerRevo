@@ -16,6 +16,11 @@ export type Settings = {
 	AmbienceRange: number, -- studs from the camera that town cloth sways and the windmill turns (0: still)
 	Birds: boolean, -- the town's little bird flocks
 	Decor: number, -- share of the world's grass, small flowers and bushes drawn, 0..1 (client WorldDensity)
+	-- A dungeon torch's emitters (the Torch asset: Fire1-3, Smoke, CandleLight) → share of each
+	-- one's own rate, on top of Particles. Unlisted ones are off. Fire1 is a 500/s flicker core,
+	-- most of a torch's cost, so it only comes back (thinned) on High.
+	TorchFlames: { [string]: number },
+	WorldLights: number, -- torch lights and town lamps lit at once, nearest the camera first (client LightBudget)
 }
 
 local QualityConfig = {}
@@ -34,6 +39,8 @@ QualityConfig.Tiers = {
 		AmbienceRange = 0,
 		Birds = false,
 		Decor = 0.4,
+		TorchFlames = { Fire3 = 0.6 },
+		WorldLights = 6,
 	},
 	Medium = {
 		Particles = 0.65,
@@ -46,6 +53,8 @@ QualityConfig.Tiers = {
 		AmbienceRange = 90,
 		Birds = true,
 		Decor = 0.75,
+		TorchFlames = { Fire3 = 0.5, Fire2 = 0.5, Smoke = 1 },
+		WorldLights = 12,
 	},
 	High = {
 		Particles = 1,
@@ -58,6 +67,8 @@ QualityConfig.Tiers = {
 		AmbienceRange = 180,
 		Birds = true,
 		Decor = 1,
+		TorchFlames = { Fire3 = 0.5, Fire2 = 0.5, Smoke = 1, CandleLight = 1, Fire1 = 0.2 },
+		WorldLights = 24,
 	},
 } :: { [Tier]: Settings }
 

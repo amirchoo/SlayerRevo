@@ -2,8 +2,8 @@
 -- Day and night on this screen (LightingConfig.DayCycle; the time comes from shared DayCycle,
 -- so everyone sees the same sky). Turns the clock, shifts the light toward a moonlit blue at
 -- night (with a cooler, punchier grade, a blue fog, crisper shadows and shinier surfaces), and lights the
--- town after dark: lamp and lantern lights in workspace.Town switch on
--- (lights by a fire, like the campfire, stay on), and windows glow. Looks only.
+-- town after dark: lamp and lantern lights in workspace.Town switch on (the nearest few, by
+-- LightBudget; lights by a fire, like the campfire, stay on), and windows glow. Looks only.
 -- The intro holds the clock at its own time while it plays (DayNight.hold). In a dungeon run
 -- (the "Dungeon" attribute) the light and effects switch to LightingConfig.Dungeon instead.
 
@@ -14,6 +14,7 @@ local RunService = game:GetService("RunService")
 
 local DayCycle = require(ReplicatedStorage.Shared.DayCycle)
 local LightingConfig = require(ReplicatedStorage.Shared.Config.LightingConfig)
+local LightBudget = require(script.Parent.LightBudget)
 
 local CYCLE = LightingConfig.DayCycle
 local DAY = LightingConfig.Lighting
@@ -55,7 +56,7 @@ local function setDungeonLook(on: boolean)
 end
 
 local heldClock: number? = nil
-local nightLights: { [Light]: boolean } = {}
+local nightLights: { [Light]: boolean } = {} -- under LightBudget, wanted while lit
 type Window = { part: BasePart, color: Color3, material: Enum.Material }
 local windows: { [BasePart]: Window } = {}
 local lit = false
@@ -74,7 +75,7 @@ end
 local function watch(descendant: Instance)
 	if descendant:IsA("Light") and isLamp(descendant) then
 		nightLights[descendant] = true
-		descendant.Enabled = lit
+		LightBudget.add(descendant, lit)
 	elseif descendant:IsA("BasePart") and WINDOW_NAMES[descendant.Name] and not windows[descendant] then
 		local window = { part = descendant, color = descendant.Color, material = descendant.Material }
 		windows[descendant] = window
@@ -86,6 +87,9 @@ end
 
 local function unwatch(descendant: Instance)
 	if descendant:IsA("Light") then
+		if nightLights[descendant] then
+			LightBudget.remove(descendant)
+		end
 		nightLights[descendant] = nil
 	elseif descendant:IsA("BasePart") then
 		windows[descendant] = nil
@@ -95,7 +99,7 @@ end
 local function setLit(on: boolean)
 	lit = on
 	for light in nightLights do
-		light.Enabled = on
+		LightBudget.setWanted(light, on)
 	end
 	for _, window in windows do
 		setWindow(window, on)
