@@ -1,73 +1,81 @@
 # Handoff: start here next session
 
-Written 2026-10-18 at the end of the session (the user ended it for the day).
+Written 2026-10-18 at the end of the session (the user: "lets do it on another session").
 **Say "read the handoff" (or "continue") in a new session**: Claude reads this note first, then
 the notes it points to. Update this note at the end of every session.
 
-## Where things stand
-- **Priority 0 (deadline 2026-10-25, ~2 weapons a day): remake every weapon's animations** in the new style. The user loved the exaggerated
-  Sword combo ("perfect, this is how I imagine it would be"). Recipe: [[animation-style]]
-  (`docs/animation-style.md`); checklist: [[weapon-anim-remake]]. Say **"do the animation remake"**.
-  - **Sword combo: done and published** (SwordSwing1–3 + Moving twins, written over the existing IDs on
-    2026-10-18, revisions checked through Open Cloud; [log](../log/2026-10-18-sword-combo-exaggerated.md)).
-    Copies are still in `Workspace.Rig.AnimSaves` (harmless).
-  - **Next weapon:** the Sword's rest (SwordIdle check, SwordGuard, SwordSpin), then the **Rapier** (the
-    user's weapon). The user may reorder.
-- **Hit feel exaggerated** (rolling camera jolt, bigger zoom punch, longer heavy hitstop, flash-then-
-  silhouettes impact frame; [log](../log/2026-10-18-hit-impact-exaggerated.md)). The user said it's how
-  they imagined it. Tune in `CombatConfig.HitImpact` / `Hitstop`.
-- **Dash afterimages** (battlegrounds step 2) are built ([log](../log/2026-10-18-dash-afterimages.md)).
-  Battlegrounds step 3 (enemy reactions) and 4 (slash crescents) are next there ([[battlegrounds-combat]]).
-- **Priority 1: the armor remake** ([[armor-remake]]): low tiers mostly painted, more 3D as tiers rise; after the weapon remake.
-- **Priority 3: the perf pass** is built (8 steps); not re-tested on the phone since the streaming fix.
-  The target device is now an **average or weak phone**, not the user's iPhone 14. Four earlier choices to
-  re-check for weak phones (the user hasn't decided): phones on Automatic start at Medium, ShadowMap
-  shadows, streaming 768/128, Medium's decor 75% and 12 lights. Details: [[perf-polish-handoff]].
-- **Priority 4: the main issue** ([[main-issue-dueling-vibe]]).
-- **Priority 2: the Arcane Atelier look** ([[arcane-atelier-look]], breakdown [[arcane-atelier-reference]]):
-  the user's second reference video; next once every weapon's animations are remade. Open question to ask during the remake: add a weapon walk (carry)
-  clip per weapon, sword low and trailing so it looks heavy?
-- **Art in Blender:** the user asked that all new animations **and 3D models** be made by Claude in
-  Blender (not Claude Design). No model-building script exists yet.
+## Priorities (the user's order, 2026-10-18)
+0. **Weapon animation remake, deadline 2026-10-25** (~2 weapons a day; the user: "a week max"; if it slips
+   by ~10-23, say so and offer to cut scope, e.g. simpler ranged/caster clips). Say **"do the animation
+   remake"**. Checklist [[weapon-anim-remake]], recipe [[animation-style]], research
+   [[weapon-animation-research]].
+1. **Armor remake** ([[armor-remake]]): low tiers mostly painted with minimal 3D, more 3D as tiers rise;
+   weapons' paths kept clear. First step: decide each set's tier with the user. ("do the armor remake")
+2. **The Arcane Atelier look** ([[arcane-atelier-look]], breakdown [[arcane-atelier-reference]]): bright
+   painterly world, big hit VFX, ornate HUD. (Claude asked whether 1 and 2 should swap; no answer yet.)
+3. **Perf pass** ([[perf-polish]], [[perf-polish-handoff]]): built; re-check on a weak phone.
+4. **Main issue** ([[main-issue-dueling-vibe]]) and the battlegrounds steps ([[battlegrounds-combat]]).
+
+## The animation remake: where it is
+- **Sword: done.** Combo (Swing1-3 + Moving twins), SwordGuard, SwordSpin, SwordWalk (new,
+  `rbxassetid://101807525981698`, also on Emberfang), SwordIdle kept.
+  - **SwordGuard was re-posed clear of armor and is staged in `Rig.AnimSaves`: the user still has to
+    publish it over 82457273702146** (ask if they did). The first published version clipped the chestplate.
+  - SwordSwing2/3 go through bulky armor for a few frames: **kept** (the user: effects will hide it).
+- **Next: the Rapier** (RapierIdle, Thrust1-3, WindUp, Flurry + RapierWalk). Its research section: arm
+  extends before the body in the lunge, side-on body, free arm thrown back; walk light and bouncy, tip up.
+  Then Spear, Dagger, Dual Blade (needs left-hand weapon controls), Scythe, Hammer, Axe, Mace, Greatsword,
+  Crossbow, Blunderbuss, Bow, Staff/Grimoire.
+- **For every weapon, keep in mind** (all in [[animation-style]] "Every weapon, every clip"):
+  - **Armor:** the AUTHOR report's `WEAPON IN BODY` check (real weapon model vs an armored body) must be
+    clean; add the weapon to `tools/blender/weapon_model.py` WEAPONS (model .glb, Grip from WeaponService,
+    ModelFit) and `WEAPON = "<Weapon>"` in its `*_clips.py` before authoring.
+  - **Effects:** hit VFX will cover the cut, so make the wind-up and end poses clear and the arc clean.
+  - **Walk clip** per weapon (`<Weapon>Walk`, time 0 = left foot ahead) + `WalkAnimation` in its config.
+    Only `ComboWeaponClient` plays walks so far; other weapon clients need the `WeaponWalk` hook.
+  - **No preview videos for the user.** Stage in `Rig.AnimSaves` (temp `src/server/AnimImport/`, delete it
+    on disk and in Studio after), give the table of clips and asset IDs to publish over.
+
+## Other changes this session (2026-10-18)
+- Players' own avatar accessories (hats, hair, face items) are no longer worn: only the game's armor
+  (src/server/AvatarService.luau). Not playtested yet: the user's fedora/shades should be gone.
+- `WeaponWalk` syncs walk clips to the real feet (works with any walk/run or animation pack).
+- The Arcane Atelier video was analysed ([[arcane-atelier-reference]]).
 
 ## Not playtested yet
-Nothing from this session was playtested in Studio by Claude (skip-playtests rule): the new Sword combo
-in game, the exaggerated hit feel, the dash afterimages. Their checks are in [[perf-final-check]].
+The new Sword walk in game (does the arm swing with the right foot?), the re-posed guard (after it's
+published), the avatar-accessory change, plus the earlier ones in [[perf-final-check]].
 
 ## Claude's first moves next session
-1. Ask how the published Sword combo and the new hit feel play in game (and whether the place was saved
-   and published so live servers have them).
-2. If the user says "do the animation remake": read [[animation-style]] and do the next weapon in
-   [[weapon-anim-remake]] (author in the scratchpad, fix the report, previews, `combo.sh`, show the user,
-   stage when they like it).
-3. Before any Studio check, confirm Studio has the latest code (Rojo plugin connected).
+1. Ask whether SwordGuard was published, and whether the Arcane Atelier look and the armor remake should
+   swap places.
+2. On "do the animation remake": read [[animation-style]], [[weapon-animation-research]] (the weapon's
+   section) and [[weapon-anim-remake]], then do the Rapier.
+3. Before any Studio work, check Studio is open and Rojo is connected.
 
 ## How the user wants to work (keep to it)
-- One step at a time: explain it, wait for the OK, do it, log it in `notes/log/`, tick it, push to
-  origin/main.
-- **No per-step phone checklists.** Claude checks each step itself (syntax, edit-mode
-  `execute_luau`, a short console-only playtest only for risky steps). Device checks are batched
-  into [[perf-final-check]], so add new checks there.
-- The baseline device is an average/low-end Roblox phone (minimum spec), not the user's iPhone 14
-  (2026-10-18: "that's just my phone"). The iPhone 14 is the phone they test on. The user's Mac is slow, so keep Studio playtests short
-  and skip screenshots.
-- The user's Roblox account is **ColePalmer6954**; that "joined live editing session" line is them.
+- Explain, do, log it in `notes/log/`, tick it, push to origin/main.
+- No preview videos or screenshots unless asked (they cost the user tokens); no playtests unless asked.
+- No per-step phone checklists: Claude checks each step itself; device checks go into [[perf-final-check]].
+- The baseline device is an average/low-end Roblox phone, not the user's iPhone 14.
+- The user can't animate: Claude authors every clip; the user watches in Studio and publishes.
+- The user's Roblox account is **ColePalmer6954**.
 
-## Gotchas from this session
+## Gotchas
+- Authoring: a loop's first and last keys never move with overlap, so overlap offsets jolt a loop's seam:
+  key any lag into the poses. A full-turn spin needs a key on every 60 fps sample (`spun()` in
+  sword_clips.py) or the hand cuts straight chords across the circle.
+- Reading a default walk's KeyframeSequence can't tell which foot leads (Pose CFrames are in each joint's
+  own frame); `WeaponWalk` measures the real feet instead.
+- In a playtest, the game's camera script overrides `CurrentCamera`; to look at the character, bind a
+  RenderStep after `Enum.RenderPriority.Last` and unbind it after.
 - New Studio has no `Lighting.Technology`: ShadowMap = `LightingStyle` Realistic +
-  `PrioritizeLightingQuality` off. Scripts can set those two.
-- Scripts can't read or write Workspace streaming properties. They're now set from
-  `default.project.json`, so a Rojo reconnect applies them.
-- A changed `default.project.json` (new service entries or properties) needs a Rojo **reconnect**.
-- To move a test character in a playtest, move it from the **client** (the server's PivotTo gets
-  snapped back).
-- `rbxassetid://203785492` in the Output is a Studio plugin's sound, not the game: ignore it.
-- The sword generator rewrites other clips with renumbered IDs: `git checkout --` everything you
-  didn't mean to change after running it.
-- Blender: objects imported from a .glb turn by **quaternion**; keying `rotation_euler` on them does
-  nothing (the combo viewer's sword once kept one angle). Still renders don't catch this: check playback.
-- To confirm the user published a clip over its asset, read its latest revision time through Open
-  Cloud (`roblox_assets.call('GET', f'{BASE}/<id>?readMask=revisionId,revisionCreateTime')`) and compare
-  it with when the clip was staged.
-- Blender on the user's Intel Mac draws the viewport slowly at Retina size: playback under 30 fps there
-  is the GPU, not the animation. The combo viewer's videos play smoothly.
+  `PrioritizeLightingQuality` off.
+- Scripts can't set Workspace streaming properties; they come from `default.project.json` (a changed
+  project file needs a Rojo reconnect).
+- To move a test character in a playtest, move it from the client.
+- `rbxassetid://203785492` in the Output is a Studio plugin's sound: ignore it.
+- The old generators (`tools/<weapon>_anims.py`) rewrite other clips with renumbered IDs: `git checkout --`
+  what you didn't mean to change.
+- Blender: objects imported from a .glb turn by quaternion; keying `rotation_euler` does nothing.
+- To confirm a publish, read the asset's latest revision time through Open Cloud and compare with staging.

@@ -90,6 +90,30 @@ reactions per hit, dust and craters ([[battlegrounds-combat]]).
 The Arcane Atelier video ([[arcane-atelier-reference]]) shows why the VFX matter so much: big, bright
 crescent arcs and an impact ring cover the body on almost every frame of a swing, so the eye follows the
 arc, not the limbs. Keep the wind-up and end poses strong and readable, since those are what show
-between the effects. The same video carries the sword low and trailing while walking, so it looks heavy;
-we have no weapon walk clip yet (the idle plays over the default walk) — a candidate, not decided
-([[arcane-atelier-look]]).
+between the effects.
+
+## Every weapon, every clip: the checklist (2026-10-18)
+Before authoring, read [[weapon-animation-research]] (how the weapon really works, how to make it read
+heavy or light). Then each weapon gets, and each clip must pass:
+1. **Its walk (carry) clip, `<Weapon>Walk`** (the user's call): upper body only, one cycle = two steps,
+   **time 0 = the left foot furthest ahead** (the right arm swung back); the weapon lags the hand by a
+   quarter cycle, keyed into the poses (overlap offsets don't wrap round a loop). Heavy weapons trail and
+   sway, light ones bounce (the Rapier: tip up, free hand behind, no trail). Set `WalkAnimation` in its
+   config; `WeaponWalk` (src/client) keeps it in step with the real feet. Weapons outside
+   `ComboWeaponClient` (bow, crossbow, blunderbuss, staff, grimoire, greatsword) need the same hook in
+   their own client first.
+2. **Armor clearance:** players wear armor, much bulkier than the bare rig (chestplate ~0.6 studs out in
+   front, sleeves ~0.3 per side, tall helmets). The AUTHOR report must show **0 `WEAPON IN BODY`** (the
+   real weapon model vs the armored body, every sample; grazes under 0.1 are fine). Add the weapon to
+   `weapon_model.WEAPONS` and put `WEAPON = "<Weapon>"` in its clips file first. Guards and holds near the
+   body are where it bites: hold the weapon ~1.5 studs out, keep the chest square behind a held blade
+   (a turned chest's corner reaches forward), and don't lay a bracing forearm along the blade.
+   Exception the user accepted: a frame or two inside fast moves (the trail and hit VFX hide them), e.g.
+   SwordSwing2/3. The armor remake ([[armor-remake]]) will slim the bulky sets; update `ARMOR` in
+   author_anim.py to the bulkiest real set after it.
+3. **Effects in mind:** hit VFX (crescent arcs, impact rings, flash) will cover the body through the cut
+   ([[arcane-atelier-look]]), so spend the effort on **clear wind-up and end poses** and a **clean arc**
+   (the VFX draw along it). The trail and hit effects are what hide a brief graze, not an excuse for a
+   held pose inside the armor.
+4. **No preview videos for the user** (they cost the user tokens): run the checks, stage the clips in
+   `Rig.AnimSaves`, say what changed; the user judges it in Studio and publishes.
