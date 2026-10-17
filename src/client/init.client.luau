@@ -66,7 +66,7 @@ local Sounds = require(ReplicatedStorage.Shared.Sounds)
 Quality.start() -- first: the effects below read its tier
 WorldDensity.start() -- fewer grass tufts, small flowers and bushes on lower tiers
 LightBudget.start() -- only the nearest torch lights and town lamps are lit
-Sounds.preload() -- every sound's audio loads now, not on its first play
+Sounds.preload() -- sound effects load once you're in, not on their first play
 Gamepad.start() -- first: the rest asks it whether a controller is in use
 CombatInput.start() -- mouse/keyboard and controller; the touch buttons feed it too
 TouchControls.start()

@@ -39,4 +39,6 @@ flicker, stutter). No Studio playtests unless asked.
 - [x] 7. Enemy smoothness: orcs, packs and wild animals with no player within 220 studs sleep
   (anchored, AI once a second; server Dormancy). Villagers and the boss left as they are.
   ([log](../log/2026-10-17-dormancy.md))
-- [ ] 8. Loading: fewer startup preloads, a ReplicatedFirst loading screen, and far content loaded later.
+- [x] 8. Loading: a ReplicatedFirst loading screen (fades out once the area round you has
+  streamed in), sound preload after you're in (no loops, boss sounds later); far content was
+  already covered by streaming and step 7. ([log](../log/2026-10-17-loading.md))

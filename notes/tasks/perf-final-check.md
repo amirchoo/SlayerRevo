@@ -6,6 +6,8 @@ Console (F9, or the menu on the phone) shows the `[Quality]` line.
 Claude adds each step's checks here as it finishes ([[perf-polish]], [[perf-polish-handoff]]).
 
 ## Before you start (Studio, once)
+- [ ] **Reconnect Rojo** (Disconnect, then Connect in the Rojo plugin) so the new loading screen
+  appears in ReplicatedFirst. A changed project file needs a reconnect.
 - [ ] The place is saved (Cmd+S), then published.
 - [ ] Optional, Workspace streaming ([step 4 log](../log/2026-10-17-streaming-density.md)): note the current
   values, then set `StreamOutBehavior` Opportunistic, `StreamingTargetRadius` 768,
@@ -56,8 +58,12 @@ Claude adds each step's checks here as it finishes ([[perf-polish]], [[perf-poli
 - [ ] Cows and chickens in the wilds graze, and run when hit, as before.
 - [ ] Fighting several packs in a row stays smooth (no rising ping or rubber-banding).
 
-## Step 8: loading
-(Claude adds this when the step is done.)
+## Step 8: loading ([log](../log/2026-10-17-loading.md))
+- [ ] Join: the "Slayer Revo" loading screen shows instead of Roblox's, then fades into the game
+  (or the intro for a new player), with no half-loaded town behind it.
+- [ ] Joining on the phone takes the same time or less.
+- [ ] Your first swing and first hit play their sounds on time.
+- [ ] Grimgorg's roar plays when his fight starts.
 
 ## The result
 - [ ] FPS now, phone: town ___ forest ___ dungeon ___ (before: ___ / ___ / ___)

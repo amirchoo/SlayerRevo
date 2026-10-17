@@ -20,6 +20,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] Loading: a Slayer Revo loading screen, sounds preloaded once you're in (2026-10-17, [log](log/2026-10-17-loading.md))
 - [x] Enemy smoothness: orcs and animals far from every player sleep, anchored, waking as you come near (2026-10-17, [log](log/2026-10-17-dormancy.md))
 - [x] Animation smoothness: animals, villagers and pets posed less often when far or off screen; hitstop and priorities checked (2026-10-17, [log](log/2026-10-17-pose-lod.md))
 - [x] Lights and particles: shadow casters 52k → 11k, torch emitters tiered, only the nearest lights lit, ShadowMap really on (2026-10-17, [log](log/2026-10-17-lights-particles.md))

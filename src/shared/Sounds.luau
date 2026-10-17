@@ -14,6 +14,7 @@ export type SoundSpec = {
 	Pitch: number, -- playback speed: below 1 = deeper/heavier, above 1 = higher/sharper
 	Volume: number,
 	Steady: boolean?, -- true: never vary the pitch (its pitch carries meaning)
+	Loop: boolean?, -- a long ambience loop: not preloaded (Soundscape fades it in, so a late start doesn't show)
 }
 
 local PITCH_VARIATION = 0.1 -- one-shots play up to 10% higher or lower
@@ -69,9 +70,9 @@ local SPECS: { [string]: SoundSpec } = {
 	Heartbeat = { Id = "rbxassetid://176554627", Pitch = 1, Volume = 0.6 }, -- thumps while your health is low
 
 	-- Town and wildlife (Pro Sound Effects and other free Creator Store sounds).
-	BirdsDay = { Id = "rbxassetid://9112742473", Pitch = 1, Volume = 0.35 }, -- loop: daytime birdsong over town
-	CricketsNight = { Id = "rbxassetid://9112764040", Pitch = 1, Volume = 0.3 }, -- loop: crickets after dark
-	FireCrackle = { Id = "rbxassetid://9112780438", Pitch = 1, Volume = 0.6 }, -- loop: campfire and forge
+	BirdsDay = { Id = "rbxassetid://9112742473", Pitch = 1, Volume = 0.35, Loop = true }, -- loop: daytime birdsong over town
+	CricketsNight = { Id = "rbxassetid://9112764040", Pitch = 1, Volume = 0.3, Loop = true }, -- loop: crickets after dark
+	FireCrackle = { Id = "rbxassetid://9112780438", Pitch = 1, Volume = 0.6, Loop = true }, -- loop: campfire and forge
 	AnvilClang = { Id = "rbxassetid://9113445305", Pitch = 1, Volume = 0.45 }, -- the blacksmith at work
 	AnvilClang2 = { Id = "rbxassetid://9113447116", Pitch = 1, Volume = 0.45 },
 	AnvilClang3 = { Id = "rbxassetid://9113447467", Pitch = 1, Volume = 0.45 },
@@ -99,9 +100,9 @@ local SPECS: { [string]: SoundSpec } = {
 	GrimgorgBeam = { Id = "rbxassetid://9114463219", Pitch = 0.7, Volume = 1 }, -- the fire he breathes
 
 	-- Ambience loops (Soundscape fades them in and out by where you are).
-	WindWilds = { Id = "rbxassetid://5799870105", Pitch = 1, Volume = 0.35 }, -- out in the wilds, away from town
-	CaveAmbience = { Id = "rbxassetid://273398061", Pitch = 1, Volume = 0.55 }, -- a dungeon's low cave hum
-	CaveTrickle = { Id = "rbxassetid://9120505297", Pitch = 0.9, Volume = 0.25 }, -- water trickling in the dungeon
+	WindWilds = { Id = "rbxassetid://5799870105", Pitch = 1, Volume = 0.35, Loop = true }, -- out in the wilds, away from town
+	CaveAmbience = { Id = "rbxassetid://273398061", Pitch = 1, Volume = 0.55, Loop = true }, -- a dungeon's low cave hum
+	CaveTrickle = { Id = "rbxassetid://9120505297", Pitch = 0.9, Volume = 0.25, Loop = true }, -- water trickling in the dungeon
 }
 
 -- Music (Soundscape): a playlist for each kind of place, shuffled, crossfading when you move
@@ -179,20 +180,38 @@ function Sounds.play(name: string, parent: Instance, pitchScale: number?)
 	sound:Play()
 end
 
--- Loads every sound's audio up front (call once on the client), so none starts late the first
--- time it plays (e.g. a parry's clang).
+-- Loads the sounds' audio ahead of their first play (call once on the client), so none starts
+-- late the first time (e.g. a parry's clang). It waits until the game has loaded and your
+-- character is in, so it doesn't compete with the world while you join. The long ambience loops
+-- aren't preloaded, and the boss's voice lines come last, a little later.
+local PRELOAD_AFTER = 3 -- seconds after the character spawns
+local LATER_AFTER = 20 -- seconds more for the boss's sounds
+local LATER_PREFIX = "Grimgorg"
+
 function Sounds.preload()
 	local ContentProvider = game:GetService("ContentProvider")
-	local list: { Instance } = {}
-	for _, spec in SPECS do
-		if spec.Id ~= "" then
+	local Players = game:GetService("Players")
+	local first: { Instance } = {}
+	local later: { Instance } = {}
+	for name, spec in SPECS do
+		if spec.Id ~= "" and not spec.Loop then
 			local sound = Instance.new("Sound")
 			sound.SoundId = spec.Id
-			table.insert(list, sound)
+			table.insert(if string.sub(name, 1, #LATER_PREFIX) == LATER_PREFIX then later else first, sound)
 		end
 	end
 	task.spawn(function()
-		ContentProvider:PreloadAsync(list)
+		if not game:IsLoaded() then
+			game.Loaded:Wait()
+		end
+		local player = Players.LocalPlayer
+		if player and not player.Character then
+			player.CharacterAdded:Wait()
+		end
+		task.wait(PRELOAD_AFTER)
+		ContentProvider:PreloadAsync(first)
+		task.wait(LATER_AFTER)
+		ContentProvider:PreloadAsync(later)
 	end)
 end
 

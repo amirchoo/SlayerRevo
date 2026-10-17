@@ -1,6 +1,6 @@
 # Handoff: polish and performance pass (continue from here)
 
-Updated 2026-10-17 in the third session (steps 5–7 done; 3–4 the second session, 0–2 the first).
+Updated 2026-10-17 in the third session (steps 5–8 done, the pass is built; 3–4 the second session, 0–2 the first).
 **Say "continue the perf pass" in a new session**: Claude reads this note and [[perf-polish]], then
 proposes the next step.
 
@@ -82,11 +82,14 @@ proposes the next step.
 
 - **The combined final check** is [[perf-final-check]]: add each finished step's checks there.
 
-## Next: step 8 (propose it, then wait for the OK)
-8. **Loading:**
-   - `Sounds.preload()` fetches about 70 sounds on join.
-   - ReplicatedFirst is empty: add a short loading screen.
-   - Load far content later.
+- [x] 8. Loading ([log](../log/2026-10-17-loading.md)).
+  - [LoadingScreen](../../src/first/LoadingScreen.client.luau) in ReplicatedFirst; Sounds.preload waits
+    until you're in and skips loops (`Loop = true`).
+
+## Next: the user's final check
+All 8 steps are built. The user does **one** publish and the combined check in [[perf-final-check]]
+(it starts with reconnecting Rojo). Then fix whatever they report, and the pass is done; next is
+the main issue (priority 1), or the dungeon-place idea in the backlog if dungeons are still laggy.
 
 Small leftovers found on the way:
 - The admin panel needs the `` ` `` key, so it can't be opened on a phone.
