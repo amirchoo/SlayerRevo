@@ -48,5 +48,18 @@ Publish SwordSwing1, 2, 3 from the Animation Editor and send the three IDs. Clau
 `Sword.Combo` (Emberfang follows) and Swing 3's in TrainingStands.
 
 ## Open
-- Not playtested. The files are about 0.5 MB each (60 samples a second); 30 would halve that if needed.
+- Not playtested.
+
+## Publish timed out (fixed)
+The first bake was 0.5–0.65 MB per clip and the user's publish timed out. The bake now thins
+keyframes: a sample is dropped when the Linear blend between its neighbours lands within 1.5° (and
+0.02 studs for the hips) of it (`THIN_ANGLE` / `THIN_MOVE`). Holds thin out and fast cuts keep
+every sample: 38/32/44 keyframes, 307/258/355 KB, about the size of the old clips that published.
+Re-staged in `Workspace.Rig.AnimSaves`.
+
+## Fewer animation assets
+Publishing as new makes a new asset (and ID) every time. Publish over the existing one instead
+(in the publish dialog, pick the clip's current asset to overwrite). The ID stays the same, so
+CombatConfig needs no change. Old unused assets can be archived on the Creator Dashboard.
+Current IDs: SwordSwing1 90592657091699, SwordSwing2 99968467521543, SwordSwing3 98009756362330.
 - The idle, guard, and the other weapons can move onto the Blender rig one at a time (Rapier next).

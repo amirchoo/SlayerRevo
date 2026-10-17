@@ -375,6 +375,49 @@ def bake(arm, rest_bone, part_rest, clip, name):
     return frames
 
 
+# Keyframe thinning: a sample is dropped when playing straight from the kept one before it to
+# the next kept one (Roblox's Linear blend) lands within these of it, for every joint. Holds and
+# slow parts thin out; fast cuts keep every sample. Keeps the files small enough to publish.
+THIN_ANGLE = 1.5  # degrees
+THIN_MOVE = 0.02  # studs (the hips)
+
+
+def blend_off(a, b, mid, u):
+    """How far (degrees, studs) a Linear blend of a to b at u misses mid, over all joints."""
+    worst_angle, worst_move = 0.0, 0.0
+    for part, m in mid.items():
+        qa, qb = a[part].to_quaternion(), b[part].to_quaternion()
+        q = qa.slerp(qb, u)
+        worst_angle = max(worst_angle, math.degrees(q.rotation_difference(m.to_quaternion()).angle))
+        p = a[part].to_translation().lerp(b[part].to_translation(), u)
+        worst_move = max(worst_move, (p - m.to_translation()).length)
+    return worst_angle, worst_move
+
+
+def thin(frames, clip):
+    keep_times = {round(k[0], 5) for k in clip["keys"]}
+    if clip.get("hit") is not None:
+        keep_times.add(round(clip["hit"], 5))
+    kept = [0]
+    i = 0
+    while i < len(frames) - 1:
+        j = i + 1
+        while j + 1 < len(frames) and round(frames[j][0], 5) not in keep_times:
+            ok = True
+            for k in range(i + 1, j + 1):
+                u = (frames[k][0] - frames[i][0]) / (frames[j + 1][0] - frames[i][0])
+                angle, move = blend_off(frames[i][1], frames[j + 1][1], frames[k][1], u)
+                if angle > THIN_ANGLE or move > THIN_MOVE:
+                    ok = False
+                    break
+            if not ok:
+                break
+            j += 1
+        kept.append(j)
+        i = j
+    return [frames[k] for k in kept]
+
+
 def report(frames, clip, name):
     """Checks the bake against the keys: how close the grip came, where the blade pointed."""
     by_time = {round(t, 5): world for t, _, world in frames}
@@ -530,7 +573,9 @@ def main():
         frames = bake(arm, rest_bone, part_rest, clip, name)
         report(frames, clip, name)
         out = Path(args.out) / f"{name}.rbxmx"
-        write_rbxmx(out, name, frames, clip)
+        thinned = thin(frames, clip)
+        print(f"AUTHOR {name}: {len(thinned)} keyframes kept of {len(frames)} samples")
+        write_rbxmx(out, name, thinned, clip)
         Path(args.blend).mkdir(parents=True, exist_ok=True)
         bpy.ops.wm.save_as_mainfile(filepath=str(Path(args.blend) / f"{name}.blend"))
         print(f"AUTHOR wrote {out}")
