@@ -23,6 +23,9 @@ the notes it points to. Update this note at the end of every session.
   re-check for weak phones (the user hasn't decided): phones on Automatic start at Medium, ShadowMap
   shadows, streaming 768/128, Medium's decor 75% and 12 lights. Details: [[perf-polish-handoff]].
 - **Priority 2: the main issue** ([[main-issue-dueling-vibe]]).
+- **Priority 3: the Arcane Atelier look** ([[arcane-atelier-look]], breakdown [[arcane-atelier-reference]]):
+  the user's second reference video. Open question to ask during the remake: add a weapon walk (carry)
+  clip per weapon, sword low and trailing so it looks heavy?
 - **Art in Blender:** the user asked that all new animations **and 3D models** be made by Claude in
   Blender (not Claude Design). No model-building script exists yet.
 

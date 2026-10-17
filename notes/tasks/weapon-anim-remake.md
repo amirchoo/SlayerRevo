@@ -19,6 +19,9 @@ Priorities now: **0 this remake**, 1 the perf pass ([[perf-polish]]), 2 the main
 - The authoring controls are built for a weapon in the right hand (a two-handed grip works with
   `"offhand_space": "world"`). Weapons held or used differently (dual blades, bow, crossbow, guns, the
   staff's casting, the grimoire) may need new controls first: say so and plan it before posing.
+- **Open question for the user (2026-10-18):** also give each weapon a walk (carry) clip, the blade
+  low and trailing so it looks heavy, like the Arcane Atelier video ([[arcane-atelier-reference]])?
+  Not decided; ask before the next weapon.
 - Ask before changing how a move plays (its timing, reach or what it does); the look is Claude's call
   within [[animation-style]].
 

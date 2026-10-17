@@ -82,3 +82,10 @@ The animation is one layer of how a hit feels. The others are tuned in `CombatCo
 `CombatConfig.HitImpact` (exaggerated 2026-10-18: rolling camera jolt, zoom punch, flash-then-silhouette
 impact frame; the user: "perfect"), dash afterimages, and still to come: slash crescents, enemy
 reactions per hit, dust and craters ([[battlegrounds-combat]]).
+
+The Arcane Atelier video ([[arcane-atelier-reference]]) shows why the VFX matter so much: big, bright
+crescent arcs and an impact ring cover the body on almost every frame of a swing, so the eye follows the
+arc, not the limbs. Keep the wind-up and end poses strong and readable, since those are what show
+between the effects. The same video carries the sword low and trailing while walking, so it looks heavy;
+we have no weapon walk clip yet (the idle plays over the default walk) — a candidate, not decided
+([[arcane-atelier-look]]).

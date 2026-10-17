@@ -4,6 +4,7 @@ One note per finished piece of work, newest first. Each says what was asked, wha
 the choices made (and where to tune them), and what's still open.
 
 ## 2026-10-18
+- [Arcane Atelier video analysed: bright painterly look, VFX that hide the swing, heavy-sword walk (priority 3)](2026-10-18-arcane-atelier-video.md)
 - [Animation style saved; remaking every weapon's animations is now priority 0](2026-10-18-animation-style-saved.md)
 - [Hits land harder still: rolling camera jolt, bigger zoom punch, two-stage impact frame](2026-10-18-hit-impact-exaggerated.md)
 - [Sword combo redone, exaggerated like the battlegrounds video; Blender combo viewer with the real sword](2026-10-18-sword-combo-exaggerated.md)
