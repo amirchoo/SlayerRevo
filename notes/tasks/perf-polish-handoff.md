@@ -19,13 +19,18 @@ proposes the next step.
 
 ## State
 - **Priority:** this pass (lag) is **priority 0**; the main issue is priority 1 (the user's call, 2026-10-17).
-- **Unsaved work in the open Studio place (most important):** steps 3 and 4 changed the place itself
-  (moves, swaps, streaming modes, collision). They are **only in the open place** until the user
-  **saves and publishes**. If Studio was closed without saving, redo them: each log lists exactly what was done.
+- **The place is saved** (the user confirmed 2026-10-17), so steps 3 and 4 are kept.
+- **Do first in the next session, before step 5 (the user asked):**
+  1. Fix the asset errors in the Output at startup:
+     - `ContentId: rbxassetid://203785492 failed due to: Asset type does not match requested type`
+       (shows 4 times). Find it in the place (scan descendants' Texture/TextureId/MeshId/SoundId/Image/
+       Skybox properties) and in the repo, then fix or replace it.
+     - `rbxassetid://1014915761` "archived" is a Studio **plugin icon**, not the game: ignore it.
+  2. Set **Lighting → Technology → ShadowMap** via `execute_luau` (the user asked Claude to do it). The edit
+     context may lack the capability (see Gotchas); if it fails, ask the user to set it in Properties.
+- The session should run in **auto mode** (the user wants it).
 - **Waiting on the user (Studio):**
-  - **save and publish** the place, then enter the Grimgorg dungeon once (check the saved
-    TerrainRegion survived: walls and floor are there)
-  - set **Lighting → Technology → ShadowMap**
+  - enter the Grimgorg dungeon once (check the saved TerrainRegion survived: walls and floor are there)
   - playtest steps 1–4 on the phone and the Mac (checklists at the end of each log)
   - set the streaming properties on Workspace (step 4's log, "To do")
 - [x] 0. Audit ([log](../log/2026-10-17-perf-audit.md)). Counts, the top 10 costs, and what's built at startup.
