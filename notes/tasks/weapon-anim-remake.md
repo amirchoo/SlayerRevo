@@ -7,8 +7,9 @@ priority". **Say "do the animation remake" in a new session**: Claude reads this
 (one weapon per session or message), shows it in Blender with `combo.sh`, and stages it for publishing
 when the user likes it. Then ticks it here with a link to its log note.
 
-Priorities now: **0 this remake**, 1 the perf pass ([[perf-polish]]), 2 the main issue
-([[main-issue-dueling-vibe]]) and the battlegrounds steps ([[battlegrounds-combat]]).
+Priorities now: **0 this remake**, 1 the Arcane Atelier look ([[arcane-atelier-look]], next once every weapon
+is done), 2 the perf pass ([[perf-polish]]), 3 the main issue ([[main-issue-dueling-vibe]]) and the
+battlegrounds steps ([[battlegrounds-combat]]).
 
 ## For each weapon
 - Port its clips from the old generator (`tools/<weapon>_anims.py`) to `tools/blender/<weapon>_clips.py`

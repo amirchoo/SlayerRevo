@@ -1,7 +1,8 @@
 # Polish and performance pass (phone and Intel Mac)
 
-**Priority 1** since 2026-10-18 (was 0, the user's call on 2026-10-17): the weapon animation remake
-([[weapon-anim-remake]]) comes first now; lag fixes still come before the main issue (priority 2).
+**Priority 2** since 2026-10-18 (was 0, the user's call on 2026-10-17): the weapon animation remake
+([[weapon-anim-remake]]) and then the Arcane Atelier look ([[arcane-atelier-look]]) come first; lag fixes
+still come before the main issue (priority 3).
 
 Opened 2026-10-17. Goal: look polished (Dueling Grounds-level) and run smoothly, with fast loading,
 on a phone and an Intel Mac. One step per message: Claude explains the change, waits for the user's

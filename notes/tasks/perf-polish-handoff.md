@@ -22,8 +22,8 @@ proposes the next step.
 - **Auto mode** is set for new sessions in `.claude/settings.local.json` (git-ignored).
 
 ## State
-- **Priority:** this pass (lag) is **priority 1** since 2026-10-18 (after the weapon animation remake,
-  [[weapon-anim-remake]]); the main issue is priority 2.
+- **Priority:** this pass (lag) is **priority 2** since 2026-10-18 (after the weapon animation remake,
+  [[weapon-anim-remake]], and the Arcane Atelier look, [[arcane-atelier-look]]); the main issue is priority 3.
 - **The place is saved** (the user confirmed 2026-10-17), so steps 3 and 4 are kept. Step 5's shadow
   trim and PrioritizeLightingQuality need another save (ask the user if it was done).
 - **Startup asset errors, checked 2026-10-17 (third session):**

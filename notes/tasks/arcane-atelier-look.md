@@ -1,8 +1,9 @@
-# The Arcane Atelier look: bright painterly world, big hit VFX, heavy-sword walk (priority 3)
+# The Arcane Atelier look: bright painterly world, big hit VFX, heavy-sword walk (priority 1)
 
 Opened 2026-10-18 from the user's reference video ("I like the whole style and environment"); the full
-breakdown is in [[arcane-atelier-reference]]. **Priority 3**, next after the animation remake (0), the
-perf pass (1) and the main issue (2). Say **"do the Arcane Atelier look"**: Claude reads this note and the
+breakdown is in [[arcane-atelier-reference]]. **Priority 1** (the user's call, 2026-10-18: "the next priority
+after we're done with the animation for all weapons"): starts once the remake (0) is finished, before the
+perf pass (2) and the main issue (3). Say **"do the Arcane Atelier look"**: Claude reads this note and the
 research note, does the first unticked step, ticks it here with a link to its log note.
 
 Steps are Claude's proposal, not decided: confirm the order and each [TBD] with the user before building.
