@@ -16,8 +16,9 @@ proposes the next step.
 - **No Studio playtests or screenshots** unless asked (the 2026-10-17 second session asked: the user
   was away from the Mac, so Claude playtested steps 3–4 itself; that was for that session only). Read-only `execute_luau` counts in edit mode
   are fine (that's how the audit counted).
-- **The baseline device is the user's iPhone 14.** The Intel Mac is secondary. Judge everything on the
-  phone first. Build the look so Medium tier looks polished; High only adds extras.
+- **The baseline device is an average/low-end Roblox phone (minimum spec)**, not the user's iPhone 14
+  (changed 2026-10-18; the iPhone 14 is just the phone they test on, and it's well above average). The Intel Mac
+  is secondary. Low tier must be smooth on a weak phone. Build the look so Medium tier looks polished; High only adds extras.
 - **Auto mode** is set for new sessions in `.claude/settings.local.json` (git-ignored).
 
 ## State

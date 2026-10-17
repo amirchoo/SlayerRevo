@@ -1,6 +1,7 @@
 # Perf pass: the final check (do once, after step 8)
 
-One publish, one session on the **iPhone 14** (first) and one on the **Mac**. Tick as you go.
+One publish, one session on the **iPhone 14** (first) and one on the **Mac**. The target is an average or weak phone,
+which the iPhone 14 outperforms: if a weaker phone (an older or budget Android) is at hand, a session on it counts most. Tick as you go.
 Note anything odd next to the box, and Claude will fix it. Shift+F5 shows FPS; the Developer
 Console (F9, or the menu on the phone) shows the `[Quality]` line.
 Claude adds each step's checks here as it finishes ([[perf-polish]], [[perf-polish-handoff]]).

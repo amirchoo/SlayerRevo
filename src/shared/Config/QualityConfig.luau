@@ -82,7 +82,7 @@ QualityConfig.Tiers = {
 
 -- The starting (and highest automatic) tier from Roblox's graphics level (1-10; 0 = Automatic).
 -- Phones and tablets (touch, no keyboard) get High only when the player turns graphics up by
--- hand (the baseline phone, an iPhone 14, handles it; Roblox can't tell it from a weak phone).
+-- hand (Roblox can't tell a strong phone from a weak one, and the target is an average or weak phone).
 QualityConfig.Device = {
 	TouchAutomatic = "Medium" :: Tier, -- a phone left on Automatic graphics
 	TouchMediumFrom = 5, -- a phone at graphics level 5+ gets Medium, below that Low

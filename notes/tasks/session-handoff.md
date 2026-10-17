@@ -55,7 +55,8 @@ the two notes it points to. Update this note at the end of every session.
 - **No per-step phone checklists.** Claude checks each step itself (syntax, edit-mode
   `execute_luau`, a short console-only playtest only for risky steps). Device checks are batched
   into [[perf-final-check]], so add new checks there.
-- The baseline device is the iPhone 14. The user's Mac is slow, so keep Studio playtests short
+- The baseline device is an average/low-end Roblox phone (minimum spec), not the user's iPhone 14
+  (2026-10-18: "that's just my phone"). The iPhone 14 is the phone they test on. The user's Mac is slow, so keep Studio playtests short
   and skip screenshots.
 - The user's Roblox account is **ColePalmer6954**; that "joined live editing session" line is them.
 

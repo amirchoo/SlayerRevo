@@ -4,7 +4,7 @@
 -- gentle color, and a cool haze that fades the far hills and mountains: bright and friendly
 -- in town, with depth across the big world. The lighting tech is set in the place, not here:
 -- LightingStyle Realistic with PrioritizeLightingQuality off (the old Technology = ShadowMap):
--- crisp sun and moon shadows, cheap enough for the baseline phone (iPhone 14). The look comes from art direction, not lighting tech: the
+-- crisp sun and moon shadows, the cheapest option with real sun shadows (the target is an average or weak phone). The look comes from art direction, not lighting tech: the
 -- colour grade, contrast, fog that fades the distance, and a few strong lights.
 
 local LightingConfig = {}
