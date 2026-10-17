@@ -10,8 +10,8 @@ first unticked step below, ticks it here (with a link to its log note), and logs
   Researched how soulslikes animate swings ([research](../research/sword-swing-animation.md)) and
   gave the Sword swings a real recovery, plus chain and end blending for every combo weapon
   ([log](../log/2026-10-17-sword-recovery-blend.md)). The damage raise is applied too.
-  **Waiting on the user:** restart Rojo, publish SwordSwing1–3 from Rig.AnimSaves, send the IDs,
-  then play. If the Sword feels right, give the Rapier the same recovery next (the user uses it).
+  The user published SwordSwing1–3 and the IDs are in ([log](../log/2026-10-18-sword-recovery-ids.md)).
+  **Waiting on the user:** play the Sword. If the Sword feels right, give the Rapier the same recovery next (the user uses it).
 - **Waiting on the user:**
   - a playtest of the new Sword swings and the body dash
   - ~~a decision on Sword, Emberfang and Mace damage~~ **Decided 2026-10-17: raise them back to the old damage

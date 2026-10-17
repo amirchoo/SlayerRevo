@@ -3,6 +3,9 @@
 One note per finished piece of work, newest first. Each says what was asked, what changed,
 the choices made (and where to tune them), and what's still open.
 
+## 2026-10-18
+- [Sword recovery clips published; IDs in CombatConfig and TrainingStands (main issue)](2026-10-18-sword-recovery-ids.md)
+
 ## 2026-10-17
 - [Sword swings recover smoothly; chain and end blending for all weapons (main issue)](2026-10-17-sword-recovery-blend.md)
 - [Fix: ground and trees missing on the phone (streaming settings)](2026-10-17-streaming-fix.md)

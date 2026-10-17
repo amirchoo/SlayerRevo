@@ -16,6 +16,8 @@ the two notes it points to. Update this note at the end of every session.
   reached Studio (Rojo had stopped).
 
 ## Waiting on the user (in this order, on the Mac)
+> 2026-10-18: steps 1 and 2 are done (Rojo connected; Sword IDs in, [log](../log/2026-10-18-sword-recovery-ids.md)). Step 3 and a Sword playtest are left.
+
 1. **Start `rojo serve` and connect the plugin.** The Rojo server stopped mid-session, and the
    project file changed, so a fresh connect is needed. It brings in:
    - the streaming settings (Workspace: 768 / 128, Opportunistic, MinimumRadiusPause)
