@@ -1,0 +1,80 @@
+"""Manages the user's Roblox animation assets through Open Cloud (Assets API).
+
+    python3 tools/roblox_assets.py info <assetId> [...]
+    python3 tools/roblox_assets.py rename <assetId> <new name>
+    python3 tools/roblox_assets.py archive <assetId> [...]
+    python3 tools/roblox_assets.py restore <assetId> [...]
+
+The API key is read from ~/.config/slayerrevo/roblox-api-key (made on
+create.roblox.com/dashboard/credentials with Assets API read + write); it never goes in the repo.
+Only archive IDs the game doesn't use (notes/animation-assets.md): an archived animation may stop
+loading in the game.
+"""
+import json
+import sys
+import urllib.error
+import urllib.request
+import uuid
+from pathlib import Path
+
+KEY_FILE = Path.home() / ".config" / "slayerrevo" / "roblox-api-key"
+BASE = "https://apis.roblox.com/assets/v1/assets"
+
+
+def key():
+    return "".join(KEY_FILE.read_text().split())
+
+
+def call(method, url, body=None, content_type=None):
+    req = urllib.request.Request(url, data=body, method=method, headers={"x-api-key": key()})
+    if content_type:
+        req.add_header("Content-Type", content_type)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            text = resp.read().decode()
+    except urllib.error.HTTPError as err:
+        return err.code, err.read().decode()
+    return 200, text
+
+
+def info(asset_id):
+    status, text = call("GET", f"{BASE}/{asset_id}")
+    if status != 200:
+        return f"{asset_id}: error {status} {text[:200]}"
+    d = json.loads(text)
+    return f"{asset_id}: {d.get('displayName')} ({d.get('assetType')}, {d.get('state')})"
+
+
+def rename(asset_id, name):
+    boundary = uuid.uuid4().hex
+    request = json.dumps({"assetId": asset_id, "displayName": name})
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"request\"\r\n\r\n{request}\r\n--{boundary}--\r\n").encode()
+    status, text = call("PATCH", f"{BASE}/{asset_id}?updateMask=displayName", body, f"multipart/form-data; boundary={boundary}")
+    return f"{asset_id}: rename to {name}: {'ok' if status == 200 else f'error {status} {text[:200]}'}"
+
+
+def set_archived(asset_id, archived):
+    action = "archive" if archived else "restore"
+    status, text = call("POST", f"{BASE}/{asset_id}:{action}", b"{}", "application/json")
+    return f"{asset_id}: {action}: {'ok' if status == 200 else f'error {status} {text[:200]}'}"
+
+
+def main(argv):
+    if len(argv) < 2:
+        print(__doc__)
+        return
+    command, args = argv[0], argv[1:]
+    if command == "info":
+        for a in args:
+            print(info(a))
+    elif command == "rename":
+        print(rename(args[0], " ".join(args[1:])))
+    elif command in ("archive", "restore"):
+        for a in args:
+            print(set_archived(a, command == "archive"))
+    else:
+        print(__doc__)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
