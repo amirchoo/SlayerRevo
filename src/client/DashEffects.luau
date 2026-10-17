@@ -1,6 +1,6 @@
 --!strict
--- What a dash looks and sounds like: a puff of dust at the feet, a whoosh, a pale neon
--- afterimage of the character left behind that fades out, and a body dash: the body snaps
+-- What a dash looks and sounds like: a puff of dust at the feet, a whoosh, pale white
+-- afterimages of the character trailing behind it and fading out, and a body dash: the body snaps
 -- low and leans hard into the dash (forward, sideways or back), legs split like a sprinter's
 -- lunge when going forward (bent when going sideways or back), holds it while it travels, then
 -- eases back up, so a dodge reads clearly. Your own dash plays here as soon as you press it (see Dash); other
@@ -13,14 +13,13 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
+local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local Quality = require(script.Parent.Quality)
 
 local DUST_TEXTURE = "rbxasset://textures/particles/smoke_main.dds"
 local DUST_COLOR = Color3.fromRGB(170, 160, 145)
 local DUST_COUNT = 10
-local GHOST_COLOR = Color3.fromRGB(150, 210, 255)
-local GHOST_START_TRANSPARENCY = 0.5
-local GHOST_FADE_TIME = 0.35
+local AFTERIMAGE = CombatConfig.Dash.Afterimages
 -- The dash pose, laid over whatever animations are playing (all on this screen only).
 local POSE_IN = 0.05 -- seconds to snap into it
 local POSE_HOLD = 0.2 -- seconds held while the dash travels (about Dash.Duration)
@@ -61,45 +60,177 @@ local function dust(root: BasePart, humanoid: Humanoid)
 	emitter:Emit(math.max(1, math.round(DUST_COUNT * Quality.settings().Particles)))
 end
 
--- A see-through neon copy of every visible part of `character`, left where it stands.
-local function afterimage(character: Model)
-	local ghost = Instance.new("Model")
-	ghost.Name = "DashAfterimage"
-	local parts: { BasePart } = {}
-	for _, descendant in character:GetDescendants() do
-		if not descendant:IsA("BasePart") or descendant.Transparency >= 1 or descendant.Name == "HumanoidRootPart" then
-			continue
+-- Afterimages: see-through copies of the dasher left behind as it travels (CombatConfig
+-- Dash.Afterimages). Each character gets a small pool of ghost bodies, cloned once on its first
+-- dash and reused after that (just moved into place and faded), so a dash clones nothing.
+-- A pool is rebuilt only when the character's parts change (armor or weapon swapped).
+type Ghost = { model: Model, copies: { BasePart }, sources: { BasePart }, shown: { BasePart }, started: number }
+type Pool = { ghosts: { Ghost }, nextGhost: number, dirty: boolean, connections: { RBXScriptConnection } }
+
+local pools: { [Model]: Pool } = {}
+local fading: { [Ghost]: true } = {}
+local fadeConnection: RBXScriptConnection? = nil
+
+-- A shape-only, anchored copy of `source` in the afterimage look, or nil if it can't be cloned.
+local function ghostCopy(source: BasePart): BasePart?
+	local archivable = source.Archivable
+	source.Archivable = true
+	local copy = source:Clone()
+	source.Archivable = archivable
+	if not copy then
+		return nil
+	end
+	-- Keep only the shape: drop joints, scripts, decals, textures, effects and sounds.
+	for _, child in copy:GetChildren() do
+		if child:IsA("SpecialMesh") then
+			child.TextureId = ""
+		elseif not child:IsA("DataModelMesh") then
+			child:Destroy()
 		end
-		local copy = descendant:Clone()
-		-- Keep only the shape: drop joints, scripts, decals, textures, effects and sounds.
-		for _, child in copy:GetChildren() do
-			if child:IsA("SpecialMesh") then
-				child.TextureId = ""
-			elseif not child:IsA("DataModelMesh") then
-				child:Destroy()
+	end
+	if copy:IsA("MeshPart") then
+		copy.TextureID = ""
+	end
+	copy.Anchored = true
+	copy.CanCollide = false
+	copy.CanQuery = false
+	copy.CanTouch = false
+	copy.CastShadow = false
+	copy.Material = Enum.Material.Neon
+	copy.Color = AFTERIMAGE.Color
+	copy.Transparency = 1
+	return copy
+end
+
+local function buildGhost(character: Model): Ghost
+	local ghost: Ghost = { model = Instance.new("Model"), copies = {}, sources = {}, shown = {}, started = 0 }
+	ghost.model.Name = "DashAfterimage"
+	for _, descendant in character:GetDescendants() do
+		if descendant:IsA("BasePart") and descendant.Name ~= "HumanoidRootPart" then
+			local copy = ghostCopy(descendant)
+			if copy then
+				copy.Parent = ghost.model
+				table.insert(ghost.copies, copy)
+				table.insert(ghost.sources, descendant)
 			end
 		end
-		if copy:IsA("MeshPart") then
-			copy.TextureID = ""
+	end
+	return ghost
+end
+
+local function dropPool(character: Model)
+	local pool = pools[character]
+	if not pool then
+		return
+	end
+	pools[character] = nil
+	for _, connection in pool.connections do
+		connection:Disconnect()
+	end
+	for _, ghost in pool.ghosts do
+		fading[ghost] = nil
+		ghost.model:Destroy()
+	end
+end
+
+local function poolFor(character: Model): Pool
+	local pool = pools[character]
+	if pool and pool.dirty then
+		dropPool(character)
+		pool = nil
+	end
+	if pool then
+		return pool
+	end
+	local newPool: Pool = { ghosts = {}, nextGhost = 1, dirty = false, connections = {} }
+	local function partsChanged(descendant: Instance)
+		if descendant:IsA("BasePart") then
+			newPool.dirty = true
 		end
-		copy.Anchored = true
-		copy.CanCollide = false
-		copy.CanQuery = false
-		copy.CanTouch = false
-		copy.CastShadow = false
-		copy.Material = Enum.Material.Neon
-		copy.Color = GHOST_COLOR
-		copy.Transparency = GHOST_START_TRANSPARENCY
-		copy.CFrame = descendant.CFrame
-		copy.Parent = ghost
-		table.insert(parts, copy)
 	end
-	ghost.Parent = workspace.CurrentCamera -- local to this client
-	local fade = TweenInfo.new(GHOST_FADE_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	for _, part in parts do
-		TweenService:Create(part, fade, { Transparency = 1 }):Play()
+	table.insert(newPool.connections, character.DescendantAdded:Connect(partsChanged))
+	table.insert(newPool.connections, character.DescendantRemoving:Connect(partsChanged))
+	table.insert(
+		newPool.connections,
+		character.AncestryChanged:Connect(function()
+			if not character:IsDescendantOf(game) then
+				dropPool(character)
+			end
+		end)
+	)
+	pools[character] = newPool
+	return newPool
+end
+
+local function fadeStep()
+	local now = os.clock()
+	for ghost in fading do
+		local t = (now - ghost.started) / AFTERIMAGE.Fade
+		if t >= 1 then
+			fading[ghost] = nil
+			ghost.model.Parent = nil
+			continue
+		end
+		local eased = 1 - (1 - t) * (1 - t) -- quick at first, like a Quad out
+		local transparency = AFTERIMAGE.StartTransparency + (1 - AFTERIMAGE.StartTransparency) * eased
+		for _, copy in ghost.shown do
+			copy.Transparency = transparency
+		end
 	end
-	Debris:AddItem(ghost, GHOST_FADE_TIME)
+	if next(fading) == nil and fadeConnection then
+		fadeConnection:Disconnect()
+		fadeConnection = nil
+	end
+end
+
+-- Leaves one afterimage of `character` where it is now, from its pool.
+local function afterimage(character: Model)
+	if not character:IsDescendantOf(workspace) then
+		return
+	end
+	local pool = poolFor(character)
+	local ghost = pool.ghosts[pool.nextGhost]
+	if not ghost then
+		ghost = buildGhost(character)
+		pool.ghosts[pool.nextGhost] = ghost
+	end
+	pool.nextGhost = pool.nextGhost % AFTERIMAGE.MaxCount + 1
+
+	-- Line every copy up with its part; parts hidden right now stay hidden in the copy.
+	local moved: { BasePart } = {}
+	local cframes: { CFrame } = {}
+	table.clear(ghost.shown)
+	for i, copy in ghost.copies do
+		local source = ghost.sources[i]
+		if source.Transparency < 1 and source:IsDescendantOf(character) then
+			table.insert(moved, copy)
+			table.insert(cframes, source.CFrame)
+			table.insert(ghost.shown, copy)
+			copy.Transparency = AFTERIMAGE.StartTransparency
+		else
+			copy.Transparency = 1
+		end
+	end
+	workspace:BulkMoveTo(moved, cframes, Enum.BulkMoveMode.FireCFrameChanged)
+	ghost.model.Parent = workspace.CurrentCamera -- local to this client
+	ghost.started = os.clock()
+	fading[ghost] = true
+	if not fadeConnection then
+		fadeConnection = RunService.Heartbeat:Connect(fadeStep)
+	end
+end
+
+-- Leaves a trail of afterimages along the dash: one now, then one every Interval while it
+-- travels (as many as the quality tier allows). Taken on Heartbeat, so they show the dash pose.
+local function afterimageTrail(character: Model)
+	local count = math.min(Quality.settings().Afterimages, AFTERIMAGE.MaxCount)
+	if count <= 0 then
+		return
+	end
+	afterimage(character)
+	for i = 1, count - 1 do
+		task.delay(AFTERIMAGE.Interval * i, afterimage, character)
+	end
 end
 
 -- An animated body joint: a Motor6D, or an AnimationConstraint (newer avatars use those).
@@ -236,7 +367,7 @@ local function dashPose(character: Model, root: BasePart, direction: Vector3?)
 	endPose[character] = finish
 end
 
--- Shows `character` dashing: dust, whoosh, afterimage, and the dash pose. `direction` is
+-- Shows `character` dashing: dust, whoosh, afterimages, and the dash pose. `direction` is
 -- where it's dashing, if known (otherwise its movement shows it).
 function DashEffects.play(character: Model, direction: Vector3?)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -246,7 +377,7 @@ function DashEffects.play(character: Model, direction: Vector3?)
 	end
 	dust(root, humanoid)
 	Sounds.play("DashWhoosh", root)
-	afterimage(character)
+	afterimageTrail(character)
 	dashPose(character, root, direction)
 end
 

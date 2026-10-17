@@ -16,8 +16,9 @@ trails), so check that note before building to avoid doing something twice.
 - [x] **1. Hits land harder:** a camera shake and zoom punch on every hit, and an impact frame (grey
   screen, black silhouette with a red outline) on combo enders, heavies and kills.
   `HitFeel.luau`, `CombatConfig.HitImpact` ([log](../log/2026-10-18-hit-impact-frame.md)). Not playtested yet.
-- [ ] **2. Afterimages on dash:** see-through white copies of the character trailing behind and fading
+- [x] **2. Afterimages on dash:** see-through white copies of the character trailing behind and fading
   out over about 0.2 s. Belongs in `DashEffects.luau`. Mind the iPhone 14: few copies, reused.
+  Pooled per character, 2/3/4 copies by quality tier, `CombatConfig.Dash.Afterimages` ([log](../log/2026-10-18-dash-afterimages.md)). Not playtested yet.
 - [ ] **3. Hit reactions:** a different enemy flinch per combo step, plus a combo ender that knocks the
   target back and ragdolls it for about 1 s. Enemies first; players come with PvP.
 - [ ] **4. Crescent slashes:** wide curved slash meshes along each sword/katana swing instead of thin

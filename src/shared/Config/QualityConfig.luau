@@ -22,6 +22,7 @@ export type Settings = {
 	TorchFlames: { [string]: number },
 	WorldLights: number, -- torch lights and town lamps lit at once, nearest the camera first (client LightBudget)
 	PoseDetail: number, -- scales the distances animals, villagers and pets are posed every frame (client PoseLod)
+	Afterimages: number, -- copies of a dashing character left trailing behind it (client DashEffects)
 }
 
 local QualityConfig = {}
@@ -43,6 +44,7 @@ QualityConfig.Tiers = {
 		TorchFlames = { Fire3 = 0.6 },
 		WorldLights = 6,
 		PoseDetail = 0.6,
+		Afterimages = 2,
 	},
 	Medium = {
 		Particles = 0.65,
@@ -58,6 +60,7 @@ QualityConfig.Tiers = {
 		TorchFlames = { Fire3 = 0.5, Fire2 = 0.5, Smoke = 1 },
 		WorldLights = 12,
 		PoseDetail = 0.85,
+		Afterimages = 3,
 	},
 	High = {
 		Particles = 1,
@@ -73,6 +76,7 @@ QualityConfig.Tiers = {
 		TorchFlames = { Fire3 = 0.5, Fire2 = 0.5, Smoke = 1, CandleLight = 1, Fire1 = 0.2 },
 		WorldLights = 24,
 		PoseDetail = 1,
+		Afterimages = 4,
 	},
 } :: { [Tier]: Settings }
 

@@ -76,7 +76,7 @@ These games (TSB, Dueling Grounds, this one) nearly all use this layout:
 | Enemy flinch | ✅ `EnemyEffects` (one flinch clip) | The video uses a different flinch per hit plus a stagger. |
 | Player hit reactions / stun | ❌ | Needed for PvP. |
 | Knockback + ragdoll ender | ❌ (only `Push` on block) | |
-| Afterimages on dash | ❌ | `DashEffects.luau` is the place for it. |
+| Afterimages on dash | ✅ `DashEffects.luau` (pooled trail) | |
 | Impact frame | ❌ | Cheap to add, big payoff. |
 | Wide crescent slashes | partly (trails) | Main issue step 5 (trails) could switch to crescent meshes. |
 | Air launch / air combo / slam crater | ❌ | Biggest piece of work. |
@@ -102,7 +102,7 @@ The user's plan (2026-10-18): on-the-spot duels, started from an "interact" butt
 ## Suggested order (cheapest feel first)
 
 1. ✅ Impact frame + FOV punch + shake on landing a hit ([log](../log/2026-10-18-hit-impact-frame.md)).
-2. Afterimages on dash.
+2. ✅ Afterimages on dash ([log](../log/2026-10-18-dash-afterimages.md)).
 3. A different flinch per combo step + a knockback-and-ragdoll ender (works on enemies now, players later).
 4. Crescent slash meshes instead of trails for the sword and katana.
 5. Stun-state module (needed by both PvE bosses and PvP).

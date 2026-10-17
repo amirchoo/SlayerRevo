@@ -4,6 +4,7 @@ One note per finished piece of work, newest first. Each says what was asked, wha
 the choices made (and where to tune them), and what's still open.
 
 ## 2026-10-18
+- [Dash afterimages: a trail of white copies behind every dash](2026-10-18-dash-afterimages.md)
 - [Hits land harder: shake, zoom punch, impact frame on heavy hits and kills](2026-10-18-hit-impact-frame.md)
 - [Battlegrounds combat video analysed: reference for melee feel and PvP](2026-10-18-battlegrounds-video-analysis.md)
 - [Sword: the legs walk when you swing on the move (no more sliding)](2026-10-18-sword-walk-while-swinging.md)

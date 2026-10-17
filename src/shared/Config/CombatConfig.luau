@@ -1207,5 +1207,15 @@ return {
 		Duration = 0.21, -- seconds (Speed x Duration is about how far you go: ~11 studs); about as long as DashEffects holds its pose
 		MinInterval = 0.25, -- seconds between dashes, so one press can't use both charges
 		IFrameTime = 0.25, -- seconds after a dash starts that incoming hits are dodged
+		-- Afterimages (client DashEffects): see-through copies of the dasher left behind every
+		-- Interval seconds from the start of the dash, each fading out over Fade. How many a dash
+		-- leaves is the quality tier's Afterimages (QualityConfig), up to MaxCount.
+		Afterimages = {
+			MaxCount = 4,
+			Interval = 0.05,
+			Fade = 0.2,
+			StartTransparency = 0.55,
+			Color = Color3.fromRGB(235, 245, 255),
+		},
 	},
 }

@@ -18,7 +18,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
   Worth revisiting after the perf pass's final check, if dungeon runs are still laggy or once
   parties and more dungeons exist. Changes design.md §"Bosses and dungeons" (a private copy in the same server).
 - [ ] **Battlegrounds-style combat feel** after the user's reference video; steps and progress in
-  [the task note](tasks/battlegrounds-combat.md), breakdown in [the research note](research/battlegrounds-combat-reference.md): afterimages on dash, a flinch per
+  [the task note](tasks/battlegrounds-combat.md), breakdown in [the research note](research/battlegrounds-combat-reference.md): a flinch per
   combo step plus a knockback-and-ragdoll ender, crescent slashes, a stun-state module, launcher →
   air combo → slam crater.
 - [ ] **PvP duels (the user's plan, 2026-10-18):** an interact button on another player, Duel as the
@@ -27,6 +27,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] Dash afterimages: a trail of white copies behind every dash, pooled for the phone (2026-10-18, [log](log/2026-10-18-dash-afterimages.md))
 - [x] Hits land harder: a camera shake and zoom punch on every hit, an impact frame on combo enders, heavies and kills (2026-10-18, [log](log/2026-10-18-hit-impact-frame.md))
 - [x] Sword swings while walking: upper-body twins blend in so the legs walk instead of sliding (2026-10-18, [log](log/2026-10-18-sword-walk-while-swinging.md))
 - [x] Animations authored in Blender (tools/blender/author.sh): IK rig, planted feet, f-curves; Sword swings 1–3 redone with it, Swing 3's hit frame and Swing 1's wind-up fixed (2026-10-18, [log](log/2026-10-18-blender-anim-authoring.md))
