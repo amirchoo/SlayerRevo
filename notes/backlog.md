@@ -4,7 +4,7 @@ Ideas and features to build, most important first. Ask Claude Code to "do the to
 or turn an item into a task note (notes/tasks/) when it needs more detail.
 
 ## Next
-- [ ] **Priority 0: Remake every weapon's animations** in the Sword combo's style, one weapon at a time ([note](tasks/weapon-anim-remake.md), recipe [animation-style](../docs/animation-style.md))
+- [ ] **Priority 0: Remake every weapon's animations** in the Sword combo's style, **deadline 2026-10-25** ([note](tasks/weapon-anim-remake.md), recipe [animation-style](../docs/animation-style.md))
 - [ ] **Priority 1: The Arcane Atelier look** (bright painterly world, big hit VFX, heavy-sword walk, ornate HUD), after the remake, from the user's reference video ([note](tasks/arcane-atelier-look.md), [breakdown](research/arcane-atelier-reference.md))
 - [ ] **Priority 2: Polish and performance pass (lag)** for the phone and the Intel Mac, one step per message ([note](tasks/perf-polish.md))
 - [ ] **Priority 3: MAIN ISSUE:** combat feel and atmosphere like Dueling Grounds, one step per session ([note](tasks/main-issue-dueling-vibe.md))

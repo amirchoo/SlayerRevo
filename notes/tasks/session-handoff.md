@@ -5,7 +5,7 @@ Written 2026-10-18 at the end of the session (the user ended it for the day).
 the notes it points to. Update this note at the end of every session.
 
 ## Where things stand
-- **Priority 0: remake every weapon's animations** in the new style. The user loved the exaggerated
+- **Priority 0 (deadline 2026-10-25, ~2 weapons a day): remake every weapon's animations** in the new style. The user loved the exaggerated
   Sword combo ("perfect, this is how I imagine it would be"). Recipe: [[animation-style]]
   (`docs/animation-style.md`); checklist: [[weapon-anim-remake]]. Say **"do the animation remake"**.
   - **Sword combo: done and published** (SwordSwing1–3 + Moving twins, written over the existing IDs on

@@ -34,6 +34,7 @@
 - Every weapon's animations get remade in the Sword combo's style (the user's call, 2026-10-18). The
   recipe is `docs/animation-style.md` (read it before authoring any clip); the checklist is
   `notes/tasks/weapon-anim-remake.md`. When the user says "do the animation remake", do its next weapon.
+  **Deadline 2026-10-25** (about 2 weapons a day).
 - Priority order (the user's call, 2026-10-18): 0 this remake, 1 the Arcane Atelier look
   (`notes/tasks/arcane-atelier-look.md`; "do the Arcane Atelier look"), 2 the perf pass
   (`notes/tasks/perf-polish.md`), 3 the main issue below.

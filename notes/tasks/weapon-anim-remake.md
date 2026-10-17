@@ -7,6 +7,11 @@ priority". **Say "do the animation remake" in a new session**: Claude reads this
 (one weapon per session or message), shows it in Blender with `combo.sh`, and stages it for publishing
 when the user likes it. Then ticks it here with a link to its log note.
 
+**Deadline: 2026-10-25** (the user's call on 2026-10-18: "a week max"). About 14 entries are left, so that's
+**about 2 weapons a day**. Do the slow ones (Dual Blade, Bow, Crossbow, Blunderbuss, Staff/Grimoire need
+new controls) early in the week so they can't push the date. If it's slipping by ~2026-10-23, tell the
+user and offer to cut scope (simpler clips for the ranged/casting weapons) rather than rush the rest.
+
 Priorities now: **0 this remake**, 1 the Arcane Atelier look ([[arcane-atelier-look]], next once every weapon
 is done), 2 the perf pass ([[perf-polish]]), 3 the main issue ([[main-issue-dueling-vibe]]) and the
 battlegrounds steps ([[battlegrounds-combat]]).
