@@ -22,8 +22,8 @@ Any SwordSwing1–3 or SwordIdle with **another ID** isn't used anywhere and can
 ## Cleaning up (Creator Dashboard)
 create.roblox.com → Creations → Development Items → Animations. Open a card to see its ID (in the
 page address). Rename: open the card and edit its name (the ID doesn't change). Archive: the card's
-⋯ menu → Archive. Archived assets keep working if something still uses them, so a mistake won't
-break the game.
+⋯ menu → Archive. Only archive IDs that aren't in the table above: an archived animation may stop
+loading in the game. Archived assets can be restored from the Archived tab.
 
 To re-check which IDs are in use: ask Claude to "list the animation assets in use" (it reads the
 IDs in `src/` and names them through Studio).
