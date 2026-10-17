@@ -45,7 +45,8 @@ at graphics level 8+ reach High**.
 
 ## To do (user, in Studio)
 1. In Explorer, select **Lighting**.
-2. In Properties, set **Technology** to **ShadowMap**.
+2. In Properties, set **Technology** to **ShadowMap**. (Newer Studio: there's no Technology row; set
+   **LightingStyle = Realistic** and untick **PrioritizeLightingQuality**. Done 2026-10-17.)
 3. Publish.
 
 ## Checks

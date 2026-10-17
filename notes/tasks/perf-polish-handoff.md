@@ -28,8 +28,11 @@ proposes the next step.
     not the game: players never see it. To silence it, turn plugins off one by one in Plugins →
     Manage Plugins.
   - `rbxassetid://1014915761` "archived" is also a plugin icon: ignore it.
-- **ShadowMap: the user sets it** in Lighting → Properties → Technology. Scripts can't
-  (`lacking capability RobloxScript`, also for writes).
+- **ShadowMap is set** (2026-10-17). New Studio has no `Technology` row any more: it's
+  **LightingStyle = Realistic + PrioritizeLightingQuality off** (on = the old Future). Claude set
+  PrioritizeLightingQuality off via `execute_luau` (writable, unlike Technology). `default.project.json`
+  still says `Technology: ShadowMap`, which is harmless.
+- The user's Roblox account is **ColePalmer6954** (the "joined live editing session" line is them).
 - The session should run in **auto mode** (the user wants it).
 - **Waiting on the user (Studio):**
   - enter the Grimgorg dungeon once (check the saved TerrainRegion survived: walls and floor are there)
@@ -99,7 +102,7 @@ They go in `CombatConfig` `Combo[n].Damage`. Do it when the user picks up the ma
 
 ## Gotchas
 - `execute_luau` in edit mode can't read `Lighting.Technology` or the Workspace streaming
-  properties (it lacks the capability). Use pcall, and ask the user to read them in Properties.
+  properties (it lacks the capability). `LightingStyle` and `PrioritizeLightingQuality` it can. Use pcall, and ask the user to read them in Properties.
 - LightingSetup deletes DepthOfField at server start, so the one in default.project.json never reaches players.
 - Rojo sometimes isn't connected when a session starts: check with `script_grep` that new code is in
   Studio before playtesting, and ask the user to connect (don't push sources in by hand).

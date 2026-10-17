@@ -2,9 +2,9 @@
 -- The game's look: lighting, atmosphere and post effects, applied by server LightingSetup at
 -- start (and in edit mode by tools/apply_lighting.lua). Warm afternoon sun, soft shadows,
 -- gentle color, and a cool haze that fades the far hills and mountains: bright and friendly
--- in town, with depth across the big world. Lighting.Technology isn't scriptable; it's set in
--- Studio (and default.project.json) to ShadowMap: crisp sun and moon shadows, cheap enough for
--- the baseline phone (iPhone 14). The look comes from art direction, not lighting tech: the
+-- in town, with depth across the big world. The lighting tech is set in the place, not here:
+-- LightingStyle Realistic with PrioritizeLightingQuality off (the old Technology = ShadowMap):
+-- crisp sun and moon shadows, cheap enough for the baseline phone (iPhone 14). The look comes from art direction, not lighting tech: the
 -- colour grade, contrast, fog that fades the distance, and a few strong lights.
 
 local LightingConfig = {}
