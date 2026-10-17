@@ -6,6 +6,9 @@ Opened 2026-10-17. **Say "do the main issue" in a new session**: Claude reads th
 first unticked step below, ticks it here (with a link to its log note), and logs it as usual.
 
 ## Where we left off (end of 2026-10-17 session)
+- **User feedback 2026-10-17 (after the perf pass):** attack animations still feel a bit stiff (they
+  were using the Rapier, which hasn't had the whole-body rework yet). Ask whether the reworked Sword
+  feels stiff too: if not, roll the recipe out (Rapier next?); if so, the recipe itself needs work.
 - **Waiting on the user:**
   - a playtest of the new Sword swings and the body dash
   - ~~a decision on Sword, Emberfang and Mace damage~~ **Decided 2026-10-17: raise them back to the old damage
