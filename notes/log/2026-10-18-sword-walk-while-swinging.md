@@ -33,3 +33,14 @@ No errors in the output.
 - Other weapons still slide if you walk while swinging; the same twin trick works for any clip
   that moves to the Blender rig.
 - Not checked on the phone (add to the batched device check).
+
+## Step-in while walking (added after)
+**Asked:** "attacking while moving should make you walk in a bit." **Decided by the user:** a short
+step forward (not slower walking).
+- `MovingStep` on the weapon config (`{ Speed, Time }`): when you swing while walking, a push the way
+  you face, timed to end on the swing's hit. Sword: **32 studs/s for 0.12 s**, about 4 studs into the
+  cut, 2 more than walking would carry you. Emberfang reads the Sword's. Standing still: no step. A move
+  with its own `Lunge` keeps that instead.
+- Checked in a playtest (walking driven by script, position-measured): 16 studs/s walking, 32 from
+  0.07 s to the hit at 0.18 s, then back to 16.
+- Tuning: `Sword.MovingStep` in CombatConfig (Speed for how far, Time for how long before the hit).

@@ -444,6 +444,17 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		if lunge and root and root:IsA("BasePart") then
 			Push.apply(root, root.CFrame.LookVector, lunge, LUNGE_TIME)
 		end
+		-- Swinging on the move steps us in with the cut (ending on the hit). Standing still stays planted.
+		local stepIn = config.MovingStep
+		if stepIn and not lunge and root and root:IsA("BasePart") then
+			local stepRoot: BasePart = root
+			local humanoid = (character :: Model):FindFirstChildOfClass("Humanoid")
+			task.delay(math.max(0, combo[step].HitDelay - stepIn.Time), function()
+				if humanoid and humanoid.MoveDirection.Magnitude > MOVING_SPEED and stepRoot.Parent then
+					Push.apply(stepRoot, stepRoot.CFrame.LookVector, stepIn.Speed, stepIn.Time)
+				end
+			end)
+		end
 	end
 
 	local function localWeld(tool: Tool): Weld?
