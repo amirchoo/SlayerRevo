@@ -7,8 +7,8 @@
 
 The API key is read from ~/.config/slayerrevo/roblox-api-key (made on
 create.roblox.com/dashboard/credentials with Assets API read + write); it never goes in the repo.
-Only archive IDs the game doesn't use (notes/animation-assets.md): an archived animation may stop
-loading in the game.
+Open Cloud can't archive animations ("not an archivable asset type"): unused ones get renamed
+"OLD <name>" instead, and can be archived by hand on the Creator Dashboard.
 """
 import json
 import sys

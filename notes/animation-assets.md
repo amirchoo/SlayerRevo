@@ -19,7 +19,8 @@ in use. Every name is unique except these Sword clips, which have **two live cop
 
 Any SwordSwing1–3 or SwordIdle with **another ID** isn't used anywhere and can be archived. Known unused
 (from git history): 140482095490161, 125447325276884, 112266188901588 (Oct 10) and 101378158511989,
-100925354916925, 78373052274628 (Oct 16).
+100925354916925, 78373052274628 (Oct 16). All six are renamed **OLD SwordSwing1–3** (2026-10-18).
+Open Cloud can't archive animations, so archiving is by hand on the dashboard.
 
 `python3 tools/roblox_assets.py info|rename|archive|restore <id>` does this through Open Cloud with the
 key in `~/.config/slayerrevo/roblox-api-key` (Assets API read + write).
