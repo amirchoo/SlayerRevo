@@ -24,7 +24,7 @@ Priorities now: **0 this remake**, 1 the perf pass ([[perf-polish]]), 2 the main
 
 ## Weapons (the user may reorder; their own weapon, the Rapier, goes first after the Sword)
 - [x] **Sword** combo: SwordSwing1–3 (+ Moving twins). [log](../log/2026-10-18-sword-combo-exaggerated.md).
-  Waiting for the user to publish (staged in Rig.AnimSaves).
+  Published 2026-10-18 over the existing IDs.
 - [ ] **Sword** rest: SwordIdle (check it still fits the new combo's stance), SwordGuard, SwordSpin.
   Emberfang reuses all of the Sword's.
 - [ ] **Rapier:** RapierIdle, RapierThrust1–3, RapierWindUp, RapierFlurry.

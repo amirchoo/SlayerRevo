@@ -1,57 +1,42 @@
 # Handoff: start here next session
 
-Written 2026-10-17 at the end of the third session; the user is switching to their Mac.
+Written 2026-10-18 at the end of the session (the user ended it for the day).
 **Say "read the handoff" (or "continue") in a new session**: Claude reads this note first, then
-the two notes it points to. Update this note at the end of every session.
+the notes it points to. Update this note at the end of every session.
 
 ## Where things stand
-- **Priority 0 now (2026-10-18): remake every weapon's animations** in the new style. The user loved the
-  exaggerated Sword combo and hit feel. Recipe: [[animation-style]]; checklist: [[weapon-anim-remake]].
-  Say "do the animation remake". The perf pass is now priority 1, the main issue priority 2.
-- **New (2026-10-18): battlegrounds-style combat, then PvP duels.** The user sent a reference video
-  ("that's where we're getting to"). It was analysed in [[battlegrounds-combat-reference]], and the
-  plan is the step list in [[battlegrounds-combat]]. Steps 1 (shake, zoom punch, impact frame) and 2 (dash afterimages) are done
-  but not playtested. **First:** ask how hits feel, then continue with step 2 when the user says
-  "do the battlegrounds task". PvP duels are step 7; ask the user for the duel rules before building it.
-- **Perf pass (priority 1 since 2026-10-18; was 0): all 8 steps are built.** The user's first phone test showed no lag,
-  but trees and ground were missing (memory: streaming was on defaults). Fixed in
-  `default.project.json` ([log](../log/2026-10-17-streaming-fix.md)); not tested on the phone yet.
-  Details: [[perf-polish-handoff]]. The user's checklist: [[perf-final-check]].
-- **Main issue (priority 2; was 1): the Sword's swing recovery was reworked** after research on soulslike
-  animation ([research](../research/sword-swing-animation.md), [log](../log/2026-10-17-sword-recovery-blend.md)).
-  The new clips are staged but **not published yet**. Details: [[main-issue-dueling-vibe]].
-- **Damage raise** (Sword 33/41/65, Emberfang 42/52/85, Mace 40/47/87) is committed but hadn't
-  reached Studio (Rojo had stopped).
+- **Priority 0: remake every weapon's animations** in the new style. The user loved the exaggerated
+  Sword combo ("perfect, this is how I imagine it would be"). Recipe: [[animation-style]]
+  (`docs/animation-style.md`); checklist: [[weapon-anim-remake]]. Say **"do the animation remake"**.
+  - **Sword combo: done and published** (SwordSwing1–3 + Moving twins, written over the existing IDs on
+    2026-10-18, revisions checked through Open Cloud; [log](../log/2026-10-18-sword-combo-exaggerated.md)).
+    Copies are still in `Workspace.Rig.AnimSaves` (harmless).
+  - **Next weapon:** the Sword's rest (SwordIdle check, SwordGuard, SwordSpin), then the **Rapier** (the
+    user's weapon). The user may reorder.
+- **Hit feel exaggerated** (rolling camera jolt, bigger zoom punch, longer heavy hitstop, flash-then-
+  silhouettes impact frame; [log](../log/2026-10-18-hit-impact-exaggerated.md)). The user said it's how
+  they imagined it. Tune in `CombatConfig.HitImpact` / `Hitstop`.
+- **Dash afterimages** (battlegrounds step 2) are built ([log](../log/2026-10-18-dash-afterimages.md)).
+  Battlegrounds step 3 (enemy reactions) and 4 (slash crescents) are next there ([[battlegrounds-combat]]).
+- **Priority 1: the perf pass** is built (8 steps); not re-tested on the phone since the streaming fix.
+  The target device is now an **average or weak phone**, not the user's iPhone 14. Four earlier choices to
+  re-check for weak phones (the user hasn't decided): phones on Automatic start at Medium, ShadowMap
+  shadows, streaming 768/128, Medium's decor 75% and 12 lights. Details: [[perf-polish-handoff]].
+- **Priority 2: the main issue** ([[main-issue-dueling-vibe]]).
+- **Art in Blender:** the user asked that all new animations **and 3D models** be made by Claude in
+  Blender (not Claude Design). No model-building script exists yet.
 
-## Waiting on the user (in this order, on the Mac)
-> 2026-10-18 (latest): the Sword combo was redone, exaggerated ([log](../log/2026-10-18-sword-combo-exaggerated.md)). SwordSwing1–3 and their Moving twins are staged in `Workspace.Rig.AnimSaves`. **First:** ask whether they were published over the existing IDs and how the combo plays. Next after that: slash crescents (battlegrounds step 4). Watch clips with `tools/blender/combo.sh Sword`.
-> 2026-10-18 (latest): SwordSwing1–3 were re-authored in Blender ([log](../log/2026-10-18-blender-anim-authoring.md)) and are staged in `Workspace.Rig.AnimSaves`. Published 2026-10-18 (Swing 1 is the new 104914800619644; 2 and 3 were written over). **First:** ask how the new Sword combo plays. New clips are now made with `tools/blender/author.sh` (data in `tools/blender/*_clips.py`).
-> 2026-10-18 (later): the Sword was redone katana-style and the four clips are published and in ([log](../log/2026-10-18-sword-katana-redo.md)). **First:** ask how the new Sword plays.
-> 2026-10-18: steps 1 and 2 are done (Rojo connected; Sword IDs in, [log](../log/2026-10-18-sword-recovery-ids.md)). Step 3 and a Sword playtest are left.
-
-1. **Start `rojo serve` and connect the plugin.** The Rojo server stopped mid-session, and the
-   project file changed, so a fresh connect is needed. It brings in:
-   - the streaming settings (Workspace: 768 / 128, Opportunistic, MinimumRadiusPause)
-   - the loading screen (ReplicatedFirst)
-   - the CombatConfig damage raise
-2. **Publish SwordSwing1, 2, 3** from `Workspace.Rig.AnimSaves` in the Animation Editor (Claude put
-   them there; they're the new 0.98 / 0.96 / 1.20 s clips). Send the three IDs.
-3. **Save and publish the place**, then go through [[perf-final-check]] on the phone and the Mac.
+## Not playtested yet
+Nothing from this session was playtested in Studio by Claude (skip-playtests rule): the new Sword combo
+in game, the exaggerated hit feel, the dash afterimages. Their checks are in [[perf-final-check]].
 
 ## Claude's first moves next session
-1. Ask whether steps 1–3 above are done. If the user sends the Sword IDs, put them in
-   `CombatConfig` `Sword.Combo` (Emberfang and Mace reuse them) and SwordSwing3's in
-   TrainingStands, then commit.
-2. Check with `script_grep` / `execute_luau` that Studio has the latest code before any playtest
-   (CombatConfig Sword swing 1 should read `Damage = 33`). If not, ask the user to reconnect Rojo.
-   Don't push sources in by hand.
-3. Then act on the user's feedback:
-   - **Phone check results:** fix what's reported (tuning knobs are listed in each step's log).
-     If the far hills vanish, raise `StreamingTargetRadius` to 1024 and keep the rest.
-   - **Sword feel:** if it's right, give the **Rapier** the same recovery next (the user plays it).
-     It's in step 1c of the main issue; the recipe is in the research note and SwordSwing1–3 in
-     `tools/sword_anims.py`. If it still feels stiff, ask what exactly (the return, the strike,
-     the wind-up) before changing more. An unused idea: step-in root motion on each swing.
+1. Ask how the published Sword combo and the new hit feel play in game (and whether the place was saved
+   and published so live servers have them).
+2. If the user says "do the animation remake": read [[animation-style]] and do the next weapon in
+   [[weapon-anim-remake]] (author in the scratchpad, fix the report, previews, `combo.sh`, show the user,
+   stage when they like it).
+3. Before any Studio check, confirm Studio has the latest code (Rojo plugin connected).
 
 ## How the user wants to work (keep to it)
 - One step at a time: explain it, wait for the OK, do it, log it in `notes/log/`, tick it, push to
@@ -75,3 +60,10 @@ the two notes it points to. Update this note at the end of every session.
 - `rbxassetid://203785492` in the Output is a Studio plugin's sound, not the game: ignore it.
 - The sword generator rewrites other clips with renumbered IDs: `git checkout --` everything you
   didn't mean to change after running it.
+- Blender: objects imported from a .glb turn by **quaternion**; keying `rotation_euler` on them does
+  nothing (the combo viewer's sword once kept one angle). Still renders don't catch this: check playback.
+- To confirm the user published a clip over its asset, read its latest revision time through Open
+  Cloud (`roblox_assets.call('GET', f'{BASE}/<id>?readMask=revisionId,revisionCreateTime')`) and compare
+  it with when the clip was staged.
+- Blender on the user's Intel Mac draws the viewport slowly at Retina size: playback under 30 fps there
+  is the GPU, not the animation. The combo viewer's videos play smoothly.

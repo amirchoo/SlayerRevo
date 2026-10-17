@@ -34,6 +34,8 @@ turn with the hand in the combo file (keyed Euler on a quaternion object) was fo
 **Staged:** the six clips (SwordSwing1–3 and their Moving twins) are in `Workspace.Rig.AnimSaves`; the
 temporary import folder is deleted on disk and in Studio.
 
-**Open:** the user publishes the six over the existing assets (IDs in CombatConfig `Sword.Combo`), then
-playtests. Known leftovers: Swing 1's knee snaps a little on the stamp (meant as a hard stamp); a couple
+**Published:** the user wrote all six over the existing assets on 2026-10-18 (new revisions confirmed
+through Open Cloud; IDs unchanged in CombatConfig `Sword.Combo`).
+
+**Open:** a playtest in game. Known leftovers: Swing 1's knee snaps a little on the stamp (meant as a hard stamp); a couple
 of mild stops at the ends of cuts. Next: slash crescents (battlegrounds step 4). Not playtested.
