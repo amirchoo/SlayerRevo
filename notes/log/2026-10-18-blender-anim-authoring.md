@@ -49,6 +49,7 @@ Publish SwordSwing1, 2, 3 from the Animation Editor and send the three IDs. Clau
 
 ## Open
 - Not playtested.
+- The idle, guard, and the other weapons can move onto the Blender rig one at a time (Rapier next).
 
 ## Publish timed out (fixed)
 The first bake was 0.5–0.65 MB per clip and the user's publish timed out. The bake now thins
@@ -62,4 +63,3 @@ Publishing as new makes a new asset (and ID) every time. Publish over the existi
 (in the publish dialog, pick the clip's current asset to overwrite). The ID stays the same, so
 CombatConfig needs no change. Old unused assets can be archived on the Creator Dashboard.
 Current IDs: SwordSwing1 90592657091699, SwordSwing2 99968467521543, SwordSwing3 98009756362330.
-- The idle, guard, and the other weapons can move onto the Blender rig one at a time (Rapier next).
