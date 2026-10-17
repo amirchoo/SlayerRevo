@@ -26,16 +26,18 @@ spanning) and what that means in our style. It also covers what makes a weapon r
 
 ## Code
 - `src/client/WeaponWalk.luau` (new): `mover()` (moving, with a 0.12 s delay on stopping so a tap doesn't
-  flicker) and `sync()` (keeps a walk clip at the rate and phase of whichever default WalkAnim/RunAnim
-  track has the most weight; snaps back if it drifts 5% of a cycle).
+  flicker) and `syncer()`: keeps a walk clip at the rate of whichever WalkAnim/RunAnim track has the most
+  weight, and **in phase with the real feet**: it watches when the left foot is furthest ahead and notes
+  where that track is in its cycle (per animation), so it works with any walk, run or animation pack.
+  Snaps back if it drifts 5% of a cycle. (Reading the default walk's keyframes in Studio couldn't settle
+  which foot leads: Pose CFrames are in each joint's own frame, and animation packs differ anyway.)
 - `ComboWeaponClient`: loads `WalkAnimation`, swaps idle ↔ walk while the weapon is out (shield stance
   still wins), syncs it every frame; cleared on unequip and respawn.
 - `CombatConfig`: `WalkAnimation` / `WalkPhase` on combo weapons; `Sword.WalkAnimation = ""` until
   published (Emberfang will share it).
 
 ## Open
-- **The user publishes** SwordGuard and SwordSpin over their IDs, SwordWalk as a new asset; then its ID
-  goes in `Sword.WalkAnimation` (and Emberfang's).
-- **WalkPhase unchecked:** Studio wasn't open, so the default walk's keyframes weren't read; if the sword
-  arm swings with the same-side foot, set `WalkPhase = 0.5`.
+- **Staged** in `Workspace.Rig.AnimSaves` (2026-10-18); the temporary import folder is deleted on disk and
+  in Studio. **The user publishes** SwordGuard and SwordSpin over their IDs, SwordWalk as a new asset;
+  then its ID goes in `Sword.WalkAnimation` (and Emberfang's).
 - Not playtested (skip-playtests rule).

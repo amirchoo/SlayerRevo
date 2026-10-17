@@ -217,9 +217,10 @@ export type ComboWeapon = {
 	DualWield: boolean?,
 	-- Walk speed while it's equipped (heavy weapons); the normal walk speed if unset.
 	WalkSpeed: number?,
-	-- The carry while moving (<Weapon>Walk: upper body, one cycle = two steps of the default walk),
-	-- played instead of the idle; "" or unset keeps the idle. WalkPhase: a fraction of a cycle to
-	-- shift it by if its arm swings with the wrong foot (see src/client/WeaponWalk.luau).
+	-- The carry while moving (<Weapon>Walk: upper body, one cycle = two steps, time 0 = the left foot
+	-- furthest ahead), played instead of the idle; "" or unset keeps the idle. WeaponWalk keeps it in
+	-- step with the real feet. WalkPhase: a fraction of a cycle to shift it by (a clip that starts
+	-- on the other foot).
 	WalkAnimation: string?,
 	WalkPhase: number?,
 }

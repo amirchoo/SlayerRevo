@@ -314,6 +314,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			return
 		end
 		local moving = WeaponWalk.mover(humanoid)
+		local sync = WeaponWalk.syncer(humanoid.Parent :: Model, animator, walk, config.WalkPhase)
 		walkWatch = RunService.Heartbeat:Connect(function()
 			local now = moving()
 			if now ~= walkingNow then
@@ -321,7 +322,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 				playIdle()
 			end
 			if walk.IsPlaying then
-				WeaponWalk.sync(walk, animator, config.WalkPhase)
+				sync()
 			end
 		end)
 	end
