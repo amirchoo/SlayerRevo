@@ -116,6 +116,7 @@ function DamageFeedback.start()
 		watch(player.Character)
 	end
 
+	local gradedLow = -1 -- the `low` the grade was last set for
 	RunService.RenderStepped:Connect(function(dt)
 		local now = os.clock()
 		local alive = ratio > 0
@@ -124,8 +125,11 @@ function DamageFeedback.start()
 		local pulse = 0.5 + 0.5 * math.sin(now * (3 + 4 * low))
 		local lowStrength = if low > 0 then 0.35 + 0.35 * low + 0.15 * pulse else 0
 		setStrength(math.max(lowStrength, flash))
-		grade.Saturation = -FEEDBACK.LowHealthDesaturate * low
-		grade.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(255, 205, 205), low)
+		if low ~= gradedLow then -- only while it changes (not every frame at full health)
+			gradedLow = low
+			grade.Saturation = -FEEDBACK.LowHealthDesaturate * low
+			grade.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(255, 205, 205), low)
+		end
 
 		-- A heartbeat while low, quickening as health drops.
 		if low > 0 and now >= nextBeat then

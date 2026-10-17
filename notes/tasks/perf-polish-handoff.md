@@ -1,6 +1,6 @@
 # Handoff: polish and performance pass (continue from here)
 
-Updated 2026-10-17 in the third session (step 5 done; 3–4 the second session, 0–2 the first).
+Updated 2026-10-17 in the third session (steps 5–6 done; 3–4 the second session, 0–2 the first).
 **Say "continue the perf pass" in a new session**: Claude reads this note and [[perf-polish]], then
 proposes the next step.
 
@@ -71,25 +71,23 @@ proposes the next step.
   - `QualityConfig` `TorchFlames` and `WorldLights`; client [LightBudget](../../src/client/LightBudget.luau)
     owns `Enabled` on torch lights and town lamps (DayNight sets "wanted" at night).
 
-## Next: step 6 (propose it, then wait for the OK)
+- [x] 6. Animation smoothness ([log](../log/2026-10-17-pose-lod.md)).
+  - Client [PoseLod](../../src/client/PoseLod.luau) (`QualityConfig` `PoseDetail`) used by the
+    Animal, Villager and Pet animators. Clips weren't made (the user would have to publish them).
+  - HitFeel was fine (Play() resets speed). The DamageFeedback leftover is fixed.
 
-6. **Animation:**
-   - Joint posing in code every frame in DashEffects, StaffClient, CookingPose, VillagerAnimator,
-     AnimalAnimator and PetAnimator.
-   - Make HitFeel's hitstop always restore track speed (it currently skips tracks that stopped or
-     were changed mid-freeze).
-   - Check animation priorities and fades.
+## Next: step 7 (propose it, then wait for the OK)
 
-## Steps after that (from [[perf-polish]])
 7. **Enemies:** about 230 server-moved Humanoids (orcs, animals, villagers). AI ticks: 0.2, 0.25, 0.3.
    Update far ones less often.
+
+## After that
 8. **Loading:**
    - `Sounds.preload()` fetches about 70 sounds on join.
    - ReplicatedFirst is empty: add a short loading screen.
    - Load far content later.
 
 Small leftovers found on the way:
-- DamageFeedback rewrites its colour grade every frame even at full health.
 - The admin panel needs the `` ` `` key, so it can't be opened on a phone.
 
 ## Separate: main issue damage decision

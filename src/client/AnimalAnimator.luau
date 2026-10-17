@@ -4,7 +4,8 @@
 -- peck while they stand, wings flap while they run, and tails swish. Each joint is a Motor6D
 -- on the animal's root with "Swing" (Leg, Head, Wing, Tail), "Phase" and "Side" attributes;
 -- the animal's type is its "Animal" attribute (AnimalConfig.Types). Looks only: the server
--- moves them. Animals further than AnimalConfig.AnimateRange from the camera are left still.
+-- moves them. Animals further than AnimalConfig.AnimateRange from the camera are left still;
+-- nearer ones are posed less often the further away or off screen they are (PoseLod).
 -- Now and then each one makes its Call (a moo, a cluck), heard nearby.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,6 +13,7 @@ local RunService = game:GetService("RunService")
 
 local AnimalConfig = require(ReplicatedStorage.Shared.Config.AnimalConfig)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
+local PoseLod = require(script.Parent.PoseLod)
 
 local TAU = math.pi * 2
 local LEG_SWING = 0.55 -- radians each way at a run
@@ -36,6 +38,7 @@ type Tracked = {
 	nextGraze: number,
 	nextCall: number,
 	seed: number,
+	lod: PoseLod.Timer,
 }
 
 local AnimalAnimator = {}
@@ -81,6 +84,7 @@ local function track(model: Model)
 		nextGraze = os.clock() + random:NextNumber(kind.Graze.Gap[1], kind.Graze.Gap[2]),
 		nextCall = os.clock() + (if kind.Call then random:NextNumber(0, kind.Call.Gap[2]) else math.huge),
 		seed = random:NextNumber(0, TAU),
+		lod = PoseLod.timer(),
 	}
 end
 
@@ -160,15 +164,15 @@ function AnimalAnimator.start()
 
 	local range = AnimalConfig.AnimateRange
 	RunService.PreSimulation:Connect(function(dt)
-		local camera = workspace.CurrentCamera
-		if not camera then
-			return
-		end
-		local eye = camera.CFrame.Position
+		PoseLod.frame()
 		local now = os.clock()
 		for _, animal in tracked do
-			if (animal.root.Position - eye).Magnitude <= range then
-				animate(animal, dt, now)
+			local position = animal.root.Position
+			if PoseLod.within(position, range) then
+				local step = PoseLod.due(animal.lod, position, dt)
+				if step then
+					animate(animal, step, now)
+				end
 			end
 		end
 	end)

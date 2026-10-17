@@ -21,6 +21,7 @@ export type Settings = {
 	-- most of a torch's cost, so it only comes back (thinned) on High.
 	TorchFlames: { [string]: number },
 	WorldLights: number, -- torch lights and town lamps lit at once, nearest the camera first (client LightBudget)
+	PoseDetail: number, -- scales the distances animals, villagers and pets are posed every frame (client PoseLod)
 }
 
 local QualityConfig = {}
@@ -41,6 +42,7 @@ QualityConfig.Tiers = {
 		Decor = 0.4,
 		TorchFlames = { Fire3 = 0.6 },
 		WorldLights = 6,
+		PoseDetail = 0.6,
 	},
 	Medium = {
 		Particles = 0.65,
@@ -55,6 +57,7 @@ QualityConfig.Tiers = {
 		Decor = 0.75,
 		TorchFlames = { Fire3 = 0.5, Fire2 = 0.5, Smoke = 1 },
 		WorldLights = 12,
+		PoseDetail = 0.85,
 	},
 	High = {
 		Particles = 1,
@@ -69,6 +72,7 @@ QualityConfig.Tiers = {
 		Decor = 1,
 		TorchFlames = { Fire3 = 0.5, Fire2 = 0.5, Smoke = 1, CandleLight = 1, Fire1 = 0.2 },
 		WorldLights = 24,
+		PoseDetail = 1,
 	},
 } :: { [Tier]: Settings }
 

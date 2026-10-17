@@ -11,6 +11,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] Animation smoothness: animals, villagers and pets posed less often when far or off screen; hitstop and priorities checked (2026-10-17, [log](log/2026-10-17-pose-lod.md))
 - [x] Lights and particles: shadow casters 52k → 11k, torch emitters tiered, only the nearest lights lit, ShadowMap really on (2026-10-17, [log](log/2026-10-17-lights-particles.md))
 - [x] Streaming and density: daisy clumps simplified, models stream whole, decor out of physics, fewer plants on lower tiers (2026-10-17, [log](log/2026-10-17-streaming-density.md))
 - [x] Startup cleanup: Workspace clutter out, dungeon layout in ServerStorage, statues and stands hold weapons from server start (2026-10-17, [log](log/2026-10-17-startup-bake-cleanup.md))

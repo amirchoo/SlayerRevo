@@ -3,9 +3,12 @@
 -- joints (AnimationConstraints on today's avatars, Motor6Ds on older rigs): an easy stroll while they move (legs swinging in step with their speed, a little
 -- knee bend, relaxed arm swing, a slight sway of the hips) and a gentle idle while they stand
 -- (breathing, looking about). Looks only: the server moves them. Villagers further than
--- ANIMATE_RANGE from the camera are left still.
+-- ANIMATE_RANGE from the camera are left still; nearer ones are posed less often the further
+-- away or off screen they are (PoseLod).
 
 local RunService = game:GetService("RunService")
+
+local PoseLod = require(script.Parent.PoseLod)
 
 local ANIMATE_RANGE = 150 -- studs from the camera
 local STRIDE = 3.4 -- studs covered per full step cycle (left and right)
@@ -20,7 +23,7 @@ local VillagerAnimator = {}
 
 type Joint = Motor6D | AnimationConstraint
 type Joints = { [string]: Joint }
-type Tracked = { model: Model, root: BasePart, joints: Joints, cycle: number, walk: number, seed: number }
+type Tracked = { model: Model, root: BasePart, joints: Joints, cycle: number, walk: number, seed: number, lod: PoseLod.Timer }
 
 local tracked: { [Model]: Tracked } = {}
 local random = Random.new()
@@ -38,7 +41,7 @@ local function track(model: Model)
 			joints[descendant.Name] = descendant :: Joint
 		end
 	end
-	tracked[model] = { model = model, root = root, joints = joints, cycle = random:NextNumber(), walk = 0, seed = random:NextNumber(0, TAU) }
+	tracked[model] = { model = model, root = root, joints = joints, cycle = random:NextNumber(), walk = 0, seed = random:NextNumber(0, TAU), lod = PoseLod.timer() }
 end
 
 local function set(joints: Joints, name: string, transform: CFrame)
@@ -97,15 +100,15 @@ function VillagerAnimator.start()
 	end
 
 	RunService.PreSimulation:Connect(function(dt)
-		local camera = workspace.CurrentCamera
-		if not camera then
-			return
-		end
-		local eye = camera.CFrame.Position
+		PoseLod.frame()
 		local now = os.clock()
 		for _, villager in tracked do
-			if (villager.root.Position - eye).Magnitude <= ANIMATE_RANGE then
-				animate(villager, dt, now)
+			local position = villager.root.Position
+			if PoseLod.within(position, ANIMATE_RANGE) then
+				local step = PoseLod.due(villager.lod, position, dt)
+				if step then
+					animate(villager, step, now)
+				end
 			end
 		end
 	end)

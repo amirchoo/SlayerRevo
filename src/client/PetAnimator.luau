@@ -6,7 +6,8 @@
 -- trot while the pet moves, and sets the eyelids (PetEyes): open with blinks while idle,
 -- walking or playing, half shut while loafing (slow blinks, the way cats do), shut asleep.
 -- Looks only: the server moves the pets and picks their state. Pets further than
--- ANIMATE_RANGE from the camera aren't posed.
+-- ANIMATE_RANGE from the camera aren't posed; nearer ones are posed less often the further away
+-- or off screen they are (PoseLod).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -14,6 +15,7 @@ local RunService = game:GetService("RunService")
 local NpcConfig = require(ReplicatedStorage.Shared.Config.NpcConfig)
 local RigClips = require(ReplicatedStorage.Shared.RigClips)
 local PetEyes = require(script.Parent.PetEyes)
+local PoseLod = require(script.Parent.PoseLod)
 
 local BEHAVIOUR = NpcConfig.PetBehaviour
 local ANIMATE_RANGE = 150 -- studs from the camera
@@ -47,6 +49,7 @@ type Tracked = {
 	cycle: number, -- walk cycle, in cycles
 	walk: number, -- 0..1, eased: how much it's walking
 	nextBlink: number,
+	lod: PoseLod.Timer,
 }
 
 local PetAnimator = {}
@@ -101,6 +104,7 @@ local function track(model: Model)
 		cycle = 0,
 		walk = 0,
 		nextBlink = os.clock() + random:NextNumber(BEHAVIOUR.BlinkEvery.Min, BEHAVIOUR.BlinkEvery.Max),
+		lod = PoseLod.timer(),
 	}
 	pet.clip = config.States[stateOf(pet)] or "Idle"
 	pet.eyes:set(config.Eyes[stateOf(pet)] or 1, true)
@@ -180,11 +184,15 @@ function PetAnimator.start()
 	end
 
 	RunService.PreRender:Connect(function(dt)
-		local camera = workspace.CurrentCamera
+		PoseLod.frame()
 		local now = os.clock()
 		for _, pet in tracked do
-			if camera and (pet.root.Position - camera.CFrame.Position).Magnitude <= ANIMATE_RANGE then
-				step(pet, dt, now)
+			local position = pet.root.Position
+			if PoseLod.within(position, ANIMATE_RANGE) then
+				local elapsed = PoseLod.due(pet.lod, position, dt)
+				if elapsed then
+					step(pet, elapsed, now)
+				end
 			end
 		end
 	end)

@@ -31,9 +31,10 @@ flicker, stutter). No Studio playtests unless asked.
   only the nearest torch lights and town lamps lit (client LightBudget), PrioritizeLightingQuality
   off (= ShadowMap). Hit effects and PlayerLight were already fine.
   ([log](../log/2026-10-17-lights-particles.md))
-- [ ] 6. Animation smoothness:
-  - replace per-frame joint posing with clips
-  - make sure hitstop always restores track speed
-  - check animation priorities and fades
+- [x] 6. Animation smoothness: Lua posing kept but given level of detail (client PoseLod: every
+  frame near and on screen, 30/15 per second further out, 6 off screen; `PoseDetail` per tier) for
+  animals, villagers and pets, instead of clips that the user would have to publish. Hitstop,
+  priorities and fades checked: fine. DamageFeedback's grade no longer rewritten every frame.
+  ([log](../log/2026-10-17-pose-lod.md))
 - [ ] 7. Enemy smoothness: fewer and cheaper server updates for far enemies, animals and villagers.
 - [ ] 8. Loading: fewer startup preloads, a ReplicatedFirst loading screen, and far content loaded later.
