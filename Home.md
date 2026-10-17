@@ -15,6 +15,7 @@ Start page for the Obsidian vault. Code under `src/` and `tools/` is hidden here
 - [Game design direction](docs/design.md): the source of truth. §12 lists where built systems differ from it.
 - [Combat, weapons and armor breakdown](docs/combat-breakdown.md)
 - [3D model brief](docs/model-brief.md)
+- [Animation style](docs/animation-style.md): how every weapon animation is made (priority 0: [remake them all](notes/tasks/weapon-anim-remake.md))
 
 ## How-to guides
 - [Adding a weapon](docs/adding-a-weapon.md)

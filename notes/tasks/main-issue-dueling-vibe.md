@@ -1,6 +1,7 @@
 # MAIN ISSUE: Combat feel and atmosphere like Dueling Grounds
 
-**Priority 1** (2026-10-17): the polish and performance pass ([[perf-polish]]) comes first.
+**Priority 2** (since 2026-10-18): the weapon animation remake ([[weapon-anim-remake]]) and then the polish and
+performance pass ([[perf-polish]]) come first.
 
 Opened 2026-10-17. **Say "do the main issue" in a new session**: Claude reads this note, does the
 first unticked step below, ticks it here (with a link to its log note), and logs it as usual.

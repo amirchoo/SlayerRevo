@@ -8,8 +8,8 @@ The reference: a TikTok by skaterstudios ("Day 2 learning scripting"), saved at
 `~/Downloads/v29025g50000dal5dlnog65oqfnmnrdg.MP4`. The user said "that's exactly my idea of smooth
 animation… that's where we're getting to". It's the target for melee feel and for PvP.
 
-How it fits with the other work: the perf pass ([[perf-polish]]) is priority 0, and the main issue
-([[main-issue-dueling-vibe]]) is priority 1. These steps overlap with the main issue (its step 5 is
+How it fits with the other work (since 2026-10-18): the weapon animation remake ([[weapon-anim-remake]]) is
+priority 0, the perf pass ([[perf-polish]]) priority 1, and the main issue ([[main-issue-dueling-vibe]]) priority 2. These steps overlap with the main issue (its step 5 is
 trails), so check that note before building to avoid doing something twice.
 
 ## Steps (one per session or message, cheapest feel first)

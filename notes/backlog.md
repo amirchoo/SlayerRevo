@@ -4,8 +4,9 @@ Ideas and features to build, most important first. Ask Claude Code to "do the to
 or turn an item into a task note (notes/tasks/) when it needs more detail.
 
 ## Next
-- [ ] **Priority 0: Polish and performance pass (lag)** for the phone and the Intel Mac, one step per message ([note](tasks/perf-polish.md))
-- [ ] **Priority 1: MAIN ISSUE:** combat feel and atmosphere like Dueling Grounds, one step per session ([note](tasks/main-issue-dueling-vibe.md))
+- [ ] **Priority 0: Remake every weapon's animations** in the Sword combo's style, one weapon at a time ([note](tasks/weapon-anim-remake.md), recipe [animation-style](../docs/animation-style.md))
+- [ ] **Priority 1: Polish and performance pass (lag)** for the phone and the Intel Mac, one step per message ([note](tasks/perf-polish.md))
+- [ ] **Priority 2: MAIN ISSUE:** combat feel and atmosphere like Dueling Grounds, one step per session ([note](tasks/main-issue-dueling-vibe.md))
 
 ## Later
 - [ ] **Idea (the user's, 2026-10-17): dungeons in their own place.** Entering teleports you (and
@@ -27,6 +28,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] Animation style saved (docs/animation-style.md) and the weapon animation remake set as priority 0 (2026-10-18, [log](log/2026-10-18-animation-style-saved.md))
 - [x] Hit feel exaggerated: the camera jolt rolls and tilts, bigger zoom punch, longer heavy hitstop, flash-then-silhouettes impact frame (2026-10-18, [log](log/2026-10-18-hit-impact-exaggerated.md))
 - [x] Sword combo redone, exaggerated after the battlegrounds video (lunge cut, backhand whip, leaping slam); Blender show/combo viewers with the real sword (2026-10-18, [log](log/2026-10-18-sword-combo-exaggerated.md))
 - [x] See an animation in Blender's window: tools/blender/show.sh <Clip> (2026-10-18, [log](log/2026-10-18-blender-show-anim.md))

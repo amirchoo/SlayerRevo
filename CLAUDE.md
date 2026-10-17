@@ -30,6 +30,12 @@
   render a preview and check it before handing over). `docs/model-brief.md` still holds the look
   rules, and its last section is the steps for getting a .glb into the game.
 
+## Priority 0: weapon animation remake
+- Every weapon's animations get remade in the Sword combo's style (the user's call, 2026-10-18). The
+  recipe is `docs/animation-style.md` (read it before authoring any clip); the checklist is
+  `notes/tasks/weapon-anim-remake.md`. When the user says "do the animation remake", do its next weapon.
+- Priority order: 0 this remake, 1 the perf pass (`notes/tasks/perf-polish.md`), 2 the main issue below.
+
 ## Main issue
 - `notes/tasks/main-issue-dueling-vibe.md` is the current main issue (combat feel and atmosphere like
   Dueling Grounds). When the user says "do the main issue", read it, do the first unticked step,
