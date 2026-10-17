@@ -23,3 +23,6 @@ assets/source/*.split.glb
 .obsidian/plugins/
 .obsidian/themes/
 .trash/
+
+# Animation previews rendered by tools/blender/preview.sh
+/build/

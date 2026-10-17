@@ -20,6 +20,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] Blender animation preview (tools/blender/preview.sh): renders any clip as frame sheets and a video, checked against Roblox to 0.1° (2026-10-18, [log](log/2026-10-18-blender-anim-preview.md))
 - [x] Sword combo and idle redone katana-style after Dueling Grounds: a chained combo, flick wind-ups, held end poses; Mace keeps the old swings (2026-10-18, [log](log/2026-10-18-sword-katana-redo.md))
 - [x] Sword recovery clips published and wired in (CombatConfig Sword.Combo, Emberfang training stand) (2026-10-18, [log](log/2026-10-18-sword-recovery-ids.md))
 - [x] Sword swings recover on a curve instead of snapping back; swings blend into each other and into the idle; Sword/Emberfang/Mace damage raised (2026-10-17, [log](log/2026-10-17-sword-recovery-blend.md))
