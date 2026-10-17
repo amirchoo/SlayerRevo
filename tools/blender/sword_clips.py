@@ -30,6 +30,8 @@ Hit times match HitDelay in src/shared/Config/CombatConfig.luau (Sword; Emberfan
 """
 import math
 
+WEAPON = "Sword"  # the model in the hand (weapon_model.WEAPONS) for the armor clearance check
+
 
 def P(base=None, **changes):
     """A pose: `base` with some controls changed."""
@@ -137,11 +139,15 @@ def spun(pose, deg):
 
 # Guard: the blade held level across the face, pointing left, the edge out; the left hand braces the
 # flat near its middle. The chest turns the right shoulder forward and hunches behind the blade.
-GUARD_GRIP, GUARD_BLADE = (0.95, 1.2, 3.4), (-0.97, 0.15, 0.12)
+# Clear of armor (a chestplate sticks out ~0.6 studs in front of the chest, sleeves ~0.8 round the
+# arms): the blade 1.5 studs out, the chest square behind it (turned, its corner reached the blade),
+# leaning in for the reach. The left elbow drops under the blade so the forearm comes up to it from
+# below, not along it.
+GUARD_GRIP, GUARD_BLADE = (0.85, 1.5, 3.35), (-0.97, 0.18, 0.12)
 GUARD = P(IDLE, grip=GUARD_GRIP, blade=GUARD_BLADE, edge=(0.1, 0.95, -0.25),
-          elbow=(2.4, 0.2, 2.4), lwrist=(-0.6, 1.3, 3.62), lelbow=(-2.4, 0.4, 2.7),
-          chest=(-12, -10, 0), head=(0, -4))
-GUARD_IN = P(GUARD, grip=(0.93, 1.15, 3.35), lwrist=(-0.62, 1.25, 3.57), chest=(-13, -8, 0))  # breathing in
+          elbow=(2.3, 0.6, 2.2), lwrist=(-0.8, 1.72, 3.5), lelbow=(-0.7, 0.6, 1.6),
+          chest=(0, -14, 0), head=(0, -2))
+GUARD_IN = P(GUARD, grip=(0.84, 1.47, 3.31), lwrist=(-0.81, 1.69, 3.46), chest=(0, -12, 0))  # breathing in
 
 # Spin (heavy, loops 0.5 s a turn = Sword.Heavy.TickInterval): a low, wide whirl, the sword arm flung
 # out to the right with the blade level as its extension, the free arm out the other way, the body

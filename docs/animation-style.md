@@ -55,6 +55,9 @@ Blender's IK solves the limbs. Key options: `ease` per key, `{group: ease}` per 
    <Clip> --out <scratch> --blend <scratch>`), and read the report:
    - **no** `OUT OF REACH`, `TIP IN THE GROUND`, `ARM NEARLY STRAIGHT` (except the idle's own pose);
    - **0 FLIPs** and ~0 CORNERs outside `"sudden"` moments;
+   - **0 `WEAPON IN BODY`**: the real weapon model against the body *in armor* (players wear a chestplate,
+     ~1.6-stud sleeves and a tall helmet; the bare rig hides that). Name the model with `WEAPON = ...` in
+     the clips file and add it to `weapon_model.WEAPONS` first. Grazes under 0.1 studs are fine;
    - edge leads ≥ ~0.8; tip speed at the hit ~250–300 studs/s for a sword cut.
 3. Fix what it flags (the fixes that worked are below), re-run, then author for real and **look at**
    the preview sheets (`build/anim_preview/<Clip>/behind_sheet.png`, side too).

@@ -32,6 +32,9 @@ from mathutils import Matrix, Quaternion, Vector
 
 sys.path.insert(0, str(Path(__file__).parent))
 import preview_anim as rig  # noqa: E402
+import weapon_model  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[2]
 
 TO_BLENDER = rig.TO_BLENDER
 TO_ROBLOX = TO_BLENDER.inverted()
@@ -771,8 +774,86 @@ def load_clips():
         spec = importlib.util.spec_from_file_location(path.stem, path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
+        for clip in module.CLIPS.values():
+            if getattr(module, "WEAPON", None):
+                clip.setdefault("weapon", module.WEAPON)  # the weapon model the clearance check holds
         clips.update(module.CLIPS)
     return clips
+
+
+# --- the weapon against the body ------------------------------------------------------------
+# Clips are authored on a bare blocky rig, but players wear armor: the weapon must stay clear of
+# it. The boxes below are the bulkiest armor on a player (size and offset in each part's space,
+# Roblox axes; measured in a playtest 2026-10-18: chestplate, sleeves, helmet, leggings, boots),
+# shrunk a little because the meshes are rounder than their boxes. Parts without armor use their
+# own size. Every baked sample, every vertex of the real weapon model (weapon_model.py, fitted in
+# the hand as the game fits it) is tested against every box.
+ARMOR = {
+    "Head": ((1.73, 1.26 + 0.87, 1.6), (0, 0.435, 0)),  # helmet down to the head's middle
+    "UpperTorso": ((2.26, 2.22, 1.39), (-0.01, -0.19, 0.01)),
+    "LowerTorso": ((2.1, 0.6, 1.2), (0, 0, 0)),  # the chestplate's skirt / belt
+    "LeftUpperArm": ((1.56, 1.12, 1.56), (-0.18, 0.10, 0)), "RightUpperArm": ((1.56, 1.12, 1.56), (0.18, 0.10, 0)),
+    "LeftLowerArm": ((1.64, 1.27, 1.64), (0, -0.05, 0)), "RightLowerArm": ((1.64, 1.27, 1.64), (0, -0.05, 0)),
+    "LeftUpperLeg": ((1.1, 1.21, 1.1), (0, 0, 0)), "RightUpperLeg": ((1.1, 1.21, 1.1), (0, 0, 0)),
+    "LeftLowerLeg": ((1.1, 1.44, 1.33), (0, -0.08, -0.05)), "RightLowerLeg": ((1.1, 1.44, 1.33), (0, -0.08, -0.05)),
+}
+ARMOR_SHRINK = 0.85  # of each box's half-size: round meshes don't fill their corners
+HAND_REACH = 1.0  # studs: weapon points this close to a hand that holds it may touch that arm
+GRAZE = 0.1  # studs: shallower than this is a graze (the meshes are rounder than the boxes)
+MODEL_POINTS = 400  # vertices of the model tested (spread evenly)
+_model_points = {}
+
+
+def model_points(weapon):
+    """The weapon model's vertices in the right hand's space (Roblox axes), thinned out."""
+    if weapon not in _model_points:
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        model, _ = weapon_model.load(ROOT, weapon)
+        verts = [v.co.copy() for v in model.data.vertices]
+        step = max(1, len(verts) // MODEL_POINTS)
+        _model_points[weapon] = verts[::step]
+    return _model_points[weapon]
+
+
+def clearance(frames, clip, name):
+    """Prints where the weapon goes into the (armored) body, if anywhere."""
+    weapon = clip.get("weapon")
+    if not weapon or weapon not in weapon_model.WEAPONS:
+        return
+    points = model_points(weapon)
+    hits = []  # (t, part, depth)
+    for t, _, world in frames:
+        hand = world["RightHand"]
+        lhand = world["LeftHand"].to_translation()
+        grip = hand.to_translation()
+        world_points = [hand @ v for v in points]
+        for part, m in world.items():
+            if part in ("HumanoidRootPart", "RightHand", "LeftHand", "LeftFoot", "RightFoot"):
+                continue
+            size, offset = ARMOR.get(part, (rig.PARTS[part], (0, 0, 0)))
+            half = Vector(size) * (0.5 * (ARMOR_SHRINK if part in ARMOR else 1.0))
+            inv = (m @ Matrix.Translation(offset)).inverted()
+            worst = 0.0
+            for w in world_points:
+                if part == "RightLowerArm" and (w - grip).length < HAND_REACH:
+                    continue
+                if part == "LeftLowerArm" and (w - lhand).length < HAND_REACH:
+                    continue
+                q = inv @ w
+                depth = min(half.x - abs(q.x), half.y - abs(q.y), half.z - abs(q.z))
+                worst = max(worst, depth)
+            if worst > 0:
+                hits.append((t, part, worst))
+    deep_hits = [h for h in hits if h[2] > GRAZE]
+    print(f"AUTHOR {name} clearance: " + (f"the {weapon} stays out of the armored body" if not deep_hits else
+          f"the {weapon} goes into the armored body ({len({h[0] for h in deep_hits})} samples)")
+          + (f"; grazes (under {GRAZE} studs) at {len({h[0] for h in hits if h[2] <= GRAZE})} samples" if len(deep_hits) < len(hits) else ""))
+    by_part = {}
+    for t, part, depth in deep_hits:
+        lo, hi, deep, deep_t = by_part.get(part, (t, t, 0.0, t))
+        by_part[part] = (min(lo, t), max(hi, t), max(deep, depth), t if depth > deep else deep_t)
+    for part, (lo, hi, deep, deep_t) in sorted(by_part.items(), key=lambda kv: kv[1][0]):
+        print(f"AUTHOR   WEAPON IN BODY: {part} {lo:.3f}-{hi:.3f}s, up to {deep:.2f} studs deep (at {deep_t:.3f}s)")
 
 
 def main():
@@ -788,6 +869,8 @@ def main():
             print(f"AUTHOR no clip named {name} (have: {', '.join(clips)})")
             continue
         clip = clips[name]
+        if clip.get("weapon") in weapon_model.WEAPONS:
+            model_points(clip["weapon"])  # loads the model first: loading it resets the scene
         bpy.ops.wm.read_factory_settings(use_empty=True)
         bpy.context.scene.render.fps = FPS
         arm, ctl, rest_bone, part_rest = build_rig()
@@ -795,6 +878,7 @@ def main():
         frames = bake(arm, rest_bone, part_rest, clip, name)
         report(frames, clip, name)
         smoothness(frames, clip, name)
+        clearance(frames, clip, name)
         out = Path(args.out) / f"{name}.rbxmx"
         thinned = thin(frames, clip)
         print(f"AUTHOR {name}: {len(thinned)} keyframes kept of {len(frames)} samples")

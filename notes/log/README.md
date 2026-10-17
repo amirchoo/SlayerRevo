@@ -4,6 +4,7 @@ One note per finished piece of work, newest first. Each says what was asked, wha
 the choices made (and where to tune them), and what's still open.
 
 ## 2026-10-18
+- [Sword guard clipped through armor; authoring now checks the real weapon against armor](2026-10-18-guard-armor-clearance.md)
 - [Weapon animation research; the Sword's guard, spin and new walk (carry) clip](2026-10-18-sword-rest-walk.md)
 - [Arcane Atelier video analysed: bright painterly look, VFX that hide the swing, heavy-sword walk (priority 1, after the remake)](2026-10-18-arcane-atelier-video.md)
 - [Animation style saved; remaking every weapon's animations is now priority 0](2026-10-18-animation-style-saved.md)

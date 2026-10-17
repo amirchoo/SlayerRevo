@@ -28,6 +28,8 @@ battlegrounds steps ([[battlegrounds-combat]]).
 - **Every weapon also gets a walk (carry) clip** (the user said yes, 2026-10-18): upper body only, played
   instead of the idle while moving; the weapon low and trailing so it looks heavy, like the Arcane Atelier
   video ([[arcane-atelier-reference]]). Name it `<Weapon>Walk`.
+- **Armor clearance:** the AUTHOR report must show 0 `WEAPON IN BODY` (the real model vs an armored body,
+  [log](../log/2026-10-18-guard-armor-clearance.md)). Open: re-pose SwordSwing2/3, which go through armor (ask).
 - **Read [[weapon-animation-research]] first**: how each weapon really works and how to animate it.
 - Ask before changing how a move plays (its timing, reach or what it does); the look is Claude's call
   within [[animation-style]].
