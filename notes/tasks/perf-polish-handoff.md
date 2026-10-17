@@ -9,7 +9,10 @@ proposes the next step.
   - log it in `notes/log/`
   - tick it in [[perf-polish]], `notes/log/README.md` and `notes/backlog.md`
   - commit and push to origin/main
-  - list exactly what to check on the **phone and the PC** (FPS with Shift+F5, load time, flicker, stutter)
+  - **don't** hand the user a checklist each step (2026-10-17: the Mac is slow and the phone needs a
+    publish). Claude checks each step itself: syntax, edit-mode `execute_luau` (modules load, counts),
+    and for risky steps only a short console-only playtest (no screenshots). Each log keeps its
+    "To check" list; **one combined phone + PC check comes at the end of the pass** (after step 8).
 - **No Studio playtests or screenshots** unless asked (the 2026-10-17 second session asked: the user
   was away from the Mac, so Claude playtested steps 3–4 itself; that was for that session only). Read-only `execute_luau` counts in edit mode
   are fine (that's how the audit counted).
@@ -37,7 +40,7 @@ proposes the next step.
 - The session should run in **auto mode** (the user wants it).
 - **Waiting on the user (Studio):**
   - enter the Grimgorg dungeon once (check the saved TerrainRegion survived: walls and floor are there)
-  - playtest steps 1–4 on the phone and the Mac (checklists at the end of each log)
+  - the one combined check at the end of the pass (steps 1–8; the "To check" lists in each log)
   - set the streaming properties on Workspace (step 4's log, "To do")
 - [x] 0. Audit ([log](../log/2026-10-17-perf-audit.md)). Counts, the top 10 costs, and what's built at startup.
 - [x] 1. Quality tiers ([log](../log/2026-10-17-quality-tiers.md)).
