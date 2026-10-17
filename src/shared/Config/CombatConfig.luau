@@ -302,22 +302,24 @@ local Emberfang: ComboWeapon = {
 	},
 }
 
--- Heavier, blunter cousin of the sword: same combo and guard (it reuses the sword's
--- animations, played slower), harder hits, and a finisher that knocks back and stuns.
+-- Heavier, blunter cousin of the sword: same guard, harder hits, and a finisher that knocks back
+-- and stuns. It keeps the sword's previous swings and idle (played slower); the Sword's own were
+-- redone katana-style (2026-10-18), which doesn't suit a mace. Its own pass comes later.
 local MACE_SPEED = 0.8
 local Mace: ComboWeapon = {
 	ToolName = "Mace",
 	Hand = "Right",
-	IdleAnimation = Sword.IdleAnimation,
+	IdleAnimation = "rbxassetid://138485130990728", -- the sword's previous idle
 	AnimationSpeed = MACE_SPEED,
 	Stamina = 12,
 	ModelFit = { Length = 4.4, GripFrom = 0.14 },
 	Combo = {
-		-- Slower animations land later: the sword's HitDelays divided by MACE_SPEED.
-		{ Animation = Sword.Combo[1].Animation, Damage = 40, Cooldown = 0.7, HitDelay = 0.26 / MACE_SPEED },
-		{ Animation = Sword.Combo[2].Animation, Damage = 47, Cooldown = 0.7, HitDelay = 0.24 / MACE_SPEED },
+		-- The sword's previous SwordSwing1-3 (2026-10-17 recovery clips); slower animations land
+		-- later: their HitDelays divided by MACE_SPEED.
+		{ Animation = "rbxassetid://105789243194617", Damage = 40, Cooldown = 0.7, HitDelay = 0.26 / MACE_SPEED },
+		{ Animation = "rbxassetid://125525200710497", Damage = 47, Cooldown = 0.7, HitDelay = 0.24 / MACE_SPEED },
 		{
-			Animation = Sword.Combo[3].Animation,
+			Animation = "rbxassetid://108194359632313",
 			Damage = 87,
 			Cooldown = 1.05,
 			HitDelay = 0.4 / MACE_SPEED,

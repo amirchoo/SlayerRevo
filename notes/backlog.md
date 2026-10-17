@@ -20,6 +20,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] Sword combo and idle redone katana-style after Dueling Grounds: a chained combo, flick wind-ups, held end poses; Mace keeps the old swings (2026-10-18, [log](log/2026-10-18-sword-katana-redo.md))
 - [x] Sword recovery clips published and wired in (CombatConfig Sword.Combo, Emberfang training stand) (2026-10-18, [log](log/2026-10-18-sword-recovery-ids.md))
 - [x] Sword swings recover on a curve instead of snapping back; swings blend into each other and into the idle; Sword/Emberfang/Mace damage raised (2026-10-17, [log](log/2026-10-17-sword-recovery-blend.md))
 - [x] Loading: a Slayer Revo loading screen, sounds preloaded once you're in (2026-10-17, [log](log/2026-10-17-loading.md))

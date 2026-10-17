@@ -149,56 +149,104 @@ MACE_PLANE = ((0.1, 0.95, 0.35), (0.05, 0, -1))
 MACE_RAISED_ARM = {"arm": (0.12, 0.95, 0.4), "wrist": -80, "larm": 70, "lelbow": 45}  # head tipped back over the head
 KNEEL = {"drop": 1.0, "lleg": (75, -100, 25), "rleg": (5, -120, 85)}  # right knee near the ground
 
+# Sword idle (after Dueling Grounds' katana): one hand low by the right hip, the blade angled up
+# and forward; the left arm hangs loose. Every swing starts and ends here.
+IDLE_UPPER = {"arm": (0.3, -0.9, -0.3), "wrist": 0, "blade_lean": (0.35, 0.5, -0.8), "chest": -10, "larm": 5, "lelbow": 15}
+# Planted, wide footwork: the weight shifts instead of lunging.
+SHIFT_LEFT = {"drop": 0.3, "lleg": (30, -40, 10), "rleg": (-12, -20, 32)}  # onto the left (front) foot
+SHIFT_RIGHT = {"drop": 0.3, "lleg": (-12, -20, 32), "rleg": (30, -40, 10)}  # onto the right foot
+OVERHEAD_COIL = {"drop": 0.25, "lleg": (20, -35, 15), "rleg": (15, -40, 25)}  # sitting into the back leg
+LOW_CUT = {"drop": 0.6, "lleg": (50, -70, 20), "rleg": (-15, -60, 75)}  # a deep step for the overhead
+# The held end poses: each is where the next swing starts. A held pose fixes its blade's twist
+# (the lean its own swing's plane gives it), so the next swing, on another plane, starts from
+# exactly the same twist and the chain has no seam.
+S1_PLANE = ((0.85, 0.35, -0.2), (0.2, 0.15, -1))
+S2_PLANE = ((-0.85, 0.15, -0.45), (0.05, 0.1, -1))
+S3_PLANE = ((0.15, 0.95, 0.15), (-0.1, 0.1, -1))
+
+
+def plane_lean(plane, arm):
+    """The blade lean an arm direction gets on a swing plane (as resolve_arm_leans does)."""
+    return cross(norm(cross(norm(plane[0]), norm(plane[1]))), norm(arm))
+
+
+def halfway(a, b):
+    """The lean halfway between two (under 180 degrees apart). A recovery passes through it, so
+    each half of the blade's turn back to the idle stays under 90 degrees and can't flip."""
+    return norm(tuple(x + y for x, y in zip(norm(a), norm(b))))
+
+
+S1_END = dict(arm=(-0.65, -0.4, -0.85), elbow=0, chest=20, hips=8, lean=-14, larm=-40, lelbow=30, **SHIFT_LEFT)
+S1_HELD = dict(S1_END, arm=(-0.66, -0.43, -0.83), elbow=4, chest=19, lean=-13, larm=-37, blade_lean=plane_lean(S1_PLANE, (-0.66, -0.43, -0.83)))
+S2_END = dict(arm=(0.7, 0.05, -0.85), elbow=0, chest=-20, hips=-8, lean=-12, larm=45, lelbow=30, **SHIFT_RIGHT)
+S2_HELD = dict(S2_END, arm=(0.7, 0.0, -0.86), elbow=4, chest=-19, lean=-11, larm=42, blade_lean=plane_lean(S2_PLANE, (0.7, 0.0, -0.86)))
+S3_END = dict(arm=(-0.45, -0.55, -0.8), elbow=0, chest=18, hips=8, lean=-22, larm=-45, lelbow=30, **LOW_CUT)
+
 GUARD_ARM = {"arm": (0.25, -0.1, -1), "wrist": 0, "blade_lean": (-1, 0.15, 0), "chest": -25, "larm": 65, "lelbow": 70}
 
 # (time, pose). Each swing's "plane" is two arm directions it sweeps between; the blade
 # leans along that motion so the arm's twist stays consistent between keyframes.
 SWINGS = {
-    # Swings 1-3 (after Dueling Grounds' katana): a deliberate wind-up (about a quarter second,
-    # the sword cocked with the elbow bent, held a beat so it reads), a strike that whips
-    # through a big arc and ends with the arm fully out to the side, held, then back to the
-    # ready stance. "overlap" spreads it through the whole body (hips lead, the blade whips
-    # last; see overlapped). Hit times match HitDelay in CombatConfig.
-    "SwordSwing1": {  # forehand: cock over the right shoulder, sweep across and out to the far left
-        "hit": 0.26,
-        "overlap": True,
-        "plane": ((0.6, 0.8, 0.25), (0.15, 0.3, -1)),
+    # Swings 1-3 and the idle, after Dueling Grounds' katana (redone 2026-10-18 from the user's
+    # recording, frame by frame). Their combo is a chain: each cut ends where the next one
+    # starts, so nothing goes back to a ready stance between hits. The wind-up is a flick (one
+    # frame there), the cut crosses a big arc in about 0.06 s, and the finished pose is held
+    # about a quarter second: that hold is the pause between hits. A swing nobody follows up
+    # sinks back to the idle on a curve. Feet stay planted wide; the hips and chest turn.
+    # Order: forehand diagonal down to low left, flat backhand out to the right, then an
+    # overhead held cocked behind the head and cut diagonally down to low left.
+    # Hit times match HitDelay in CombatConfig (Sword and Emberfang).
+    "SwordIdle": {  # one hand low by the right hip, blade angled up and forward; upper body only
+        "hit": None,
+        "loop": True,
+        "upper_body_only": True,
+        "plane": None,
         "keys": [
-            (0.00, pose(arm=(0.3, -0.6, -0.75), wrist=-40, elbow=0, **READY), EASE_SETTLE),
-            (0.14, pose(arm=(0.6, 0.8, 0.25), elbow=-70, wrist=-50, chest=-40, hips=-22, lean=5, larm=45, lelbow=60,
-                        **COIL_BACK), EASE_HOLD),  # cocked, held a beat
-            (0.20, pose(arm=(0.62, 0.82, 0.3), elbow=-80, wrist=-50, chest=-45, hips=-25, lean=8, larm=50, lelbow=60,
-                        **COIL_BACK), EASE_WHIP),
-            (0.26, pose(arm=(0.15, 0.3, -1), elbow=10, chest=5, hips=12, lean=-12, larm=0, lelbow=30,
-                        **LUNGE_LEFT), EASE_SETTLE),  # the hit, mid-arc
-            (0.32, pose(arm=(-0.8, 0.05, -0.6), elbow=0, chest=25, hips=12, lean=-16, larm=-55, lelbow=30,
-                        **LUNGE_LEFT), EASE_HOLD),  # fully out to the left
-            (0.46, pose(arm=(-0.8, 0.0, -0.62), elbow=5, chest=23, hips=11, lean=-15, larm=-50, lelbow=30,
-                        **LUNGE_LEFT), EASE_WHIP),  # held, then the spent blade starts to sink
-            (0.64, pose(arm=(-0.45, -0.55, -0.7), wrist=-55, elbow=12, chest=12, hips=6, lean=-7, larm=-22, lelbow=28,
-                        **DRAW_IN_LEFT), EASE_SETTLE),  # swinging low back across, the back foot drawing in
-            (0.98, pose(arm=(0.3, -0.6, -0.75), wrist=-40, elbow=0, **READY)),  # settled in the ready stance
+            (0.0, pose(**IDLE_UPPER)),
+            (0.9, pose(**dict(IDLE_UPPER, arm=(0.32, -0.88, -0.36), lean=-3, larm=7))),
+            (1.8, pose(**IDLE_UPPER)),
         ],
     },
-    "SwordSwing2": {  # backhand: cock across to the left shoulder, sweep back and out to the far right
-        "hit": 0.24,
+    "SwordSwing1": {  # forehand: flick up beside the right shoulder, cut down across to low left
+        "hit": 0.18,
         "overlap": True,
-        "plane": ((-0.9, 0.2, -0.2), (0.05, 0.1, -1)),
+        "plane": S1_PLANE,
         "keys": [
-            (0.00, pose(arm=(0.2, -0.5, -0.85), wrist=-40, elbow=0, **READY), EASE_SETTLE),
-            (0.13, pose(arm=(-0.9, 0.2, -0.2), elbow=-75, chest=40, hips=18, lean=5, larm=-40, lelbow=50,
-                        **COIL_BACK), EASE_HOLD),  # cocked, held a beat
-            (0.18, pose(arm=(-0.92, 0.22, -0.15), elbow=-85, chest=44, hips=20, lean=8, larm=-42, lelbow=50,
-                        **COIL_BACK), EASE_WHIP),
-            (0.24, pose(arm=(0.05, 0.1, -1), elbow=10, chest=0, hips=-12, lean=-12, larm=0, lelbow=30,
-                        **LUNGE_RIGHT), EASE_SETTLE),  # the hit, mid-arc
-            (0.30, pose(arm=(0.8, 0.05, -0.6), elbow=0, chest=-25, hips=-12, lean=-14, larm=50, lelbow=30,
-                        **LUNGE_RIGHT), EASE_HOLD),  # fully out to the right
-            (0.44, pose(arm=(0.8, 0.0, -0.62), elbow=5, chest=-23, hips=-11, lean=-13, larm=45, lelbow=30,
-                        **LUNGE_RIGHT), EASE_WHIP),  # held, then the spent blade starts to sink
-            (0.62, pose(arm=(0.55, -0.55, -0.65), wrist=-55, elbow=12, chest=-12, hips=-6, lean=-6, larm=20, lelbow=28,
-                        **DRAW_IN_RIGHT), EASE_SETTLE),  # swinging low back across, the back foot drawing in
-            (0.96, pose(arm=(0.2, -0.5, -0.85), wrist=-40, elbow=0, **READY)),  # settled in the ready stance
+            (0.00, pose(**IDLE_UPPER, **READY), EASE_SETTLE),
+            (0.08, pose(arm=(0.85, 0.35, -0.2), elbow=-85, wrist=-35, chest=-20, hips=-10, lean=6, larm=30, lelbow=40,
+                        **OVERHEAD_COIL), EASE_HOLD),  # flicked up, blade standing beside the shoulder
+            (0.12, pose(arm=(0.86, 0.38, -0.15), elbow=-92, wrist=-35, chest=-22, hips=-11, lean=7, larm=32, lelbow=40,
+                        **OVERHEAD_COIL), EASE_WHIP),
+            (0.18, pose(arm=(0.2, 0.15, -1), elbow=5, chest=5, hips=8, lean=-10, larm=0, lelbow=25,
+                        **SHIFT_LEFT), EASE_SETTLE),  # the hit, mid-arc
+            (0.24, pose(**S1_END), EASE_HOLD),  # out low to the left
+            (0.50, pose(**S1_HELD), EASE_SMOOTH),  # held (swing 2 starts from here)
+            (0.66, pose(arm=(-0.2, -0.75, -0.6), wrist=-30, elbow=10, chest=12, hips=5, lean=-6, larm=-15, lelbow=20,
+                        blade_lean=halfway(S1_HELD["blade_lean"], IDLE_UPPER["blade_lean"]), **DRAW_IN_LEFT), EASE_SMOOTH),  # the spent blade swings low back across
+            (0.90, pose(**IDLE_UPPER, **READY)),
+        ],
+    },
+    "SwordSwing2": {  # backhand: from swing 1's held pose, cut flat across and out to the right
+        "hit": 0.15,
+        "overlap": True,
+        "plane": S2_PLANE,
+        "keys": [
+            (0.00, pose(**S1_HELD), EASE_SETTLE),
+            (0.035, pose(arm=(-0.85, -0.15, -0.5), elbow=-40, wrist=-45, chest=26, hips=12, lean=-5, larm=-38, lelbow=35,
+                         blade_lean=(0, 1, 0), **SHIFT_LEFT), EASE_SETTLE),  # the wrist rolls the blade over the top
+            (0.07, pose(arm=(-0.85, 0.15, -0.45), elbow=-75, wrist=-45, chest=30, hips=14, lean=5, larm=-40, lelbow=40,
+                        **SHIFT_LEFT), EASE_HOLD),  # cocked across the left side, blade trailing
+            (0.10, pose(arm=(-0.87, 0.17, -0.4), elbow=-82, wrist=-45, chest=32, hips=15, lean=6, larm=-42, lelbow=40,
+                        **SHIFT_LEFT), EASE_WHIP),
+            (0.125, pose(arm=(-0.6, 0.17, -0.8), elbow=-35, wrist=-50, chest=18, hips=6, lean=-3, larm=-22, lelbow=35,
+                         **SHIFT_LEFT), EASE_LINEAR),  # mid-whip (splits the fastest turn so it can't flip)
+            (0.15, pose(arm=(0.05, 0.1, -1), elbow=8, chest=0, hips=-6, lean=-10, larm=0, lelbow=25,
+                        **SHIFT_RIGHT), EASE_SETTLE),  # the hit, mid-arc
+            (0.21, pose(**S2_END), EASE_HOLD),  # out to the right
+            (0.48, pose(**S2_HELD), EASE_SMOOTH),  # held (swing 3 starts from here)
+            (0.64, pose(arm=(0.55, -0.6, -0.55), wrist=-35, elbow=10, chest=-14, hips=-6, lean=-5, larm=18, lelbow=20,
+                        blade_lean=halfway(S2_HELD["blade_lean"], IDLE_UPPER["blade_lean"]), **DRAW_IN_RIGHT), EASE_SMOOTH),  # dropping back toward the hip
+            (0.88, pose(**IDLE_UPPER, **READY)),
         ],
     },
     "SwordGuard": {  # looping block stance (no hit; loops while the player holds block)
@@ -212,21 +260,23 @@ SWINGS = {
             (1.2, pose(lean=0, **GUARD_ARM)),
         ],
     },
-    "SwordSwing3": {  # leaping overhead slam: sink low, spring up with the sword cocked behind the head, crash down
-        "hit": 0.40,
+    "SwordSwing3": {  # overhead: raise the blade cocked behind the head, hold a beat, cut down to low left
+        "hit": 0.38,
         "overlap": True,
-        "plane": ((0.1, 0.95, 0.3), (0.05, 0.5, -0.85)),
+        "plane": S3_PLANE,
         "keys": [
-            (0.00, pose(arm=(0.2, -0.5, -0.85), wrist=-40, elbow=0, **READY), EASE_SETTLE),
-            (0.14, pose(arm=(0.2, -0.5, -0.85), wrist=-40, elbow=-25, lean=12, drop=0.6, larm=-20,
-                        lleg=(45, -85, 40), rleg=(45, -85, 40)), EASE_SETTLE),  # sink before the jump
-            (0.28, pose(arm=(0.1, 0.95, 0.3), elbow=-60, lean=20, larm=70, lelbow=40, **TUCKED), EASE_HOLD),  # in the air, cocked
-            (0.33, pose(arm=(0.1, 0.95, 0.35), elbow=-70, lean=23, larm=72, lelbow=40, **TUCKED), EASE_WHIP),  # then crash down
-            (0.40, pose(arm=(0.05, -0.45, -0.9), elbow=0, lean=-30, larm=-25, **DEEP_LUNGE), EASE_HOLD),  # the hit, held
-            (0.62, pose(arm=(0.05, -0.47, -0.88), elbow=5, lean=-32, larm=-27, **DEEP_LUNGE), EASE_WHIP),
-            (0.86, pose(arm=(0.15, -0.6, -0.75), wrist=-50, elbow=8, lean=-14, larm=-10, lelbow=25,
-                        **RISING), EASE_SETTLE),  # levering the blade up out of the ground, rising off the knee
-            (1.20, pose(arm=(0.2, -0.5, -0.85), wrist=-40, elbow=0, **READY)),  # settled in the ready stance
+            (0.00, pose(**S2_HELD), EASE_SETTLE),
+            (0.13, pose(arm=(0.15, 0.95, 0.15), elbow=-115, wrist=-40, chest=-15, hips=-8, lean=12, larm=55, lelbow=50,
+                        **OVERHEAD_COIL), EASE_HOLD),  # cocked behind the head
+            (0.31, pose(arm=(0.17, 0.96, 0.2), elbow=-125, wrist=-40, chest=-18, hips=-10, lean=15, larm=58, lelbow=50,
+                        **OVERHEAD_COIL), EASE_WHIP),  # held a beat so it reads, then the cut
+            (0.38, pose(arm=(-0.1, 0.1, -1), elbow=5, chest=10, hips=8, lean=-18, larm=-10, lelbow=25,
+                        **LOW_CUT), EASE_SETTLE),  # the hit, mid-arc
+            (0.45, pose(**S3_END), EASE_HOLD),  # low to the left, deep in the step
+            (0.75, pose(**dict(S3_END, arm=(-0.45, -0.58, -0.78), lean=-24, larm=-42)), EASE_SMOOTH),  # held
+            (0.93, pose(arm=(0.0, -0.75, -0.65), wrist=-35, elbow=10, chest=10, hips=4, lean=-10, larm=-15, lelbow=20,
+                        blade_lean=halfway(plane_lean(S3_PLANE, (-0.45, -0.58, -0.78)), IDLE_UPPER["blade_lean"]), **RISING), EASE_SMOOTH),  # levering the blade up, rising out of the step
+            (1.20, pose(**IDLE_UPPER, **READY)),
         ],
     },
     "SwordSpin": {  # heavy attack: loops while the player holds left-click

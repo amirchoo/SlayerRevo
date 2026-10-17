@@ -11,7 +11,11 @@ first unticked step below, ticks it here (with a link to its log note), and logs
   gave the Sword swings a real recovery, plus chain and end blending for every combo weapon
   ([log](../log/2026-10-17-sword-recovery-blend.md)). The damage raise is applied too.
   The user published SwordSwing1–3 and the IDs are in ([log](../log/2026-10-18-sword-recovery-ids.md)).
-  **Waiting on the user:** play the Sword. If the Sword feels right, give the Rapier the same recovery next (the user uses it).
+- **2026-10-18:** the user asked to redo the whole Sword animation the way Dueling Grounds does it.
+  Studied the recording frame by frame and rebuilt the combo as a chain (each cut starts where the
+  last ended), with flick wind-ups and held end poses, plus a katana idle
+  ([log](../log/2026-10-18-sword-katana-redo.md)). **Waiting on the user:** publish SwordIdle and
+  SwordSwing1–3 from Rig.AnimSaves and send the four IDs, then play the Sword. If the Sword feels right, give the Rapier the same recovery next (the user uses it).
 - **Waiting on the user:**
   - a playtest of the new Sword swings and the body dash
   - ~~a decision on Sword, Emberfang and Mace damage~~ **Decided 2026-10-17: raise them back to the old damage
@@ -121,6 +125,9 @@ Katana 1v1 on the "Classic" night shrine map) and online guides:
     tempo (hit at about 0.25 s, swings about 0.55 s apart, as in Dueling Grounds)
     ([log](../log/2026-10-17-sword-whole-body-body-dash.md)). Published 2026-10-17; the dash flip is fixed; **needs a playtest by the user.** Damage
     per second is about 40% lower; ask whether to raise the damage.
+  - [x] 1a-5. Sword redone katana-style: a chained combo (each cut starts where the last ended),
+    flick wind-ups, held end poses, a katana idle; the Mace keeps the old swings
+    ([log](../log/2026-10-18-sword-katana-redo.md)). Needs publishing (4 clips) and a playtest.
   - For every remaining weapon: turn on `"overlap": True`, cock the wind-up with a negative `elbow`, and
     give light attacks a deliberate wind-up (hit at about 0.25 s rather than 0.13–0.15 s).
   - [ ] 1b. Axe (its chops are in sword_anims.py)
