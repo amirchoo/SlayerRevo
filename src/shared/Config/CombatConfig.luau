@@ -1153,12 +1153,14 @@ return {
 		LowHealthDesaturate = 0.45, -- how much colour drains at zero health
 	},
 	-- Hitstop: when your hit lands, you and the target freeze for Base + damage x PerDamage
-	-- seconds (kept between Min and Max), so a sword poke stops for ~0.05 s, a big slam ~0.1 s.
+	-- seconds (kept between Min and Max), plus Heavy more on heavy hits (see HitImpact), so a
+	-- sword cut stops for ~0.07 s and a finisher ~0.15 s. Exaggerated after battlegrounds games.
 	Hitstop = {
-		Base = 0.03,
-		PerDamage = 0.0008,
-		Min = 0.04,
-		Max = 0.1,
+		Base = 0.04,
+		PerDamage = 0.001,
+		Min = 0.05,
+		Max = 0.12,
+		Heavy = 0.05,
 	},
 	-- More impact when your hit lands (HitFeel), after battlegrounds games. A hit is "heavy" when it
 	-- comes from a combo's last swing or a heavy attack (landing within HeavySlack seconds of its hit
@@ -1167,20 +1169,41 @@ return {
 		HeavySlack = 0.4,
 		-- Camera shake: Min + damage x PerDamage studs (up to Max), x Heavy for heavy hits. Full
 		-- strength when the hit is within FullRange studs of you, none past NoneRange (bow shots).
-		Shake = { Min = 0.05, PerDamage = 0.0015, Max = 0.16, Heavy = 2, Time = 0.12, FullRange = 8, NoneRange = 20 },
+		-- It's a jolt that rings out: it wobbles Frequency times a second and dies away over Time.
+		-- Besides sliding, the view tilts (up to Tilt degrees) and rolls (Roll degrees; HeavyRoll on
+		-- heavy hits), which sells a hit far more than sliding alone.
+		Shake = {
+			Min = 0.12,
+			PerDamage = 0.003,
+			Max = 0.3,
+			Heavy = 2.2,
+			Time = 0.22,
+			Frequency = 22,
+			Tilt = 0.8,
+			Roll = 1.5,
+			HeavyRoll = 4.5,
+			FullRange = 8,
+			NoneRange = 20,
+		},
 		-- Zoom punch: the view narrows by Degrees (HeavyDegrees for heavy hits) in In seconds and
 		-- eases back over Out. Skipped while something else (a bow's aim) is zooming.
-		Zoom = { Degrees = 1.2, HeavyDegrees = 4, In = 0.03, Out = 0.2 },
-		-- Impact frame on heavy hits: for Time seconds the screen goes grey and harsh and the target
-		-- turns into a black silhouette with a red outline. At most one every MinGap seconds.
+		Zoom = { Degrees = 3, HeavyDegrees = 9, In = 0.03, Out = 0.3 },
+		-- Impact frame on heavy hits: first FlashTime seconds of a near-white flash, then until Time
+		-- the screen goes washed-out and harsh with the target as a black silhouette outlined in
+		-- Outline and you as one outlined in AttackerOutline (Attacker = false leaves you out).
+		-- At most one every MinGap seconds.
 		ImpactFrame = {
 			Enabled = true,
-			Time = 0.07,
-			MinGap = 0.5,
-			Contrast = 0.8,
-			Saturation = -0.9,
-			Brightness = 0.06,
+			Time = 0.12,
+			FlashTime = 0.03,
+			MinGap = 0.4,
+			Contrast = 1,
+			Saturation = -1,
+			Brightness = 0.15,
+			FlashBrightness = 0.7,
 			Outline = Color3.fromRGB(255, 40, 40),
+			Attacker = true,
+			AttackerOutline = Color3.fromRGB(255, 255, 255),
 		},
 	},
 	-- Mana: what the staff's spells spend (other weapons use stamina). It refills at

@@ -27,6 +27,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] Hit feel exaggerated: the camera jolt rolls and tilts, bigger zoom punch, longer heavy hitstop, flash-then-silhouettes impact frame (2026-10-18, [log](log/2026-10-18-hit-impact-exaggerated.md))
 - [x] Sword combo redone, exaggerated after the battlegrounds video (lunge cut, backhand whip, leaping slam); Blender show/combo viewers with the real sword (2026-10-18, [log](log/2026-10-18-sword-combo-exaggerated.md))
 - [x] See an animation in Blender's window: tools/blender/show.sh <Clip> (2026-10-18, [log](log/2026-10-18-blender-show-anim.md))
 - [x] Dash afterimages: a trail of white copies behind every dash, pooled for the phone (2026-10-18, [log](log/2026-10-18-dash-afterimages.md))

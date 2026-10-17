@@ -15,7 +15,8 @@ trails), so check that note before building to avoid doing something twice.
 ## Steps (one per session or message, cheapest feel first)
 - [x] **1. Hits land harder:** a camera shake and zoom punch on every hit, and an impact frame (grey
   screen, black silhouette with a red outline) on combo enders, heavies and kills.
-  `HitFeel.luau`, `CombatConfig.HitImpact` ([log](../log/2026-10-18-hit-impact-frame.md)). Not playtested yet.
+  `HitFeel.luau`, `CombatConfig.HitImpact` ([log](../log/2026-10-18-hit-impact-frame.md)). Exaggerated the same day
+  (rolling jolt, bigger zoom, two-stage impact frame; [log](../log/2026-10-18-hit-impact-exaggerated.md)). Not playtested yet.
 - [x] **2. Afterimages on dash:** see-through white copies of the character trailing behind and fading
   out over about 0.2 s. Belongs in `DashEffects.luau`. Mind weak phones: few copies, reused.
   Pooled per character, 2/3/4 copies by quality tier, `CombatConfig.Dash.Afterimages` ([log](../log/2026-10-18-dash-afterimages.md)). Not playtested yet.
