@@ -10,6 +10,9 @@
 -- Shockwave (optional): the blow hits the ground, drawing a dust ring as wide as Radius.
 export type ComboMove = {
 	Animation: string,
+	-- The same swing with only the upper body; while the player walks, the client blends toward it so
+	-- the legs walk instead of sliding in the swing's stance (ComboWeaponClient).
+	MovingAnimation: string?,
 	Damage: number,
 	Cooldown: number,
 	HitDelay: number,
@@ -233,10 +236,10 @@ local Sword: ComboWeapon = {
 	Stamina = 8,
 	ModelFit = { Length = 5.2, GripFrom = 0.11 },
 	Combo = {
-		-- HitDelay matches each swing's "Hit" keyframe in tools/sword_anims.py.
-		{ Animation = "rbxassetid://104914800619644", Damage = 33, Cooldown = 0.55, HitDelay = 0.18 }, -- SwordSwing1
-		{ Animation = "rbxassetid://99968467521543", Damage = 41, Cooldown = 0.55, HitDelay = 0.15 }, -- SwordSwing2
-		{ Animation = "rbxassetid://98009756362330", Damage = 65, Cooldown = 0.85, HitDelay = 0.38 }, -- SwordSwing3
+		-- HitDelay matches each swing's "Hit" keyframe in tools/blender/sword_clips.py.
+		{ Animation = "rbxassetid://104914800619644", MovingAnimation = "rbxassetid://88087903830218", Damage = 33, Cooldown = 0.55, HitDelay = 0.18 }, -- SwordSwing1
+		{ Animation = "rbxassetid://99968467521543", MovingAnimation = "rbxassetid://88649716388151", Damage = 41, Cooldown = 0.55, HitDelay = 0.15 }, -- SwordSwing2
+		{ Animation = "rbxassetid://98009756362330", MovingAnimation = "rbxassetid://79289853982811", Damage = 65, Cooldown = 0.85, HitDelay = 0.38 }, -- SwordSwing3
 	},
 	ComboWindow = 0.8,
 	Range = 6,
@@ -274,9 +277,9 @@ local Emberfang: ComboWeapon = {
 	ModelFit = { Length = 5.4, GripFrom = 0.12 }, -- the hand on the grip wrap
 	TrailColor = Color3.fromRGB(255, 120, 40),
 	Combo = {
-		{ Animation = Sword.Combo[1].Animation, Damage = 42, Cooldown = 0.55, HitDelay = Sword.Combo[1].HitDelay },
-		{ Animation = Sword.Combo[2].Animation, Damage = 52, Cooldown = 0.55, HitDelay = Sword.Combo[2].HitDelay },
-		{ Animation = Sword.Combo[3].Animation, Damage = 85, Cooldown = 0.85, HitDelay = Sword.Combo[3].HitDelay },
+		{ Animation = Sword.Combo[1].Animation, MovingAnimation = Sword.Combo[1].MovingAnimation, Damage = 42, Cooldown = 0.55, HitDelay = Sword.Combo[1].HitDelay },
+		{ Animation = Sword.Combo[2].Animation, MovingAnimation = Sword.Combo[2].MovingAnimation, Damage = 52, Cooldown = 0.55, HitDelay = Sword.Combo[2].HitDelay },
+		{ Animation = Sword.Combo[3].Animation, MovingAnimation = Sword.Combo[3].MovingAnimation, Damage = 85, Cooldown = 0.85, HitDelay = Sword.Combo[3].HitDelay },
 	},
 	ComboWindow = 0.8,
 	Range = 6.5,

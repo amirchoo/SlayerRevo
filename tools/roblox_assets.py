@@ -4,6 +4,7 @@
     python3 tools/roblox_assets.py rename <assetId> <new name>
     python3 tools/roblox_assets.py archive <assetId> [...]
     python3 tools/roblox_assets.py restore <assetId> [...]
+    python3 tools/roblox_assets.py upload <file.rbxmx> [...]   (new animation assets; prints their IDs)
 
 The API key is read from ~/.config/slayerrevo/roblox-api-key (made on
 create.roblox.com/dashboard/credentials with Assets API read + write); it never goes in the repo.
@@ -12,11 +13,13 @@ Open Cloud can't archive animations ("not an archivable asset type"): unused one
 """
 import json
 import sys
+import time
 import urllib.error
 import urllib.request
 import uuid
 from pathlib import Path
 
+USER_ID = "7791876777"  # ColePalmer6954, who owns the game's animations
 KEY_FILE = Path.home() / ".config" / "slayerrevo" / "roblox-api-key"
 BASE = "https://apis.roblox.com/assets/v1/assets"
 
@@ -59,6 +62,30 @@ def set_archived(asset_id, archived):
     return f"{asset_id}: {action}: {'ok' if status == 200 else f'error {status} {text[:200]}'}"
 
 
+def upload(path):
+    """Creates a new Animation asset from a .rbxmx and waits for its ID."""
+    path = Path(path)
+    name = path.stem
+    boundary = uuid.uuid4().hex
+    request = json.dumps({"assetType": "Animation", "displayName": name, "description": f"Slayer Revo: {name}",
+                          "creationContext": {"creator": {"userId": USER_ID}}})
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"request\"\r\n\r\n{request}\r\n"
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"fileContent\"; filename=\"{path.name}\"\r\n"
+            f"Content-Type: model/x-rbxm\r\n\r\n").encode() + path.read_bytes() + f"\r\n--{boundary}--\r\n".encode()
+    status, text = call("POST", BASE, body, f"multipart/form-data; boundary={boundary}")
+    if status != 200:
+        return f"{name}: upload error {status} {text[:300]}"
+    operation = json.loads(text).get("path", "")
+    for _ in range(30):
+        status, text = call("GET", f"https://apis.roblox.com/assets/v1/{operation}")
+        d = json.loads(text) if status == 200 else {}
+        if d.get("done"):
+            response = d.get("response", {})
+            return f"{name}: {response.get('assetId')}" if response.get("assetId") else f"{name}: failed {text[:300]}"
+        time.sleep(2)
+    return f"{name}: still processing ({operation})"
+
+
 def main(argv):
     if len(argv) < 2:
         print(__doc__)
@@ -69,6 +96,9 @@ def main(argv):
             print(info(a))
     elif command == "rename":
         print(rename(args[0], " ".join(args[1:])))
+    elif command == "upload":
+        for a in args:
+            print(upload(a))
     elif command in ("archive", "restore"):
         for a in args:
             print(set_archived(a, command == "archive"))

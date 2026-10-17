@@ -64,6 +64,11 @@ local SWING_FADE_IN = 0.08 -- seconds the first swing of a combo blends in from 
 local CHAIN_FADE = 0.15 -- seconds a swing blends into the next one in the combo
 local END_FADE = 0.25 -- seconds a finishing swing blends into the idle
 local LUNGE_TIME = 0.15 -- seconds a lunging move pushes forward
+-- Swings with a MovingAnimation (the upper body only) blend toward it while we walk, so the legs
+-- walk instead of sliding in the swing's planted stance; standing still, the full-body swing plays.
+local MOVING_BLEND = 0.15 -- seconds to blend between the two when we start or stop walking
+local MOVING_SPEED = 0.1 -- MoveDirection length above which we count as walking
+local MIN_WEIGHT = 0.001 -- a blended-out twin keeps playing (in sync) at this weight
 -- The ground indicator showing a charged heavy's reach.
 local REACH_COLOR = Color3.fromRGB(255, 200, 120)
 local REACH_TRANSPARENCY = 0.8
@@ -113,6 +118,7 @@ type Tracks = {
 	heavy: AnimationTrack?, -- spin loop, a quake's or thrust's wind-up, or the whole reap
 	heavySlam: AnimationTrack?, -- a quake's smash, a thrust's lunge, a flurry's stabs, a rush's spin
 	swings: { AnimationTrack },
+	movingSwings: { [number]: AnimationTrack }, -- each swing's upper-body twin, if it has one
 }
 
 local HEAVY_CONFIRM_TIME = 0.5 -- if the server hasn't started the spin by now, it refused
@@ -158,10 +164,15 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		heavySlamAnimation = makeAnimation(lunge.ThrustAnimation)
 	end
 	local swingAnimations: { Animation } = {}
+	local movingAnimations: { [number]: Animation } = {}
 	for index, move in combo do
 		local animation = makeAnimation(move.Animation)
 		if animation then
 			swingAnimations[index] = animation
+		end
+		local moving = move.MovingAnimation and makeAnimation(move.MovingAnimation)
+		if moving then
+			movingAnimations[index] = moving
 		end
 	end
 
@@ -177,7 +188,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			return nil
 		end
 		-- Priorities set here so it doesn't matter how each animation was published.
-		local tracks: Tracks = { swings = {} }
+		local tracks: Tracks = { swings = {}, movingSwings = {} }
 		if idleAnimation then
 			local idle = animator:LoadAnimation(idleAnimation)
 			idle.Priority = Enum.AnimationPriority.Idle
@@ -195,6 +206,12 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			track.Priority = Enum.AnimationPriority.Action
 			track.Looped = false
 			tracks.swings[index] = track
+		end
+		for index, animation in movingAnimations do
+			local track = animator:LoadAnimation(animation)
+			track.Priority = Enum.AnimationPriority.Action
+			track.Looped = false
+			tracks.movingSwings[index] = track
 		end
 		if guardAnimation then
 			local guard = animator:LoadAnimation(guardAnimation)
@@ -235,6 +252,8 @@ function ComboWeaponClient.new(config: ComboWeapon)
 	local lastSwing = 0
 	local swingToken = 0
 	local fadeTokens: { [AnimationTrack]: {} } = setmetatable({}, { __mode = "k" }) :: any -- the latest fadeOutAtEnd per track
+	local twinOf: { [AnimationTrack]: AnimationTrack } = setmetatable({}, { __mode = "k" }) :: any -- a swing's upper-body twin
+	local blendConnection: RBXScriptConnection? = nil -- keeps the playing swing and its twin blended to how we move
 
 	-- Set while blocking; call it to lower the guard.
 	local stopBlock: (() -> ())? = nil
@@ -315,6 +334,10 @@ function ComboWeaponClient.new(config: ComboWeapon)
 				local length = track.Length
 				if length > 0 and track.Speed > 0 and track.TimePosition >= length - END_FADE * track.Speed then
 					track:Stop(END_FADE)
+					local twin = twinOf[track]
+					if twin then
+						twin:Stop(END_FADE)
+					end
 					break
 				end
 				RunService.Heartbeat:Wait()
@@ -326,6 +349,9 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		local tracks = currentTracks()
 		if tracks then
 			for _, track in tracks.swings do
+				track:Stop(fade)
+			end
+			for _, track in tracks.movingSwings do
 				track:Stop(fade)
 			end
 		end
@@ -364,15 +390,49 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		local swing = tracks and tracks.swings[step]
 		if tracks and swing then
 			local chained = false
-			for _, track in tracks.swings do
+			for index, track in tracks.swings do
 				if track.IsPlaying then
 					chained = true
 					if track ~= swing then
 						track:Stop(CHAIN_FADE)
+						local twin = tracks.movingSwings[index]
+						if twin then
+							twin:Stop(CHAIN_FADE)
+						end
 					end
 				end
 			end
-			swing:Play(if chained then CHAIN_FADE else SWING_FADE_IN, 1, config.AnimationSpeed)
+			local fade = if chained then CHAIN_FADE else SWING_FADE_IN
+			local twin = tracks.movingSwings[step]
+			local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid")
+			if twin and humanoid then
+				twinOf[swing] = twin
+				local function walking(): boolean
+					return humanoid.MoveDirection.Magnitude > MOVING_SPEED
+				end
+				local moving = walking()
+				swing:Play(fade, if moving then MIN_WEIGHT else 1, config.AnimationSpeed)
+				twin:Play(fade, if moving then 1 else MIN_WEIGHT, config.AnimationSpeed)
+				if blendConnection then
+					blendConnection:Disconnect()
+				end
+				local connection: RBXScriptConnection
+				connection = RunService.Heartbeat:Connect(function()
+					if not swing.IsPlaying then
+						connection:Disconnect()
+						return
+					end
+					local now = walking()
+					if now ~= moving then
+						moving = now
+						swing:AdjustWeight(if moving then MIN_WEIGHT else 1, MOVING_BLEND)
+						twin:AdjustWeight(if moving then 1 else MIN_WEIGHT, MOVING_BLEND)
+					end
+				end)
+				blendConnection = connection
+			else
+				swing:Play(fade, 1, config.AnimationSpeed)
+			end
 			fadeOutAtEnd(swing)
 		end
 		playSwingEffects(tool, step)

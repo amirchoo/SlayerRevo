@@ -20,6 +20,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] Sword swings while walking: upper-body twins blend in so the legs walk instead of sliding (2026-10-18, [log](log/2026-10-18-sword-walk-while-swinging.md))
 - [x] Animations authored in Blender (tools/blender/author.sh): IK rig, planted feet, f-curves; Sword swings 1–3 redone with it, Swing 3's hit frame and Swing 1's wind-up fixed (2026-10-18, [log](log/2026-10-18-blender-anim-authoring.md))
 - [x] Blender animation preview (tools/blender/preview.sh): renders any clip as frame sheets and a video, checked against Roblox to 0.1° (2026-10-18, [log](log/2026-10-18-blender-anim-preview.md))
 - [x] Sword combo and idle redone katana-style after Dueling Grounds: a chained combo, flick wind-ups, held end poses; Mace keeps the old swings (2026-10-18, [log](log/2026-10-18-sword-katana-redo.md))

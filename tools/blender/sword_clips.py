@@ -1,6 +1,7 @@
 """The Sword's combo, authored for tools/blender/author_anim.py (run: sh tools/blender/author.sh SwordSwing1).
 
-Each clip is {"hit": seconds or None, "keys": [(time, pose, ease)], "loop"?, "upper_body_only"?}.
+Each clip is {"hit": seconds or None, "keys": [(time, pose, ease)], "loop"?, "upper_body_only"?, "moving_twin"?}.
+"moving_twin" also writes <Clip>Moving.rbxmx: the upper body only, played while walking (the legs walk).
 `ease` shapes the segment that leaves the key: "smooth" (default), "in" (slow start, arrives
 fastest: into a hit), "out" (leaves fast, eases to a stop), "inout", "linear" (a held pose).
 
@@ -77,7 +78,8 @@ S3_END = P(S2_HELD, grip=(-0.6, 1.15, 2.5), blade=(-0.95, -0.05, -0.3), edge=(-0
 S3_HELD = P(S3_END, grip=(-0.62, 1.12, 2.47), blade=(-0.95, -0.08, -0.32), chest=(17, -19, 0))
 
 CLIPS = {
-    "SwordSwing1": {  # forehand: flick up beside the right shoulder, cut down across to low left
+    "SwordSwing1": {
+        "moving_twin": True,  # forehand: flick up beside the right shoulder, cut down across to low left
         "hit": 0.18,
         "keys": [
             (0.00, START, "out"),
@@ -101,7 +103,8 @@ CLIPS = {
             (0.90, START),
         ],
     },
-    "SwordSwing2": {  # backhand: from swing 1's held pose, roll the blade over, cut flat out to the right
+    "SwordSwing2": {
+        "moving_twin": True,  # backhand: from swing 1's held pose, roll the blade over, cut flat out to the right
         "hit": 0.15,
         "keys": [
             (0.00, S1_HELD, "out"),
@@ -125,7 +128,8 @@ CLIPS = {
             (0.88, START),
         ],
     },
-    "SwordSwing3": {  # overhead: raise the blade cocked behind the head, hold a beat, cut down to low left
+    "SwordSwing3": {
+        "moving_twin": True,  # overhead: raise the blade cocked behind the head, hold a beat, cut down to low left
         "hit": 0.38,
         "keys": [
             (0.00, S2_HELD, "out"),

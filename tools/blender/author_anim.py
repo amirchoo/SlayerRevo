@@ -576,6 +576,20 @@ def main():
         thinned = thin(frames, clip)
         print(f"AUTHOR {name}: {len(thinned)} keyframes kept of {len(frames)} samples")
         write_rbxmx(out, name, thinned, clip)
+        if clip.get("moving_twin"):
+            # The same swing with only the upper body, played while walking so the legs walk
+            # (ComboWeaponClient crossfades the two). The hips' turn and tilt are folded into the
+            # chest, so the upper body still turns as far; the hips' sink is left out.
+            twin = []
+            for t, transforms, world in frames:
+                folded = dict(transforms)
+                folded["UpperTorso"] = transforms["LowerTorso"].to_quaternion().to_matrix().to_4x4() @ transforms["UpperTorso"]
+                twin.append((t, folded, world))
+            twin_clip = dict(clip, upper_body_only=True)
+            twin = thin(twin, twin_clip)
+            twin_out = Path(args.out) / f"{name}Moving.rbxmx"
+            write_rbxmx(twin_out, f"{name}Moving", twin, twin_clip)
+            print(f"AUTHOR wrote {twin_out} ({len(twin)} keyframes, upper body only)")
         Path(args.blend).mkdir(parents=True, exist_ok=True)
         bpy.ops.wm.save_as_mainfile(filepath=str(Path(args.blend) / f"{name}.blend"))
         print(f"AUTHOR wrote {out}")
