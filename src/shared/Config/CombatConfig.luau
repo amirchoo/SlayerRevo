@@ -234,7 +234,7 @@ local Sword: ComboWeapon = {
 	ModelFit = { Length = 5.2, GripFrom = 0.11 },
 	Combo = {
 		-- HitDelay matches each swing's "Hit" keyframe in tools/sword_anims.py.
-		{ Animation = "rbxassetid://90592657091699", Damage = 33, Cooldown = 0.55, HitDelay = 0.18 }, -- SwordSwing1
+		{ Animation = "rbxassetid://104914800619644", Damage = 33, Cooldown = 0.55, HitDelay = 0.18 }, -- SwordSwing1
 		{ Animation = "rbxassetid://99968467521543", Damage = 41, Cooldown = 0.55, HitDelay = 0.15 }, -- SwordSwing2
 		{ Animation = "rbxassetid://98009756362330", Damage = 65, Cooldown = 0.85, HitDelay = 0.38 }, -- SwordSwing3
 	},

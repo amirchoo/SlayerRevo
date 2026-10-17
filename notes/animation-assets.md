@@ -8,7 +8,7 @@ in use. Every name is unique except these Sword clips, which have **two live cop
 
 | Name | In use by | ID | Renamed to (2026-10-18, done) |
 |---|---|---|---|
-| SwordSwing1 | Sword, Emberfang | 90592657091699 | (keep) |
+| SwordSwing1 | Sword, Emberfang | 104914800619644 | (keep) |
 | SwordSwing2 | Sword, Emberfang | 99968467521543 | (keep) |
 | SwordSwing3 | Sword, Emberfang, training stand | 98009756362330 | (keep) |
 | SwordIdle | Sword, Emberfang | 128056004893251 | (keep) |

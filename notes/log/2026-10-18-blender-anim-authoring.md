@@ -63,3 +63,9 @@ Publishing as new makes a new asset (and ID) every time. Publish over the existi
 (in the publish dialog, pick the clip's current asset to overwrite). The ID stays the same, so
 CombatConfig needs no change. Old unused assets can be archived on the Creator Dashboard.
 Current IDs: SwordSwing1 90592657091699, SwordSwing2 99968467521543, SwordSwing3 98009756362330.
+
+## Published (2026-10-18, later)
+The user published over the existing assets. Swings 2 and 3 kept their IDs (99968467521543,
+98009756362330), so nothing changed for them. Swing 1 came out as a new asset, **104914800619644**:
+it's in `Sword.Combo[1]` (Emberfang follows), and the old 90592657091699 is renamed "OLD SwordSwing1".
+Studio has it (Rojo synced). Not playtested yet.

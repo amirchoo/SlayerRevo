@@ -16,7 +16,7 @@ the two notes it points to. Update this note at the end of every session.
   reached Studio (Rojo had stopped).
 
 ## Waiting on the user (in this order, on the Mac)
-> 2026-10-18 (latest): SwordSwing1–3 were re-authored in Blender ([log](../log/2026-10-18-blender-anim-authoring.md)) and are staged in `Workspace.Rig.AnimSaves`. **First:** the user publishes them and sends the three IDs; put them in `Sword.Combo` and Swing 3's in TrainingStands. New clips are now made with `tools/blender/author.sh` (data in `tools/blender/*_clips.py`).
+> 2026-10-18 (latest): SwordSwing1–3 were re-authored in Blender ([log](../log/2026-10-18-blender-anim-authoring.md)) and are staged in `Workspace.Rig.AnimSaves`. Published 2026-10-18 (Swing 1 is the new 104914800619644; 2 and 3 were written over). **First:** ask how the new Sword combo plays. New clips are now made with `tools/blender/author.sh` (data in `tools/blender/*_clips.py`).
 > 2026-10-18 (later): the Sword was redone katana-style and the four clips are published and in ([log](../log/2026-10-18-sword-katana-redo.md)). **First:** ask how the new Sword plays.
 > 2026-10-18: steps 1 and 2 are done (Rojo connected; Sword IDs in, [log](../log/2026-10-18-sword-recovery-ids.md)). Step 3 and a Sword playtest are left.
 
