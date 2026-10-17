@@ -3,6 +3,8 @@
 Start page for the Obsidian vault. Code under `src/` and `tools/` is hidden here; edit it in VS Code.
 
 ## Work
+- **[Session handoff: start here](notes/tasks/session-handoff.md)**: where things stand and what's next
+- [Perf pass final check](notes/tasks/perf-final-check.md): the one phone + Mac check for the lag pass
 - **[Main issue: combat feel and atmosphere like Dueling Grounds](notes/tasks/main-issue-dueling-vibe.md)**: one step per session
 - [Backlog](notes/backlog.md): features and ideas, most important first
 - [Bugs](notes/bugs.md): found while playtesting

@@ -1,7 +1,7 @@
 # Handoff: polish and performance pass (continue from here)
 
 Updated 2026-10-17 in the third session (steps 5–8 done, the pass is built; 3–4 the second session, 0–2 the first).
-**Say "continue the perf pass" in a new session**: Claude reads this note and [[perf-polish]], then
+**Start with [[session-handoff]]** (the latest state). Saying "continue the perf pass": Claude reads this note and [[perf-polish]], then
 proposes the next step.
 
 ## How the user wants to work
