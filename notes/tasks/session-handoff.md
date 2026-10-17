@@ -5,6 +5,11 @@ Written 2026-10-17 at the end of the third session; the user is switching to the
 the two notes it points to. Update this note at the end of every session.
 
 ## Where things stand
+- **New (2026-10-18): battlegrounds-style combat, then PvP duels.** The user sent a reference video
+  ("that's where we're getting to"). It was analysed in [[battlegrounds-combat-reference]], and the
+  plan is the step list in [[battlegrounds-combat]]. Step 1 (shake, zoom punch, impact frame) is done
+  but not playtested. **First:** ask how hits feel, then continue with step 2 when the user says
+  "do the battlegrounds task". PvP duels are step 7; ask the user for the duel rules before building it.
 - **Perf pass (priority 0): all 8 steps are built.** The user's first phone test showed no lag,
   but trees and ground were missing (memory: streaming was on defaults). Fixed in
   `default.project.json` ([log](../log/2026-10-17-streaming-fix.md)); not tested on the phone yet.
