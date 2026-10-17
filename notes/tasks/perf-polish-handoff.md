@@ -1,6 +1,6 @@
 # Handoff: polish and performance pass (continue from here)
 
-Updated 2026-10-17 in the third session (steps 5–6 done; 3–4 the second session, 0–2 the first).
+Updated 2026-10-17 in the third session (steps 5–7 done; 3–4 the second session, 0–2 the first).
 **Say "continue the perf pass" in a new session**: Claude reads this note and [[perf-polish]], then
 proposes the next step.
 
@@ -76,12 +76,13 @@ proposes the next step.
     Animal, Villager and Pet animators. Clips weren't made (the user would have to publish them).
   - HitFeel was fine (Play() resets speed). The DamageFeedback leftover is fixed.
 
-## Next: step 7 (propose it, then wait for the OK)
+- [x] 7. Far creatures sleep ([log](../log/2026-10-17-dormancy.md)).
+  - Server [Dormancy](../../src/server/Dormancy.luau) used by EnemyService (packs, lone orcs) and AnimalService.
+  - Testing gotcha: move a test character from the client (the server's PivotTo gets snapped back).
 
-7. **Enemies:** about 230 server-moved Humanoids (orcs, animals, villagers). AI ticks: 0.2, 0.25, 0.3.
-   Update far ones less often.
+- **The combined final check** is [[perf-final-check]]: add each finished step's checks there.
 
-## After that
+## Next: step 8 (propose it, then wait for the OK)
 8. **Loading:**
    - `Sounds.preload()` fetches about 70 sounds on join.
    - ReplicatedFirst is empty: add a short loading screen.

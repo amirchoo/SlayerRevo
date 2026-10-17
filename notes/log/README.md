@@ -4,6 +4,7 @@ One note per finished piece of work, newest first. Each says what was asked, wha
 the choices made (and where to tune them), and what's still open.
 
 ## 2026-10-17
+- [Enemy smoothness: far creatures sleep (polish pass step 7)](2026-10-17-dormancy.md)
 - [Animation smoothness: pose level of detail (polish pass step 6)](2026-10-17-pose-lod.md)
 - [Lights and particles (polish pass step 5)](2026-10-17-lights-particles.md)
 - [Streaming and density (polish pass step 4)](2026-10-17-streaming-density.md)

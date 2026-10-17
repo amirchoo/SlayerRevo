@@ -8,9 +8,19 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] **Priority 1: MAIN ISSUE:** combat feel and atmosphere like Dueling Grounds, one step per session ([note](tasks/main-issue-dueling-vibe.md))
 
 ## Later
+- [ ] **Idea (the user's, 2026-10-17): dungeons in their own place.** Entering teleports you (and
+  later your party) to a reserved server of a separate dungeon place; leaving teleports you back.
+  Claude's read, not decided: the dungeon already costs the main server almost nothing until a
+  run starts (its layout sits in ServerStorage, which never reaches clients), and since perf step 7
+  the overworld's orcs and animals sleep while you're inside. So the gain is mostly isolation, not
+  FPS. The costs: a loading screen each way, data saved and loaded across places, a second Rojo
+  project, and teleports don't work in Studio playtests, so every dungeon test needs a publish.
+  Worth revisiting after the perf pass's final check, if dungeon runs are still laggy or once
+  parties and more dungeons exist. Changes design.md §"Bosses and dungeons" (a private copy in the same server).
 - [ ] 
 
 ## Done
+- [x] Enemy smoothness: orcs and animals far from every player sleep, anchored, waking as you come near (2026-10-17, [log](log/2026-10-17-dormancy.md))
 - [x] Animation smoothness: animals, villagers and pets posed less often when far or off screen; hitstop and priorities checked (2026-10-17, [log](log/2026-10-17-pose-lod.md))
 - [x] Lights and particles: shadow casters 52k → 11k, torch emitters tiered, only the nearest lights lit, ShadowMap really on (2026-10-17, [log](log/2026-10-17-lights-particles.md))
 - [x] Streaming and density: daisy clumps simplified, models stream whole, decor out of physics, fewer plants on lower tiers (2026-10-17, [log](log/2026-10-17-streaming-density.md))

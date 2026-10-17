@@ -36,5 +36,7 @@ flicker, stutter). No Studio playtests unless asked.
   animals, villagers and pets, instead of clips that the user would have to publish. Hitstop,
   priorities and fades checked: fine. DamageFeedback's grade no longer rewritten every frame.
   ([log](../log/2026-10-17-pose-lod.md))
-- [ ] 7. Enemy smoothness: fewer and cheaper server updates for far enemies, animals and villagers.
+- [x] 7. Enemy smoothness: orcs, packs and wild animals with no player within 220 studs sleep
+  (anchored, AI once a second; server Dormancy). Villagers and the boss left as they are.
+  ([log](../log/2026-10-17-dormancy.md))
 - [ ] 8. Loading: fewer startup preloads, a ReplicatedFirst loading screen, and far content loaded later.

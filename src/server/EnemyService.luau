@@ -21,6 +21,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local TweenService = game:GetService("TweenService")
 
 local BlockService = require(script.Parent.BlockService)
+local Dormancy = require(script.Parent.Dormancy)
 local EnemyAnimations = require(script.Parent.EnemyAnimations)
 local EnemyEffects = require(script.Parent.EnemyEffects)
 local HealthService = require(script.Parent.HealthService)
@@ -135,12 +136,14 @@ type PackState = {
 	roamGoal: Vector3,
 	nextRoam: number,
 	returning: boolean, -- gave up a target: heading home (and healing) before roaming again
+	dormant: boolean, -- no player near: members stand anchored, the pack checks every Dormancy Tick
 }
 local packOf: { [Model]: PackState } = {}
 local packs: { PackState } = {}
 
 local STUCK_TIME = 1 -- seconds of barely moving toward a far goal before trying a jump
 local PACK_TICK = 0.3
+local SLEEP = Dormancy.Config
 
 local function flat(v: Vector3): Vector3
 	return Vector3.new(v.X, 0, v.Z)
@@ -231,7 +234,33 @@ local function runAI(enemy: Model, humanoid: Humanoid, root: BasePart, home: Vec
 	end
 
 	local chasing = false -- a single enemy: had a target last think
+	local asleep = false -- a single enemy far from every player (Dormancy)
+	local healthAsleep = 0 -- its health when it fell asleep: a hit wakes it
 	while enemy.Parent and HealthService.isAlive(enemy) do
+		local sleepingPack = packOf[enemy]
+		if sleepingPack and sleepingPack.dormant then
+			task.wait(SLEEP.Tick) -- thinkPack stops and wakes the members
+			continue
+		end
+		if not sleepingPack and not ownerOf[enemy] then
+			local health = HealthService.getHealth(enemy) or 0
+			if asleep then
+				if Dormancy.playerNear(root.Position, SLEEP.WakeRange) or health < healthAsleep then
+					asleep = false
+					Dormancy.wake(root)
+				else
+					Dormancy.sleep(humanoid, root) -- until it's anchored on the ground
+					task.wait(SLEEP.Tick)
+					continue
+				end
+			elseif not chasing and not Dormancy.playerNear(root.Position, SLEEP.SleepRange) then
+				asleep, healthAsleep = true, health
+				Dormancy.sleep(humanoid, root)
+				task.wait(SLEEP.Tick)
+				continue
+			end
+		end
+
 		if EnemyEffects.isStunned(enemy) then
 			humanoid:MoveTo(root.Position)
 			attackTrack:Stop(0.1)
@@ -549,6 +578,35 @@ local function thinkPack(pack: PackState)
 	local members = aliveMembers(pack)
 	local centre = centreOf(members, pack.camp)
 
+	-- Far from every player: the whole pack sleeps where it stands (Dormancy).
+	if pack.dormant then
+		if not pack.hurtBy and not Dormancy.playerNear(centre, SLEEP.WakeRange) then
+			for _, member in members do
+				local humanoid, root = member:FindFirstChildOfClass("Humanoid"), rootOf(member)
+				if humanoid and root then
+					Dormancy.sleep(humanoid, root) -- until each is anchored on the ground
+				end
+			end
+			return
+		end
+		pack.dormant = false
+		for _, member in members do
+			local root = rootOf(member)
+			if root then
+				Dormancy.wake(root)
+			end
+		end
+	elseif not pack.target and not pack.returning and not pack.hurtBy and not Dormancy.playerNear(centre, SLEEP.SleepRange) then
+		pack.dormant = true
+		for _, member in members do
+			local humanoid, root = member:FindFirstChildOfClass("Humanoid"), rootOf(member)
+			if humanoid and root then
+				Dormancy.sleep(humanoid, root)
+			end
+		end
+		return
+	end
+
 	-- Hunting: drop a target that's dead, safe, or dragged us too far from camp.
 	if pack.target then
 		local targetRoot = validTarget(pack.target)
@@ -637,6 +695,7 @@ local function spawnPack(kind: EnemyType)
 		target = nil,
 		targetRoot = nil,
 		hurtBy = nil,
+		dormant = false,
 		roamGoal = camp,
 		nextRoam = os.clock() + packRandom:NextNumber(config.RoamPause[1], config.RoamPause[2]),
 		returning = false,
@@ -657,7 +716,7 @@ local function spawnPack(kind: EnemyType)
 	task.spawn(function()
 		while #aliveMembers(pack) > 0 do
 			thinkPack(pack)
-			task.wait(PACK_TICK)
+			task.wait(if pack.dormant then SLEEP.Tick else PACK_TICK)
 		end
 		-- Wiped out: a new pack forms somewhere else after a while.
 		table.remove(packs, table.find(packs, pack) :: number)

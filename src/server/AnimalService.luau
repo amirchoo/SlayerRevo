@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local TweenService = game:GetService("TweenService")
 
+local Dormancy = require(script.Parent.Dormancy)
 local EnemyEffects = require(script.Parent.EnemyEffects)
 local HealthService = require(script.Parent.HealthService)
 local LootService = require(script.Parent.LootService)
@@ -324,8 +325,28 @@ local function runAI(animal: Animal)
 	end
 
 	local tame = herd.pen ~= nil
+	local asleep = false -- far from every player (Dormancy)
 	while animal.model.Parent and (tame or HealthService.isAlive(animal.model)) do
 		local now = os.clock()
+		-- Far from every player: stand still, anchored, and only check now and then. A scare
+		-- (being hit, or a hurt herd mate) wakes it.
+		if asleep then
+			if now < animal.fleeUntil or Dormancy.playerNear(root.Position, Dormancy.Config.WakeRange) then
+				asleep = false
+				Dormancy.wake(root)
+			else
+				Dormancy.sleep(humanoid, root) -- until it's anchored on the ground
+				task.wait(Dormancy.Config.Tick)
+				continue
+			end
+		elseif now >= animal.fleeUntil and not Dormancy.playerNear(root.Position, Dormancy.Config.SleepRange) then
+			asleep = true
+			animal.goal = nil
+			Dormancy.sleep(humanoid, root)
+			task.wait(Dormancy.Config.Tick)
+			continue
+		end
+
 		if EnemyEffects.isStunned(animal.model) then
 			humanoid:MoveTo(root.Position)
 		elseif now < animal.fleeUntil then
