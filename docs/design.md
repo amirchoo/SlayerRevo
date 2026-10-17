@@ -218,7 +218,10 @@ docs/
 - Party size limit? Enemy scaling in parties?
 - Guild features beyond membership?
 - Death penalty (lose XP? drop items? just respawn)?
-- PvP — ever, or PvE only?
+- PvP — ever, or PvE only? **Partly answered (the user, 2026-10-18):** yes, as on-the-spot duels. An
+  "interact" button on another player opens a menu whose first option is Duel; both agree and fight
+  right where they stand. Still [TBD]: other interact options, duel rules (to the death? first hit
+  to X%? stakes?), and whether any other PvP (arenas, open world) comes later.
 - Monetization (gamepasses, cosmetics) — must not be pay-to-win **[confirm]**.
 
 ---

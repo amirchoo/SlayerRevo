@@ -84,8 +84,8 @@ These games (TSB, Dueling Grounds, this one) nearly all use this layout:
 
 ## What PvP would need on top
 
-PvP is still an open question in `docs/design.md` §10 ("PvP — ever, or PvE only?"), so the user decides
-its form (arena only? duels by invitation? open world?) before any of this is built.
+The user's plan (2026-10-18): on-the-spot duels, started from an "interact" button on another player
+(Duel is its first option). Duel rules are still open in `docs/design.md` §10.
 
 - A shared **stun/state module** (Stunned, Blocking, Ragdolled, Airborne, Iframes) that the server owns and
   every action checks. Players and enemies would both use it.
@@ -101,7 +101,7 @@ its form (arena only? duels by invitation? open world?) before any of this is bu
 
 ## Suggested order (cheapest feel first)
 
-1. Impact frame + FOV punch + shake on landing a hit (client only, about an hour).
+1. ✅ Impact frame + FOV punch + shake on landing a hit ([log](../log/2026-10-18-hit-impact-frame.md)).
 2. Afterimages on dash.
 3. A different flinch per combo step + a knockback-and-ragdoll ender (works on enemies now, players later).
 4. Crescent slash meshes instead of trails for the sword and katana.

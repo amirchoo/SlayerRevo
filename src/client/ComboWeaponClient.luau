@@ -41,6 +41,7 @@ local Stamina = require(ReplicatedStorage.Shared.Stamina)
 local SkillMath = require(ReplicatedStorage.Shared.SkillMath)
 local CombatInput = require(script.Parent.CombatInput)
 local ParryPredict = require(script.Parent.ParryPredict)
+local HitFeel = require(script.Parent.HitFeel)
 local Push = require(script.Parent.Push)
 local Quality = require(script.Parent.Quality)
 
@@ -435,6 +436,8 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			end
 			fadeOutAtEnd(swing)
 		end
+		-- The combo's last swing lands heavy (bigger shake and an impact frame; see HitFeel).
+		HitFeel.setHeavyWindow(if step == #combo then combo[step].HitDelay else 0)
 		playSwingEffects(tool, step)
 
 		-- Lunging moves carry the player forward (our own movement, so the client does it).
@@ -751,6 +754,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			end
 			if release then
 				release:Play(0.05)
+				HitFeel.setHeavyWindow(attackTime)
 			end
 			if lunge then
 				local distance = (lunge.MinDistance + (lunge.MaxDistance - lunge.MinDistance) * releasePower) * lungeBonus
@@ -909,6 +913,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		local reapTrack = tracks and tracks.heavy
 		if reapTrack then
 			reapTrack:Play(0.1)
+			HitFeel.setHeavyWindow(reap.Duration)
 		end
 		humanoid.WalkSpeed = reap.WalkSpeed
 		setGripFlipped(tool, reap.FlipGrip == true)

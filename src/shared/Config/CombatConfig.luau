@@ -1160,6 +1160,29 @@ return {
 		Min = 0.04,
 		Max = 0.1,
 	},
+	-- More impact when your hit lands (HitFeel), after battlegrounds games. A hit is "heavy" when it
+	-- comes from a combo's last swing or a heavy attack (landing within HeavySlack seconds of its hit
+	-- time, to cover ping) or when it kills.
+	HitImpact = {
+		HeavySlack = 0.4,
+		-- Camera shake: Min + damage x PerDamage studs (up to Max), x Heavy for heavy hits. Full
+		-- strength when the hit is within FullRange studs of you, none past NoneRange (bow shots).
+		Shake = { Min = 0.05, PerDamage = 0.0015, Max = 0.16, Heavy = 2, Time = 0.12, FullRange = 8, NoneRange = 20 },
+		-- Zoom punch: the view narrows by Degrees (HeavyDegrees for heavy hits) in In seconds and
+		-- eases back over Out. Skipped while something else (a bow's aim) is zooming.
+		Zoom = { Degrees = 1.2, HeavyDegrees = 4, In = 0.03, Out = 0.2 },
+		-- Impact frame on heavy hits: for Time seconds the screen goes grey and harsh and the target
+		-- turns into a black silhouette with a red outline. At most one every MinGap seconds.
+		ImpactFrame = {
+			Enabled = true,
+			Time = 0.07,
+			MinGap = 0.5,
+			Contrast = 0.8,
+			Saturation = -0.9,
+			Brightness = 0.06,
+			Outline = Color3.fromRGB(255, 40, 40),
+		},
+	},
 	-- Mana: what the staff's spells spend (other weapons use stamina). It refills at
 	-- RegenPerSecond once you've gone RegenDelay seconds without spending any, but not while
 	-- charging a blast. Skills (the Arcana branch) raise both.

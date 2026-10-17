@@ -20,6 +20,7 @@ local CombatConfig = require(ReplicatedStorage.Shared.Config.CombatConfig)
 local HandGrip = require(ReplicatedStorage.Shared.HandGrip)
 local CombatInput = require(script.Parent.CombatInput)
 local ParryPredict = require(script.Parent.ParryPredict)
+local HitFeel = require(script.Parent.HitFeel)
 local Quality = require(script.Parent.Quality)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local Stamina = require(ReplicatedStorage.Shared.Stamina)
@@ -194,6 +195,7 @@ local function swing(state: Equipped)
 	if track then
 		track:Play(0.05)
 	end
+	HitFeel.setHeavyWindow(if step == #combo then move.HitDelay else 0) -- the finisher lands heavy
 	state.humanoid.WalkSpeed = walkSpeedFor(state)
 
 	local trail = state.tool:FindFirstChild("SwingTrail", true)
@@ -316,6 +318,7 @@ local function startCharge(state: Equipped)
 		if state.tracks.slam then
 			state.tracks.slam:Play(0.05)
 		end
+		HitFeel.setHeavyWindow(GREATSWORD.HitDelay)
 		local trail = state.tool:FindFirstChild("SwingTrail", true)
 		if trail and trail:IsA("Trail") then
 			trail.Enabled = Quality.settings().Trails
