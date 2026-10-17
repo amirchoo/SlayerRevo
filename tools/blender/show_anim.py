@@ -54,6 +54,18 @@ def main():
     bone_parent(tip, arm, "RightHand", hand @ Matrix.Translation((0, 0, -ahead_len)))
     arm.data.pose_position = "POSE"
     arm.show_in_front = False
+
+    # Bake the IK into plain keys on every frame and drop the constraints: solving four IK limbs
+    # live (500 iterations each) is too slow to play at 60 fps on a slow computer.
+    for obj in bpy.data.objects:
+        obj.select_set(False)
+    arm.select_set(True)
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode="POSE")
+    bpy.ops.pose.select_all(action="SELECT")
+    bpy.ops.nla.bake(frame_start=scene.frame_start, frame_end=scene.frame_end, only_selected=True,
+                     visual_keying=True, clear_constraints=True, use_current_action=True, bake_types={"POSE"})
+    bpy.ops.object.mode_set(mode="OBJECT")
     arm.hide_set(True)  # the body shows the pose; the bones only clutter it
 
     # The blade tip's path over the whole clip.
@@ -95,8 +107,10 @@ def main():
                     continue
                 space.shading.type = "SOLID"
                 space.shading.color_type = "OBJECT"
-                space.shading.show_shadows = True
+                space.shading.show_shadows = False  # cheap to draw, so playback keeps up
                 space.overlay.show_relationship_lines = False
+                space.shading.show_object_outline = False
+                space.shading.show_cavity = False
                 space.region_3d.view_perspective = "PERSP"
                 space.region_3d.view_location = Vector(target)
                 space.region_3d.view_rotation = look.to_track_quat("-Z", "Y")

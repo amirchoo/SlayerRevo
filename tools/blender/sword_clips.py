@@ -1,6 +1,8 @@
 """The Sword's combo, authored for tools/blender/author_anim.py (run: sh tools/blender/author.sh SwordSwing1).
 
-Each clip is {"hit": seconds or None, "keys": [(time, pose, ease)], "loop"?, "upper_body_only"?, "moving_twin"?}.
+Each clip is {"hit": seconds or None, "keys": [(time, pose, ease[, {group: ease}])], "loop"?, "upper_body_only"?,
+"moving_twin"?, "blend_in"?, "overlap"?, "offhand_space"?, "sudden"?} (see author_anim.py). The optional
+{group: ease} gives a body part its own easing out of that key (groups: OVERLAP in author_anim.py).
 "moving_twin" also writes <Clip>Moving.rbxmx: the upper body only, played while walking (the legs walk).
 `ease` shapes the segment that leaves the key: "smooth" (default), "in" (slow start, arrives
 fastest: into a hit), "out" (leaves fast, eases to a stop), "inout", "linear" (a held pose).
@@ -57,101 +59,125 @@ IDLE = {
 READY_DROP = 0.15
 START = P(lowered(IDLE, READY_DROP), hips=(0, 0, -READY_DROP))  # every swing starts and ends here
 
-# Swing 1's stance: the left foot has stepped forward, the right stays.
-STEP_LEFT = {"lfoot": (-0.65, 0.75, 0.15, 10), "rfoot": (0.5, 0.0, 0.15, -10)}
+def two_hands(grip, blade, apart=0.42):
+    """Where the left wrist goes to hold the handle below the right hand (toward the pommel)."""
+    gx, gy, gz = grip
+    bx, by, bz = blade
+    n = (bx * bx + by * by + bz * bz) ** 0.5
+    return (gx - bx / n * apart, gy - by / n * apart, gz - bz / n * apart)
 
-S1_END = P(START, grip=(-0.7, 1.3, 2.75), blade=(-0.8, -0.15, -0.58), edge=(0.15, -0.95, 0.3),
-           elbow=(0.5, 1.5, 4.8), lwrist=(-1.25, -0.9, 2.3), lelbow=(-2.0, 0.5, 3.0),
-           hips=(0, 0.22, -0.3), hips_turn=(8, 0, 0), chest=(14, -14, 0), head=(5, -5), **STEP_LEFT)
-S1_HELD = P(S1_END, grip=(-0.67, 1.25, 2.74), blade=(-0.8, -0.2, -0.56), chest=(13, -13, 0))
 
-S2_END = P(S1_HELD, grip=(2.3, 0.45, 2.75), blade=(0.98, -0.15, -0.1), edge=(-0.15, -0.98, 0.1),
-           elbow=(2.0, -1.5, 4.5), lwrist=(-0.75, 1.8, 2.55), lelbow=(-2.0, 0.0, 1.5),
-           hips=(0.05, 0.15, -0.32), hips_turn=(-8, 0, 0), chest=(-20, -12, 0), head=(-5, -5))
-S2_HELD = P(S2_END, grip=(2.28, 0.42, 2.71), blade=(0.97, -0.19, -0.12), chest=(-19, -11, 0))
+# Exaggerated after the battlegrounds video (notes/research/battlegrounds-combat-reference.md):
+# extreme silhouettes that read at a glance. Deep lunges, the body coiling ~60° one way and
+# whipping ~60° the other, the chest over the front knee, a settle after each extreme.
+# Each cut goes a different way: 1 down to the left, 2 flat to the right, 3 straight down.
 
-# Swing 3's stance: a deep step, the left foot further forward, the hips low.
-DEEP_STEP = {"lfoot": (-0.7, 1.15, 0.15, 10), "rfoot": (0.55, -0.35, 0.15, -15)}
-S3_END = P(S2_HELD, grip=(-0.6, 1.15, 2.5), blade=(-0.95, -0.05, -0.3), edge=(-0.1, -0.95, -0.3),
-           elbow=(0.5, 2.0, 4.5), lwrist=(-1.3, -0.7, 2.0), lelbow=(-2.0, 0.5, 3.0),
-           hips=(0, 0.45, -0.6), hips_turn=(14, 0, 0), chest=(18, -18, 0), head=(5, -12), **DEEP_STEP)
-S3_HELD = P(S3_END, grip=(-0.62, 1.12, 2.47), blade=(-0.95, -0.08, -0.32), chest=(17, -19, 0))
+# Swing 1: a deep lunge. The left foot steps far forward, the right one stays and pivots.
+STEP_LEFT = {"lfoot": (-0.85, 1.85, 0.15, 18), "rfoot": (0.6, -0.3, 0.15, -35)}
+
+S1_END = P(START, grip=(-0.75, 2.3, 2.2), blade=(-0.88, 0.3, -0.38), edge=(0.2, -0.9, 0.3),
+           elbow=(0.6, 2.4, 4.4), lwrist=(-1.6, -0.65, 2.05), lelbow=(-2.4, -0.6, 2.4),
+           hips=(0, 0.9, -0.9), hips_turn=(32, 0, 0), chest=(28, -24, 0), head=(5, -12), **STEP_LEFT)
+# Eases a touch back out of the extreme (rises a little, untwists a little): the settle.
+S1_HELD = P(S1_END, grip=(-0.7, 2.23, 2.31), blade=(-0.86, 0.26, -0.43), hips=(0, 0.85, -0.8),
+            hips_turn=(29, 0, 0), chest=(25, -20, 0))
+
+# Swing 2: from swing 1's lunge the body whips all the way round the other way, the feet planted,
+# and the blade sweeps flat and wide across to the far right (a full crescent).
+S2_END = P(S1_HELD, grip=(1.85, 0.5, 2.85), blade=(0.85, -0.5, -0.1), edge=(-0.45, -0.8, 0.1),
+           elbow=(2.6, -1.5, 4.3), lwrist=(-1.2, 1.9, 2.6), lelbow=(-2.2, -1.2, 2.0),
+           hips=(0.1, 0.75, -0.85), hips_turn=(-30, 0, 0), chest=(-30, -16, 0), head=(-8, -6))
+S2_HELD = P(S2_END, grip=(1.8, 0.53, 2.9), blade=(0.86, -0.46, -0.12), hips=(0.1, 0.72, -0.78),
+            hips_turn=(-27, 0, 0), chest=(-27, -13, 0))
+
+# Swing 3: the finisher. Both hands on the sword: gather low, leap, hang at the top with the blade
+# raised behind the head, then slam straight down into a deep squat.
+SQUARE = {"lfoot": (-0.95, 0.9, 0.15, 15), "rfoot": (0.95, 0.1, 0.15, -15)}
+# Both elbows bend forward and out through the whole leap, slam and squat (in front of the body, a pole
+# is never in line with arms that swing from overhead to low in front; moving poles would cross them).
+S3_RPOLE, S3_LPOLE = (2.0, 2.5, 2.5), (-2.0, 2.5, 2.5)
+S3_BLADE_END = (0.0, 0.94, -0.33)
+S3_GRIP_END = (0.05, 1.85, 1.95)
+S3_END = P(S2_HELD, grip=S3_GRIP_END, blade=S3_BLADE_END, edge=(0.0, -0.33, -0.94),
+           elbow=S3_RPOLE, lwrist=two_hands(S3_GRIP_END, S3_BLADE_END), lelbow=S3_LPOLE,
+           hips=(0, 0.75, -1.15), hips_turn=(0, 0, 0), chest=(0, -30, 0), head=(0, -15), **SQUARE)
+S3_HELD = P(S3_END, grip=(0.05, 1.82, 2.03), blade=(0.0, 0.95, -0.3), lwrist=two_hands((0.05, 1.82, 2.03), (0.0, 0.95, -0.3)),
+            hips=(0, 0.7, -1.05), chest=(0, -26, 0))
+
+S3_TOP = P(S2_HELD, grip=(0.15, 0.75, 4.75), blade=(0.0, -0.75, 0.66), edge=(0.0, 0.66, 0.75),
+          lwrist=two_hands((0.15, 0.75, 4.75), (0.0, -0.75, 0.66)), elbow=S3_RPOLE, lelbow=S3_LPOLE,
+          hips=(0, 0.6, 0.45), hips_turn=(0, 0, 0), chest=(0, 14, 0), head=(0, 10),
+          lfoot=(-0.8, 0.95, 1.15, 12, 20), rfoot=(0.8, 0.25, 1.05, -12, -20))
 
 CLIPS = {
     "SwordSwing1": {
-        "moving_twin": True,  # forehand: flick up beside the right shoulder, cut down across to low left
+        "moving_twin": True,  # forehand: coil back, blade cocked behind the right shoulder, lunge and cut down across to low left
         "hit": 0.18,
+        "sudden": [(0.14, 0.2)],  # the front foot stamping down as the blade lands
+        "overlap": {"feet": 1},  # the hips drive forward and the front foot lands just after them (leading, the leg would lock straight mid-step)
         "keys": [
             (0.00, START, "out"),
-            (0.08, P(START, grip=(1.35, 0.15, 3.65), blade=(0.2, -0.3, 0.93), edge=(-0.45, 0.85, 0.0),
-                     elbow=(3.0, -0.5, 2.5), lwrist=(-1.0, 1.0, 2.8), lelbow=(-2.5, -1.0, 2.0),
-                     hips=(0, 0, -0.25), hips_turn=(-10, 0, 0), chest=(-12, 6, 0),
-                     lfoot=(-0.55, 0.25, 0.3, 5)), "linear"),  # flicked up, the blade standing beside the shoulder
-            (0.12, P(START, grip=(1.4, 0.05, 3.7), blade=(0.25, -0.4, 0.88), edge=(-0.45, 0.85, 0.0),
-                     elbow=(3.0, -0.5, 2.5), lwrist=(-1.05, 1.0, 2.85), lelbow=(-2.5, -1.0, 2.0),
-                     hips=(0, 0.05, -0.27), hips_turn=(-11, 0, 0), chest=(-13, 7, 0),
-                     lfoot=(-0.6, 0.45, 0.35, 8)), "in"),  # coiled a touch more: then the whip
-            (0.18, P(START, grip=(0.55, 1.35, 3.2), blade=(-0.6, 0.78, -0.18), edge=(-0.45, -0.3, -0.85),
-                     elbow=(2.0, 0.5, 4.5), lwrist=(-1.3, -0.3, 2.3), lelbow=(-2.0, 0.0, 3.0),
-                     hips=(0, 0.2, -0.3), hips_turn=(8, 0, 0), chest=(0, -10, 0), **STEP_LEFT), "out"),  # the hit, mid-arc
-            (0.24, S1_END, "linear"),  # out low to the left
-            (0.50, S1_HELD, "smooth"),  # held (swing 2 starts here)
-            (0.66, P(START, grip=(0.45, 1.5, 2.2), blade=(-0.9, 0.3, 0.2), edge=(0.0, -0.4, 0.9),
+            (0.10, P(START, grip=(1.5, -0.35, 3.85), blade=(0.3, -0.85, 0.43), edge=(-0.5, 0.25, 0.8),
+                     elbow=(3.0, -1.2, 2.8), lwrist=(-1.45, 1.1, 2.55), lelbow=(-2.0, 1.4, 2.2),
+                     hips=(0, -0.15, -0.15), hips_turn=(-28, 0, 0), chest=(-28, 14, 0), head=(0, 4),
+                     lfoot=(-0.7, 0.6, 0.55, 12)), "in", {"feet": "inout"}),  # coiled back, leaning away, the blade behind the shoulder, the front foot up: then the whip (the foot travels and settles into the stamp)
+            (0.18, P(START, grip=(0.2, 2.45, 2.95), blade=(-0.35, 0.88, 0.3), edge=(-0.6, 0.0, -0.8),
+                     elbow=(2.4, 1.3, 4.2), lwrist=(-1.65, -0.45, 2.05), lelbow=(-2.4, -0.8, 2.4),
+                     hips=(0, 0.65, -0.7), hips_turn=(12, 0, 0), chest=(6, -14, 0), head=(0, -6), **STEP_LEFT), "out"),  # the hit, mid-arc: the foot lands as the blade passes
+            (0.24, S1_END, "linear"),  # out low to the left, deep in the lunge, the body wound past the cut
+            (0.50, S1_HELD, "smooth"),  # held, settling (swing 2 starts here)
+            (0.68, P(START, grip=(0.7, 1.0, 2.35), blade=(-0.9, 0.3, 0.2), edge=(0.0, -0.4, 0.9),
                      elbow=(1.5, 1.0, 4.5), lwrist=(-1.35, -0.4, 2.1), lelbow=(-2.0, -1.0, 3.0),
-                     hips=(0, 0.1, -0.25), hips_turn=(5, 0, 0), chest=(6, -6, 0),
-                     lfoot=(-0.55, 0.35, 0.28, 5)), "smooth"),  # the spent blade swings low back across, the foot draws in
-            (0.90, START),
+                     hips=(0, 0.35, -0.4), hips_turn=(10, 0, 0), chest=(8, -6, 0),
+                     lfoot=(-0.65, 0.8, 0.3, 8), rfoot=(0.52, -0.1, 0.15, -12)), "smooth"),  # rising out of the lunge, the front foot drawing back
+            (0.92, START),
         ],
     },
     "SwordSwing2": {
-        "moving_twin": True,  # backhand: from swing 1's held pose, roll the blade over, cut flat out to the right
+        "moving_twin": True,  # backhand: from swing 1's lunge, roll the blade over and whip the whole body round, cutting flat out to the far right
         "hit": 0.15,
+        "blend_in": 0.15,  # chained from swing 1 (ComboWeaponClient CHAIN_FADE)
+        "overlap": {"blade": 0},  # the backhand turns the blade ~150° into the hit: it needs the whole whip, not one frame less
         "keys": [
             (0.00, S1_HELD, "out"),
-            (0.035, P(S1_HELD, grip=(-0.55, 0.85, 2.95), blade=(-0.95, -0.25, 0.1), edge=(0.0, -0.3, 1.0),
-                      chest=(20, -6, 0), hips_turn=(12, 0, 0)), "out"),  # the wrist rolls the blade over the top
-            (0.07, P(S1_HELD, grip=(-0.4, 0.45, 3.2), blade=(-0.6, -0.78, 0.15), edge=(-0.79, 0.62, 0.0),
-                     elbow=(1.5, -1.5, 4.5), chest=(24, 2, 0), hips_turn=(14, 0, 0)), "linear"),  # cocked across the left side, blade trailing
-            (0.10, P(S1_HELD, grip=(-0.42, 0.4, 3.22), blade=(-0.55, -0.82, 0.15), edge=(-0.82, 0.55, 0.0),
-                     elbow=(1.5, -1.5, 4.5), chest=(26, 3, 0), hips_turn=(15, 0, 0)), "in"),
-            (0.125, P(S1_HELD, grip=(-0.1, 0.95, 3.1), blade=(-0.7, 0.7, 0.05), edge=(0.7, 0.7, 0.0),
-                      elbow=(1.8, -1.0, 4.5), chest=(12, -4, 0), hips_turn=(6, 0, 0)), "linear"),  # mid-whip
-            (0.15, P(S1_HELD, grip=(0.6, 1.4, 2.95), blade=(0.3, 0.95, -0.05), edge=(0.95, -0.3, 0.0),
-                     elbow=(2.0, -1.0, 4.5), lwrist=(-1.0, 1.0, 2.4), lelbow=(-2.0, -1.0, 2.0),
-                     chest=(-4, -10, 0), hips_turn=(-6, 0, 0), hips=(0.03, 0.18, -0.32)), "out"),  # the hit, mid-arc
-            (0.21, S2_END, "linear"),  # out to the right
-            (0.48, S2_HELD, "smooth"),  # held (swing 3 starts here)
-            (0.64, P(START, grip=(2.1, 0.0, 2.15), blade=(0.9, 0.0, 0.45), edge=(-0.4, -0.3, 0.85),
+            (0.07, P(S1_HELD, grip=(-0.75, 1.3, 3.15), blade=(-0.55, -0.83, 0.1), edge=(-0.83, 0.55, 0.0),
+                     elbow=(1.2, -1.2, 4.6), lwrist=(-1.5, -0.9, 2.3), lelbow=(-2.0, -1.5, 2.4), chest=(34, -6, 0), hips_turn=(36, 0, 0),
+                     hips=(0, 0.85, -0.75)), "in"),  # wound up even further left, the blade rolled over and trailing behind: then the whip
+            (0.15, P(S1_HELD, grip=(0.65, 1.4, 2.95), blade=(0.3, 0.95, -0.05), edge=(0.95, -0.3, 0.0),
+                     elbow=(2.4, -0.6, 4.4), lwrist=(-1.1, 1.3, 2.4), lelbow=(-2.0, -1.5, 2.2),
+                     chest=(-4, -14, 0), hips_turn=(-6, 0, 0), hips=(0.05, 0.85, -0.85), head=(-1, -9)), "out"),  # the hit, mid-arc, at full reach
+            (0.22, S2_END, "linear"),  # out to the far right, the body wound round past the cut
+            (0.48, S2_HELD, "smooth"),  # held, settling (swing 3 starts here)
+            (0.66, P(START, grip=(2.1, 0.1, 2.2), blade=(0.9, 0.0, 0.45), edge=(-0.4, -0.3, 0.85),
                      elbow=(2.5, -1.5, 3.5), lwrist=(-1.2, 1.1, 2.1), lelbow=(-2.0, -2.0, 2.5),
-                     hips=(0, 0.1, -0.25), hips_turn=(-5, 0, 0), chest=(-14, -4, 0),
-                     lfoot=(-0.55, 0.35, 0.28, 5)), "smooth"),  # dropping back toward the hip, the foot draws in
-            (0.88, START),
+                     hips=(0, 0.35, -0.4), hips_turn=(-8, 0, 0), chest=(-14, -4, 0),
+                     lfoot=(-0.65, 0.8, 0.3, 8), rfoot=(0.52, -0.1, 0.15, -12)), "smooth"),  # rising out of the lunge, the front foot drawing back
+            (0.90, START),
         ],
     },
     "SwordSwing3": {
-        "moving_twin": True,  # overhead: raise the blade cocked behind the head, hold a beat, cut down to low left
+        "moving_twin": True,  # finisher: both hands, gather low, leap, hang at the top with the blade behind the head, slam straight down
         "hit": 0.38,
+        "blend_in": 0.15,  # chained from swing 2
+        "overlap": {"offhand": 0, "blade": 0, "hips": 0, "chest": 0, "feet": 0, "head": 2},  # both hands on the handle, and the body comes down with them (hips leading would drop the shoulders away from the raised hands and lock the arms straight)
+        "offhand_space": "world",  # and the left hand stays on the handle between keys
+        "sudden": [(0.12, 0.18), (0.41, 0.46)],  # the spring off the ground, and the slam stopping dead on landing
         "keys": [
             (0.00, S2_HELD, "out"),
-            (0.13, P(S2_HELD, grip=(0.45, 0.25, 4.7), blade=(0.15, -0.8, -0.58), edge=(0.0, -0.58, 0.8),
-                     elbow=(3.0, 0.0, 4.5), lwrist=(-1.0, 1.2, 3.3), lelbow=(-2.5, 0.0, 2.0),
-                     hips=(0, 0.05, -0.25), hips_turn=(-8, 0, 0), chest=(-12, 10, 0), head=(0, 5)), "linear"),  # cocked behind the head
-            (0.31, P(S2_HELD, grip=(0.5, 0.15, 4.72), blade=(0.2, -0.85, -0.5), edge=(0.0, -0.5, 0.85),
-                     elbow=(3.0, 0.0, 4.5), lwrist=(-1.05, 1.15, 3.35), lelbow=(-2.5, 0.0, 2.0),
-                     hips=(0, 0.0, -0.28), hips_turn=(-10, 0, 0), chest=(-13, 13, 0), head=(0, 5),
-                     lfoot=(-0.68, 0.85, 0.22, 10)), "in"),  # held a beat so it reads, then the cut
-            (0.345, P(S2_HELD, grip=(0.35, 0.85, 4.6), blade=(0.0, 0.35, 0.94), edge=(0.0, 0.94, -0.35),
-                      elbow=(3.0, 0.5, 4.5), lwrist=(-1.2, 0.6, 2.8), lelbow=(-2.5, 0.0, 2.0),
-                      hips=(0, 0.25, -0.45), hips_turn=(0, 0, 0), chest=(0, 0, 0), head=(0, 0),
-                      lfoot=(-0.7, 1.05, 0.2, 10)), "linear"),  # over the top
-            (0.38, P(S3_END, grip=(0.1, 1.45, 3.65), blade=(-0.3, 0.93, -0.2), edge=(-0.1, -0.2, -0.97),
-                     elbow=(2.0, 1.0, 4.5), hips=(0, 0.4, -0.58), chest=(8, -16, 0), head=(0, -8)), "out"),  # the hit, mid-arc
-            (0.45, S3_END, "linear"),  # low to the left, deep in the step
-            (0.75, S3_HELD, "smooth"),  # held
-            (0.93, P(START, grip=(0.8, 0.9, 1.75), blade=(0.85, 0.3, -0.25), edge=(0.4, -0.3, 0.85),
-                     elbow=(1.5, 1.0, 4.0), lwrist=(-1.35, -0.4, 1.9), lelbow=(-2.0, -1.0, 3.0),
-                     hips=(0, 0.3, -0.45), hips_turn=(4, 0, 0), chest=(8, -10, 0),
-                     lfoot=(-0.62, 0.6, 0.3, 5), rfoot=(0.52, -0.15, 0.15, -5)), "smooth"),  # levering the blade up, rising out of the step
+            (0.12, P(S2_HELD, grip=(0.4, 1.15, 3.15), blade=(0.25, 0.3, 0.92), edge=(0.0, 0.95, -0.3),
+                     lwrist=two_hands((0.4, 1.15, 3.15), (0.25, 0.3, 0.92)), elbow=(1.5, 0.5, 4.8), lelbow=S3_LPOLE,
+                     hips=(0, 0.75, -1.0), hips_turn=(-6, 0, 0), chest=(-6, -16, 0), head=(0, -2)), "out"),  # gathered: both hands on it, squatting deep in the lunge
+            (0.26, S3_TOP, "linear"),  # the top of the leap: tucked, arched back, the blade raised behind the head
+            (0.32, S3_TOP, "in"),  # hangs a beat at the top so it reads, then the slam
+            (0.38, P(S3_END, grip=(0.1, 1.25, 3.75), blade=(0.0, 0.95, 0.3), edge=(0.0, 0.3, -0.95),
+                     lwrist=two_hands((0.1, 1.25, 3.75), (0.0, 0.95, 0.3)), elbow=S3_RPOLE, lelbow=S3_LPOLE,
+                     hips=(0, 0.7, -0.5), chest=(0, -16, 0), head=(0, -8)), "out"),  # the hit, coming down: the feet land as the blade passes
+            (0.45, S3_END, "linear"),  # driven down into a deep squat, the blade low in front
+            (0.80, S3_HELD, "smooth"),  # held, settling
+            (1.00, P(START, grip=(0.9, 0.9, 1.8), blade=(0.85, 0.3, -0.25), edge=(0.4, -0.3, 0.85),
+                     elbow=(2.2, 0.4, 2.0), lwrist=(-1.2, 0.7, 2.1), lelbow=(-2.2, 0.3, 1.6),
+                     hips=(0, 0.35, -0.5), hips_turn=(4, 0, 0), chest=(8, -10, 0),
+                     lfoot=(-0.7, 0.6, 0.3, 8), rfoot=(0.6, -0.05, 0.15, -8)), "smooth"),  # the right hand takes the blade up, rising, the feet drawing in
             (1.20, START),
         ],
     },

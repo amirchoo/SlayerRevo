@@ -161,6 +161,11 @@ def unit_cube(name, color):
     v = [(x, y, z) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)]
     f = [(0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)]
     mesh.from_pydata(v, [], f)
+    # The color both as the object's (Object color mode) and as a material's (Texture color mode,
+    # used when a textured weapon model is in the scene: untextured things show their material color).
+    material = bpy.data.materials.new(name)
+    material.diffuse_color = (*color, 1)
+    mesh.materials.append(material)
     obj = bpy.data.objects.new(name, mesh)
     obj.color = (*color, 1)
     bpy.context.scene.collection.objects.link(obj)
@@ -241,6 +246,9 @@ def draw_path(points, name="Path"):
     spline.points.add(len(points) - 1)
     for p, co in zip(spline.points, points):
         p.co = (co.x, co.y, co.z, 1)
+    material = bpy.data.materials.new(name)
+    material.diffuse_color = (1.0, 0.45, 0.05, 1)
+    curve.materials.append(material)
     obj = bpy.data.objects.new(name, curve)
     obj.color = (1.0, 0.45, 0.05, 1)
     bpy.context.scene.collection.objects.link(obj)

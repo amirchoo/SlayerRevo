@@ -72,3 +72,4 @@ Claude adds each step's checks here as it finishes ([[perf-polish]], [[perf-poli
 - [ ] FPS now, Mac: town ___ forest ___ dungeon ___
 - [ ] Sword: walk while swinging. The legs walk (no sliding), you walk at half speed while swinging; standing still, the swing's stance plays. ([log](../log/2026-10-18-sword-walk-while-swinging.md))
 - [ ] Dash (V): 2–4 white see-through copies trail behind you and fade fast; no hitch on the phone after the first dash; not too glowy at night. ([log](../log/2026-10-18-dash-afterimages.md))
+- [ ] Sword combo (after publishing the six clips): lunge cut, backhand whip, leaping slam chain without pops; the sword stays in the hand; hits land on the cuts. ([log](../log/2026-10-18-sword-combo-exaggerated.md))

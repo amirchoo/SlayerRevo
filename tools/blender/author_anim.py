@@ -143,12 +143,18 @@ def build_rig():
     # The sword: its control sits at the hand's center with the hand's axes (blade along local
     # -Z, edge along +Y). It points its -Z at the Tip and turns its +Y toward the Edge point.
     ctl["Sword"] = new_empty("SwordCtl", part_rest["RightHand"], size=0.4, shape="ARROWS")
-    ctl["Tip"] = new_empty("BladeTip", Matrix.Translation(part_rest["RightHand"] @ Vector((0, 0, -4))), size=0.25, shape="SPHERE")
-    ctl["Edge"] = new_empty("EdgeAim", Matrix.Translation(part_rest["RightHand"] @ Vector((0, 2, 0))), size=0.15)
+    # Which way the blade points and its edge faces: BladeAim sits on the grip and is keyed as a
+    # rotation, so between keys the blade turns smoothly round the shortest way, however far (keying
+    # the tip as a point to look at would swing it round in a frame or two when it passes the hand).
+    # Its children are the points the sword control looks at.
+    ctl["Aim"] = new_empty("BladeAim", part_rest["RightHand"], size=0.5, shape="SINGLE_ARROW")
+    ctl["Aim"].rotation_mode = "QUATERNION"
+    tip = new_empty("BladeTip", Matrix.Translation((0, 0, -BLADE_REACH)), parent=ctl["Aim"], size=0.25, shape="SPHERE")
+    edge = new_empty("EdgeAim", Matrix.Translation((0, 2.0, -1.5)), parent=ctl["Aim"], size=0.15)
     c = ctl["Sword"].constraints.new("DAMPED_TRACK")
-    c.target, c.track_axis = ctl["Tip"], "TRACK_NEGATIVE_Z"
+    c.target, c.track_axis = tip, "TRACK_NEGATIVE_Z"
     c = ctl["Sword"].constraints.new("LOCKED_TRACK")
-    c.target, c.track_axis, c.lock_axis = ctl["Edge"], "TRACK_Y", "LOCK_Z"
+    c.target, c.track_axis, c.lock_axis = edge, "TRACK_Y", "LOCK_Z"
     hand_align = new_empty("HandAlign", part_rest["RightHand"].inverted() @ rest_bone["RightHand"], parent=ctl["Sword"], size=0.1)
     wrist = new_empty("WristTarget", Matrix.Translation(GRIP_TO_WRIST), parent=ctl["Sword"], size=0.1)
     ctl["Elbow"] = new_empty("ElbowPole", Matrix.Translation((3, -1.5, 3.5)), size=0.2, shape="CUBE")
@@ -252,8 +258,7 @@ def pose_controls(p):
     edge = (edge - edge.dot(blade) * blade).normalized()
     out = {
         "Sword": (grip, None),
-        "Tip": (grip + blade * BLADE_REACH, None),
-        "Edge": (grip + blade * 1.5 + edge * 2.0, None),
+        "Aim": (grip, Matrix((edge.cross(-blade), edge, -blade)).transposed().to_quaternion()),
         "Elbow": (Vector(p["elbow"]), None),
         "LWrist": (Vector(p["lwrist"]), None),
         "LElbow": (Vector(p["lelbow"]), None),
@@ -281,10 +286,117 @@ def bone_rotations(p):
     return out
 
 
+# Overlapping action: the body doesn't arrive at a pose all at once. Each control belongs to a
+# group, and each group's keys are moved by its offset (frames at 60 fps; - = early, + = late):
+# the hips and the stepping feet lead, the chest a frame behind them, the sword hand is on time
+# (so the hit lands where it's keyed), the blade's angle drags a frame behind the hand and then
+# whips through, the free arm follows 2 frames late and the head settles last. A clip can change
+# any of them with "overlap": {group: frames}, or turn it all off with "overlap": {}.
+# The first and last keys never move (a clip starts and ends exactly on its pose, so the combo
+# chains), and on the hit key the body and sword land on time together (HIT_TOGETHER).
+OVERLAP = {"hips": -2, "feet": -1, "chest": -1, "grip": 0, "blade": 1, "offhand": 2, "head": 3}
+# On the hit key these land together, on time: the whip through the hit is one move (the hips or
+# chest arriving a frame early there makes the sword arm stutter: fast, slow, very fast).
+HIT_TOGETHER = ("hips", "chest", "grip", "blade")
+OVERLAP_GROUP = {
+    "LowerTorso": "hips", "UpperTorso": "chest", "Sword": "grip", "Elbow": "grip", "Aim": "grip",
+    "LWrist": "offhand", "LElbow": "offhand", "Head": "head",
+    "LeftFoot": "feet", "RightFoot": "feet", "LeftKnee": "feet", "RightKnee": "feet",
+}
+
+
+# Blender object names of the controls (where they differ from the control's name).
+CTL_NAMES = {"SwordCtl": "Sword", "BladeAim": "Aim", "ElbowPole": "Elbow", "LElbowPole": "LElbow", "HeadAim": "Head",
+             "LeftFootCtl": "LeftFoot", "RightFootCtl": "RightFoot", "LeftKneePole": "LeftKnee", "RightKneePole": "RightKnee"}
+# Controls whose rotation keys follow a different group than their position keys.
+OVERLAP_ROT_GROUP = {"Aim": "blade"}
+
+
+def overlap_of(clip):
+    return dict(OVERLAP, **clip["overlap"]) if clip.get("overlap") else ({} if "overlap" in clip else dict(OVERLAP))
+
+
+def key_time(clip, index, group):
+    """When key `index` lands for a control group (seconds), after the overlap offsets."""
+    keys = clip["keys"]
+    t = keys[index][0]
+    if index == 0 or index == len(keys) - 1:
+        return t
+    if group in HIT_TOGETHER and clip.get("hit") is not None and abs(t - clip["hit"]) < 1e-4:
+        return t
+    shifted = t + overlap_of(clip).get(group, 0) / FPS
+    # Never past the clip's first or last key (those don't move).
+    return min(max(shifted, keys[0][0] + 0.5 / FPS), keys[-1][0] - 0.5 / FPS)
+
+
+# The free hand and both elbow poles ride with the chest between keys: their keyed spots are turned
+# into the chest's frame, eased there, and turned back into the world on every sample. Moving in a
+# straight world line instead, a hand target falls out of reach (or a pole swings across the arm)
+# whenever the body whips round between two keys. A clip whose left hand holds the sword too
+# ("offhand_space": "world") keeps the left hand in the world, on the handle.
+CHEST_RELATIVE = ("LWrist", "LElbow", "Elbow")
+CHEST_BAKE_RATE = 120  # samples per second of the chest-relative controls
+
+
+def curve_group(obj_name, data_path):
+    """The overlap group an f-curve belongs to (see OVERLAP_GROUP)."""
+    if data_path.startswith('pose.bones["'):
+        return OVERLAP_GROUP.get(data_path.split('"')[1])
+    name = CTL_NAMES.get(obj_name, obj_name.removesuffix("InChest"))
+    if "rotation" in data_path and name in OVERLAP_ROT_GROUP:
+        return OVERLAP_ROT_GROUP[name]
+    return OVERLAP_GROUP.get(name)
+
+
+def apply_eases(objects, key_frames, overrides=None):
+    """Each key's easing applies to the segment that leaves it. Every control is keyed on every
+    key, so a curve's points are the clip's keys in order (moved by the overlap). `overrides`:
+    per key, {group: ease} for body parts that leave that key with their own easing."""
+    for obj in objects:
+        if not (obj.animation_data and obj.animation_data.action):
+            continue
+        for fcurve in action_fcurves(obj.animation_data.action):
+            group = curve_group(obj.name, fcurve.data_path)
+            eases = [(overrides[i].get(group, e) if overrides and overrides[i] else e) for i, e in enumerate(key_frames)]
+            points = sorted(fcurve.keyframe_points, key=lambda kp: kp.co.x)
+            assert len(points) == len(key_frames), f"{fcurve.data_path}: {len(points)} points for {len(key_frames)} keys"
+            for kp, ease in zip(points, eases):
+                interp, easing = EASES[ease]
+                kp.interpolation = interp
+                if easing:
+                    kp.easing = easing
+                kp.handle_left_type = kp.handle_right_type = "AUTO_CLAMPED"
+            fcurve.update()
+            # Next to a hold (a "linear" segment, barely moving) a curve has to start or finish
+            # at rest, or it jumps from a creep to full speed in one frame: flat handles there.
+            for i, kp in enumerate(points):
+                after_hold = i > 0 and eases[i - 1] == "linear"
+                before_hold = eases[i] == "linear"
+                if not (after_hold or before_hold) or EASES[eases[i]][0] != "BEZIER" and not before_hold:
+                    continue
+                kp.handle_left_type = kp.handle_right_type = "FREE"
+                if i > 0:
+                    kp.handle_left = (kp.co.x - (kp.co.x - points[i - 1].co.x) / 3, kp.co.y)
+                if i + 1 < len(points):
+                    kp.handle_right = (kp.co.x + (points[i + 1].co.x - kp.co.x) / 3, kp.co.y)
+            fcurve.update()
+
+
+def chest_at(arm, t):
+    """The chest's world matrix (Blender space) at t; the arms' IK doesn't move it."""
+    scene = bpy.context.scene
+    frame = t * FPS
+    scene.frame_set(int(math.floor(frame)), subframe=frame - math.floor(frame))
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    return arm.matrix_world @ arm.evaluated_get(depsgraph).pose.bones["UpperTorso"].matrix
+
+
 def key_clip(arm, ctl, clip):
     scene = bpy.context.scene
     last_q = {}
     key_frames = []
+    relative = [n for n in CHEST_RELATIVE if not (n == "LWrist" and clip.get("offhand_space") == "world")]
+    pending = {name: [] for name in relative}  # name: [(key index, world spot)]
 
     def same_side(name, q):
         prev = last_q.get(name)
@@ -293,40 +405,61 @@ def key_clip(arm, ctl, clip):
         last_q[name] = q
         return q
 
-    for key in clip["keys"]:
-        t, p = key[0], key[1]
-        frame = t * FPS
-        key_frames.append((frame, key[2] if len(key) > 2 else "smooth"))
+    for index, key in enumerate(clip["keys"]):
+        p = key[1]
+        key_frames.append(key[2] if len(key) > 2 else "smooth")
         for name, (loc, q) in pose_controls(p).items():
             obj = ctl[name]
+            frame = key_time(clip, index, OVERLAP_GROUP[name]) * FPS
+            if name in pending:
+                pending[name].append((index, loc))
+                continue
             if loc is not None:
                 obj.location = loc
                 obj.keyframe_insert("location", frame=frame)
             if q is not None:
                 obj.rotation_mode = "QUATERNION"
                 obj.rotation_quaternion = same_side(name, q)
-                obj.keyframe_insert("rotation_quaternion", frame=frame)
+                rot_frame = key_time(clip, index, OVERLAP_ROT_GROUP.get(name, OVERLAP_GROUP[name])) * FPS
+                obj.keyframe_insert("rotation_quaternion", frame=rot_frame)
         for name, (loc, q) in bone_rotations(p).items():
             pb = arm.pose.bones[name]
+            frame = key_time(clip, index, OVERLAP_GROUP[name]) * FPS
             if loc is not None:
                 pb.location = loc
                 pb.keyframe_insert("location", frame=frame)
             pb.rotation_quaternion = same_side("bone " + name, q)
             pb.keyframe_insert("rotation_quaternion", frame=frame)
 
-    # Each key's easing applies to the segment that leaves it.
-    actions = [o.animation_data.action for o in [arm, *ctl.values()] if o.animation_data and o.animation_data.action]
-    for action in actions:
-        for fcurve in action_fcurves(action):
-            for kp in fcurve.keyframe_points:
-                ease = min(key_frames, key=lambda k: abs(k[0] - kp.co.x))[1]
-                interp, easing = EASES[ease]
-                kp.interpolation = interp
-                if easing:
-                    kp.easing = easing
-                kp.handle_left_type = kp.handle_right_type = "AUTO_CLAMPED"
-            fcurve.update()
+    overrides = [key[3] if len(key) > 3 else None for key in clip["keys"]]
+    apply_eases([arm, *ctl.values()], key_frames, overrides)
     scene.frame_start, scene.frame_end = 0, math.ceil(clip["keys"][-1][0] * FPS)
+
+    # The chest-relative controls: key each spot in the chest's frame on a helper, ease it like
+    # the rest, then sample it back into the world.
+    end = clip["keys"][-1][0]
+    helpers = {}
+    for name, spots in pending.items():
+        helper = new_empty(f"{name}InChest")
+        for index, loc in spots:
+            t = key_time(clip, index, OVERLAP_GROUP[name])
+            helper.location = chest_at(arm, t).inverted() @ loc
+            helper.keyframe_insert("location", frame=t * FPS)
+        helpers[name] = helper
+    apply_eases(list(helpers.values()), key_frames, overrides)
+    times = sorted({round(i / CHEST_BAKE_RATE, 6) for i in range(int(round(end * CHEST_BAKE_RATE)) + 1)}
+                   | {round(key_time(clip, i, OVERLAP_GROUP[n]), 6) for n in helpers for i in range(len(clip["keys"]))})
+    for t in times:
+        chest = chest_at(arm, t)
+        for name, helper in helpers.items():
+            ctl[name].location = chest @ helper.matrix_world.translation
+            ctl[name].keyframe_insert("location", frame=t * FPS)
+    for name, helper in helpers.items():
+        for fcurve in action_fcurves(ctl[name].animation_data.action):
+            for kp in fcurve.keyframe_points:
+                kp.interpolation = "LINEAR"
+        bpy.data.objects.remove(helper)
+    scene.frame_set(0)
 
 
 def action_fcurves(action):
@@ -362,7 +495,7 @@ def sample(arm, rest_bone, part_rest, t):
 def bake(arm, rest_bone, part_rest, clip, name):
     end = clip["keys"][-1][0]
     times = sorted({round(i / SAMPLE_RATE, 5) for i in range(int(round(end * SAMPLE_RATE)) + 1)}
-                   | {round(k[0], 5) for k in clip["keys"]} | ({round(clip["hit"] + d, 5) for d in (-1 / SAMPLE_RATE, 0, 1 / SAMPLE_RATE)} if clip.get("hit") is not None else set()))
+                   | {round(key_time(clip, i, g), 5) for i in range(len(clip["keys"])) for g in set(OVERLAP_GROUP.values())} | ({round(clip["hit"] + d, 5) for d in (-1 / SAMPLE_RATE, 0, 1 / SAMPLE_RATE)} if clip.get("hit") is not None else set()))
     frames = []
     worst_slip = 0.0
     for t in times:
@@ -418,22 +551,28 @@ def thin(frames, clip):
     return [frames[k] for k in kept]
 
 
+ELBOW_MIN_BEND = 30  # degrees: straighter than this, a small move of the hand swings the elbow fast
+
+
 def report(frames, clip, name):
     """Checks the bake against the keys: how close the grip came, where the blade pointed."""
     by_time = {round(t, 5): world for t, _, world in frames}
-    for key in clip["keys"]:
+    for index, key in enumerate(clip["keys"]):
         t, p = key[0], key[1]
         world = by_time.get(round(t, 5))
         if world is None:
             continue
+
+        def at(group):  # the body when this key lands for `group` (overlap)
+            return by_time.get(round(key_time(clip, index, group), 5), world)
         hand = TO_BLENDER @ world["RightHand"]
         grip = hand.to_translation()
         blade = (hand.to_3x3() @ Vector((0, 0, -1))).normalized()
         miss = (grip - Vector(p["grip"])).length
         tip = grip + blade * 4.63
-        lf = (TO_BLENDER @ world["LeftFoot"]).to_translation()
-        rf = (TO_BLENDER @ world["RightFoot"]).to_translation()
-        lw = (TO_BLENDER @ world["LeftHand"] @ GRIP_TO_WRIST)
+        lf = (TO_BLENDER @ at("feet")["LeftFoot"]).to_translation()
+        rf = (TO_BLENDER @ at("feet")["RightFoot"]).to_translation()
+        lw = (TO_BLENDER @ at("offhand")["LeftHand"] @ GRIP_TO_WRIST)
         lmiss = (lw - Vector(p["lwrist"])).length
         fmiss = max((lf - Vector(p["lfoot"][:3])).length, (rf - Vector(p["rfoot"][:3])).length)
         flags = []
@@ -445,6 +584,13 @@ def report(frames, clip, name):
             flags.append(f"FOOT OUT OF REACH by {fmiss:.2f}")
         if tip.z < 0.05:
             flags.append(f"TIP IN THE GROUND ({tip.z:.2f})")
+        # A nearly straight arm makes the IK elbow snap around: keep some bend in it.
+        upper_axis = world["RightUpperArm"].to_3x3() @ Vector((0, 1, 0))
+        lower_axis = world["RightLowerArm"].to_3x3() @ Vector((0, 1, 0))
+        bend = math.degrees(upper_axis.angle(lower_axis))
+        flags.insert(0, f"elbow {bend:.0f}°")
+        if bend < ELBOW_MIN_BEND:
+            flags.append("ARM NEARLY STRAIGHT")
         print(f"AUTHOR   t={t:.3f} grip ({grip.x:+.2f},{grip.y:+.2f},{grip.z:+.2f}) "
               f"blade ({blade.x:+.2f},{blade.y:+.2f},{blade.z:+.2f}) tip z {tip.z:.2f} " + " ".join(flags))
     hit = clip.get("hit")
@@ -461,7 +607,83 @@ def report(frames, clip, name):
         if len(tips) == 2 and edge is not None:
             motion = (tips[1] - tips[0])
             speed = motion.length * SAMPLE_RATE / 2
-            print(f"AUTHOR   hit at {hit}: tip speed {speed:.0f} studs/s, edge leads by {edge.dot(motion.normalized()):+.2f} (1 = square on)")
+            print(f"AUTHOR   hit at {hit}: tip speed {speed:.0f} studs/s, edge leads by {edge.dot(motion.normalized()):+.2f} (1 = square on; "
+                  f"the tip moves ({motion.normalized().x:+.2f},{motion.normalized().y:+.2f},{motion.normalized().z:+.2f}))")
+
+
+# Smoothness: a CORNER is one of the sharp V-shapes or steps a Graph Editor would show, on any
+# joint turning faster than CORNER_MIN degrees/s:
+#   a reversal: it turns back the way it came (over REVERSE_ANGLE) from one frame to the next;
+#   a dead stop: it loses over 3/4 of its speed in one frame without having been slowing down;
+#   a jump start: it goes from almost still to most of its speed in one frame.
+# Easing into or out of a pose over a few frames is fine, however fast the move. Not checked
+# around the hit (the whip into it is meant to be sudden), in the game's blend-in, or in a clip's
+# "sudden" windows [(from, to)] (moments meant to snap, like a jump's take-off or a slam's landing).
+CORNER_MIN = 150
+# A FLIP is one frame where a joint turns over FLIP_DEGREES and over FLIP_SPIKE times as far as in
+# the frames either side: an IK elbow or knee swinging round because its pole crossed the limb, or
+# the blade rolling over. (A fast cut is fast for several frames; a flip is a one-frame spike.)
+# Excused only in a clip's first FLIP_EXCUSED seconds, never on the hit.
+FLIP_DEGREES = 30
+FLIP_SPIKE = 2.5
+FLIP_EXCUSED = 0.05  # seconds at the start of a clip (the blend-in is still mostly the previous pose)
+REVERSE_ANGLE = 100  # degrees
+HIT_WINDOW = 0.05  # seconds either side of the hit
+START_WINDOW = 0.08  # the first seconds of a clip, which the game blends in (ComboWeaponClient SWING_FADE_IN);
+# a clip chained from another one ("blend_in": CHAIN_FADE, 0.15) blends in over longer
+
+
+def smoothness(frames, clip, name):
+    hit = clip.get("hit")
+    # Angular velocity of every joint (degrees/s) over each 60 Hz step; the extra samples at key
+    # times are skipped so every step is the same length.
+    even = [f for f in frames if abs(f[0] * SAMPLE_RATE - round(f[0] * SAMPLE_RATE)) < 1e-3]
+    speeds = []
+    for (t0, a, _), (t1, b, _) in zip(even, even[1:]):
+        out = {}
+        for part in a:
+            d = a[part].to_quaternion().rotation_difference(b[part].to_quaternion())
+            if d.w < 0:
+                d = -d
+            axis, angle = d.to_axis_angle()
+            out[part] = axis * math.degrees(angle) / (t1 - t0)
+        speeds.append(((t0 + t1) / 2, out))
+    flips = {}
+    for i, (t, v) in enumerate(speeds):
+        if t < FLIP_EXCUSED:
+            continue  # the first frames leave the first pose at full speed, while the game's blend-in still hides them
+        for part, w in v.items():
+            turn = w.length / SAMPLE_RATE
+            around = max(speeds[j][1][part].length / SAMPLE_RATE for j in (i - 1, i + 1) if 0 <= j < len(speeds))
+            if turn > FLIP_DEGREES and turn > FLIP_SPIKE * around:
+                flips.setdefault(round(t, 3), []).append(f"{part} {turn:.0f}° (around it {around:.0f}°)")
+    for t in sorted(flips):
+        print(f"AUTHOR   FLIP at {t:.3f}s: " + ", ".join(flips[t]))
+    corners = []
+    for i in range(1, len(speeds) - 1):
+        t = (speeds[i][0] + speeds[i + 1][0]) / 2  # between frames i and i + 1
+        if (hit is not None and abs(t - hit) < HIT_WINDOW) or t < clip.get("blend_in", START_WINDOW):
+            continue
+        if any(a <= t <= b for a, b in clip.get("sudden", [])):
+            continue
+        for part in speeds[i][1]:
+            before, now, after = (speeds[j][1][part] for j in (i - 1, i, i + 1))
+            later = speeds[i + 2][1][part] if i + 2 < len(speeds) else after
+            kind = None
+            if now.length > CORNER_MIN and after.length > CORNER_MIN and math.degrees(now.angle(after)) > REVERSE_ANGLE:
+                kind = "reverses"
+            elif now.length > CORNER_MIN and after.length < 0.25 * now.length and before.length < 1.5 * now.length:
+                kind = "stops dead"
+            elif after.length > CORNER_MIN and now.length < 0.25 * after.length and later.length < 1.5 * after.length:
+                kind = "jumps off"
+            if kind:
+                corners.append((t, part, max(now.length, after.length), kind))
+    print(f"AUTHOR {name} smoothness: {len(corners)} corners")
+    by_time = {}
+    for t, part, fastest, kind in corners:
+        by_time.setdefault(round(t, 3), []).append(f"{part} {kind} at {fastest:.0f} deg/s")
+    for t in sorted(by_time):
+        print(f"AUTHOR   CORNER at {t:.3f}s: " + ", ".join(by_time[t]))
 
 
 # --- writing the .rbxmx -----------------------------------------------------------------------
@@ -572,6 +794,7 @@ def main():
         key_clip(arm, ctl, clip)
         frames = bake(arm, rest_bone, part_rest, clip, name)
         report(frames, clip, name)
+        smoothness(frames, clip, name)
         out = Path(args.out) / f"{name}.rbxmx"
         thinned = thin(frames, clip)
         print(f"AUTHOR {name}: {len(thinned)} keyframes kept of {len(frames)} samples")
