@@ -4,6 +4,7 @@ One note per finished piece of work, newest first. Each says what was asked, wha
 the choices made (and where to tune them), and what's still open.
 
 ## 2026-10-17
+- [Sword swings recover smoothly; chain and end blending for all weapons (main issue)](2026-10-17-sword-recovery-blend.md)
 - [Fix: ground and trees missing on the phone (streaming settings)](2026-10-17-streaming-fix.md)
 - [Loading: loading screen, later sound preload (polish pass step 8)](2026-10-17-loading.md)
 - [Enemy smoothness: far creatures sleep (polish pass step 7)](2026-10-17-dormancy.md)

@@ -11,7 +11,9 @@ Easing (how a keyframe moves on to the next): a key can be (time, pose, ease) wi
 of the EASE_* below; without one it's a smooth in-and-out. Strikes read best (the feel of a
 dueling game) as: settle into the wind-up (EASE_SETTLE), whip into the hit (EASE_WHIP),
 carry through and stop hard (EASE_SETTLE), hold the finished pose a moment (EASE_HOLD), then
-recover to the ready stance. See SwordSwing1-3.
+recover through a low waypoint (EASE_WHIP into it, EASE_SETTLE out): the spent blade sinks
+and swings back on a curve, the feet draw in, and it settles into the ready stance over about
+half a second instead of snapping straight back. See SwordSwing1-3 and notes/research.
 
 Joint frames (R15): X right, Y up, Z back (forward is -Z). A Pose's CFrame is the joint's
 Transform: the child part's rotation (and, for the hips/LowerTorso, offset) relative to
@@ -125,6 +127,11 @@ LUNGE_RIGHT = {"drop": 0.5, "lleg": (-25, -20, 45), "rleg": (45, -55, 10)}  # ri
 COIL_BACK = {"drop": 0.35, "lleg": (30, -45, 15), "rleg": (20, -45, 25)}  # weight on the back leg
 TUCKED = {"drop": -0.7, "lleg": (50, -85, 35), "rleg": (40, -75, 35)}  # in the air
 DEEP_LUNGE = {"drop": 0.95, "lleg": (70, -95, 25), "rleg": (-15, -110, 70)}  # back knee near the ground
+# Recovery: on the way back from a lunge, the weight comes off the front foot and the back foot
+# draws in, before the feet settle under the hips in READY.
+DRAW_IN_LEFT = {"drop": 0.32, "lleg": (28, -40, 12), "rleg": (-8, -24, 32)}
+DRAW_IN_RIGHT = {"drop": 0.32, "lleg": (-8, -24, 32), "rleg": (28, -40, 12)}
+RISING = {"drop": 0.6, "lleg": (50, -75, 25), "rleg": (5, -70, 65)}  # pushing up off the back knee
 
 # Guard: sword held level across the chest, blade pointing left, left hand bracing it,
 # chest angled sideways. Upper body only, so the legs keep walking while blocking.
@@ -166,9 +173,11 @@ SWINGS = {
                         **LUNGE_LEFT), EASE_SETTLE),  # the hit, mid-arc
             (0.32, pose(arm=(-0.8, 0.05, -0.6), elbow=0, chest=25, hips=12, lean=-16, larm=-55, lelbow=30,
                         **LUNGE_LEFT), EASE_HOLD),  # fully out to the left
-            (0.50, pose(arm=(-0.8, 0.0, -0.62), elbow=5, chest=23, hips=11, lean=-15, larm=-50, lelbow=30,
-                        **LUNGE_LEFT)),  # held
-            (0.72, pose(arm=(0.3, -0.6, -0.75), wrist=-40, elbow=0, **READY)),  # back to the ready stance
+            (0.46, pose(arm=(-0.8, 0.0, -0.62), elbow=5, chest=23, hips=11, lean=-15, larm=-50, lelbow=30,
+                        **LUNGE_LEFT), EASE_WHIP),  # held, then the spent blade starts to sink
+            (0.64, pose(arm=(-0.45, -0.55, -0.7), wrist=-55, elbow=12, chest=12, hips=6, lean=-7, larm=-22, lelbow=28,
+                        **DRAW_IN_LEFT), EASE_SETTLE),  # swinging low back across, the back foot drawing in
+            (0.98, pose(arm=(0.3, -0.6, -0.75), wrist=-40, elbow=0, **READY)),  # settled in the ready stance
         ],
     },
     "SwordSwing2": {  # backhand: cock across to the left shoulder, sweep back and out to the far right
@@ -185,9 +194,11 @@ SWINGS = {
                         **LUNGE_RIGHT), EASE_SETTLE),  # the hit, mid-arc
             (0.30, pose(arm=(0.8, 0.05, -0.6), elbow=0, chest=-25, hips=-12, lean=-14, larm=50, lelbow=30,
                         **LUNGE_RIGHT), EASE_HOLD),  # fully out to the right
-            (0.48, pose(arm=(0.8, 0.0, -0.62), elbow=5, chest=-23, hips=-11, lean=-13, larm=45, lelbow=30,
-                        **LUNGE_RIGHT)),  # held
-            (0.70, pose(arm=(0.2, -0.5, -0.85), wrist=-40, elbow=0, **READY)),  # back to the ready stance
+            (0.44, pose(arm=(0.8, 0.0, -0.62), elbow=5, chest=-23, hips=-11, lean=-13, larm=45, lelbow=30,
+                        **LUNGE_RIGHT), EASE_WHIP),  # held, then the spent blade starts to sink
+            (0.62, pose(arm=(0.55, -0.55, -0.65), wrist=-55, elbow=12, chest=-12, hips=-6, lean=-6, larm=20, lelbow=28,
+                        **DRAW_IN_RIGHT), EASE_SETTLE),  # swinging low back across, the back foot drawing in
+            (0.96, pose(arm=(0.2, -0.5, -0.85), wrist=-40, elbow=0, **READY)),  # settled in the ready stance
         ],
     },
     "SwordGuard": {  # looping block stance (no hit; loops while the player holds block)
@@ -212,8 +223,10 @@ SWINGS = {
             (0.28, pose(arm=(0.1, 0.95, 0.3), elbow=-60, lean=20, larm=70, lelbow=40, **TUCKED), EASE_HOLD),  # in the air, cocked
             (0.33, pose(arm=(0.1, 0.95, 0.35), elbow=-70, lean=23, larm=72, lelbow=40, **TUCKED), EASE_WHIP),  # then crash down
             (0.40, pose(arm=(0.05, -0.45, -0.9), elbow=0, lean=-30, larm=-25, **DEEP_LUNGE), EASE_HOLD),  # the hit, held
-            (0.66, pose(arm=(0.05, -0.47, -0.88), elbow=5, lean=-32, larm=-27, **DEEP_LUNGE)),
-            (0.92, pose(arm=(0.2, -0.5, -0.85), wrist=-40, elbow=0, **READY)),  # back to the ready stance
+            (0.62, pose(arm=(0.05, -0.47, -0.88), elbow=5, lean=-32, larm=-27, **DEEP_LUNGE), EASE_WHIP),
+            (0.86, pose(arm=(0.15, -0.6, -0.75), wrist=-50, elbow=8, lean=-14, larm=-10, lelbow=25,
+                        **RISING), EASE_SETTLE),  # levering the blade up out of the ground, rising off the knee
+            (1.20, pose(arm=(0.2, -0.5, -0.85), wrist=-40, elbow=0, **READY)),  # settled in the ready stance
         ],
     },
     "SwordSpin": {  # heavy attack: loops while the player holds left-click

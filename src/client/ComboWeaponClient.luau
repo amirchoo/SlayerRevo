@@ -57,6 +57,12 @@ type StopHow = "release" | "server" | "cancel"
 
 local BLOCKING = CombatConfig.Blocking
 local TRAIL_AFTER_HIT = 0.15 -- keep the trail on this long after the hit lands
+-- Blending between swings (as soulslikes do it): a chained swing's wind-up grows out of the last
+-- one's follow-through, and a swing nobody follows up blends into the idle as it finishes,
+-- rather than dropping out on its last frame.
+local SWING_FADE_IN = 0.08 -- seconds the first swing of a combo blends in from the idle
+local CHAIN_FADE = 0.15 -- seconds a swing blends into the next one in the combo
+local END_FADE = 0.25 -- seconds a finishing swing blends into the idle
 local LUNGE_TIME = 0.15 -- seconds a lunging move pushes forward
 -- The ground indicator showing a charged heavy's reach.
 local REACH_COLOR = Color3.fromRGB(255, 200, 120)
@@ -228,6 +234,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 	local comboStep = 0 -- the last step played; 0 means the combo hasn't started
 	local lastSwing = 0
 	local swingToken = 0
+	local fadeTokens: { [AnimationTrack]: {} } = setmetatable({}, { __mode = "k" }) :: any -- the latest fadeOutAtEnd per track
 
 	-- Set while blocking; call it to lower the guard.
 	local stopBlock: (() -> ())? = nil
@@ -298,6 +305,23 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		return 1
 	end
 
+	-- Blends `track` into the idle over END_FADE as it reaches its end (it would otherwise drop out
+	-- on its last frame). Follows the track's time, so a hitstop freeze just delays it.
+	local function fadeOutAtEnd(track: AnimationTrack)
+		local token = {}
+		fadeTokens[track] = token
+		task.spawn(function()
+			while track.IsPlaying and fadeTokens[track] == token do
+				local length = track.Length
+				if length > 0 and track.Speed > 0 and track.TimePosition >= length - END_FADE * track.Speed then
+					track:Stop(END_FADE)
+					break
+				end
+				RunService.Heartbeat:Wait()
+			end
+		end)
+	end
+
 	local function stopSwings(fade: number)
 		local tracks = currentTracks()
 		if tracks then
@@ -339,12 +363,17 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		local tracks = currentTracks()
 		local swing = tracks and tracks.swings[step]
 		if tracks and swing then
-			for index, track in tracks.swings do
-				if index ~= step and track.IsPlaying then
-					track:Stop(0.05)
+			local chained = false
+			for _, track in tracks.swings do
+				if track.IsPlaying then
+					chained = true
+					if track ~= swing then
+						track:Stop(CHAIN_FADE)
+					end
 				end
 			end
-			swing:Play(0.05, 1, config.AnimationSpeed)
+			swing:Play(if chained then CHAIN_FADE else SWING_FADE_IN, 1, config.AnimationSpeed)
+			fadeOutAtEnd(swing)
 		end
 		playSwingEffects(tool, step)
 

@@ -102,9 +102,9 @@ the main issue (priority 1), or the dungeon-place idea in the backlog if dungeon
 Small leftovers found on the way:
 - The admin panel needs the `` ` `` key, so it can't be opened on a phone.
 
-## Separate: main issue damage decision
-The user decided to **raise Sword, Emberfang and Mace back to their old damage per second**. It's not
-applied yet. The proposed numbers are in [[main-issue-dueling-vibe]]:
+## Separate: main issue damage decision (applied 2026-10-17)
+The user decided to **raise Sword, Emberfang and Mace back to their old damage per second**. Applied
+2026-10-17 ([log](../log/2026-10-17-sword-recovery-blend.md)). The numbers:
 
 | Weapon | Damage (hits 1, 2, 3) |
 |---|---|

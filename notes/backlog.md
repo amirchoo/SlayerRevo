@@ -20,6 +20,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] Sword swings recover on a curve instead of snapping back; swings blend into each other and into the idle; Sword/Emberfang/Mace damage raised (2026-10-17, [log](log/2026-10-17-sword-recovery-blend.md))
 - [x] Loading: a Slayer Revo loading screen, sounds preloaded once you're in (2026-10-17, [log](log/2026-10-17-loading.md))
 - [x] Enemy smoothness: orcs and animals far from every player sleep, anchored, waking as you come near (2026-10-17, [log](log/2026-10-17-dormancy.md))
 - [x] Animation smoothness: animals, villagers and pets posed less often when far or off screen; hitstop and priorities checked (2026-10-17, [log](log/2026-10-17-pose-lod.md))

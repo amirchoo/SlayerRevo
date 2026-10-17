@@ -234,9 +234,9 @@ local Sword: ComboWeapon = {
 	ModelFit = { Length = 5.2, GripFrom = 0.11 },
 	Combo = {
 		-- HitDelay matches each swing's "Hit" keyframe in tools/sword_anims.py.
-		{ Animation = "rbxassetid://101378158511989", Damage = 20, Cooldown = 0.55, HitDelay = 0.26 }, -- SwordSwing1
-		{ Animation = "rbxassetid://100925354916925", Damage = 25, Cooldown = 0.55, HitDelay = 0.24 }, -- SwordSwing2
-		{ Animation = "rbxassetid://78373052274628", Damage = 40, Cooldown = 0.85, HitDelay = 0.4 }, -- SwordSwing3
+		{ Animation = "rbxassetid://101378158511989", Damage = 33, Cooldown = 0.55, HitDelay = 0.26 }, -- SwordSwing1
+		{ Animation = "rbxassetid://100925354916925", Damage = 41, Cooldown = 0.55, HitDelay = 0.24 }, -- SwordSwing2
+		{ Animation = "rbxassetid://78373052274628", Damage = 65, Cooldown = 0.85, HitDelay = 0.4 }, -- SwordSwing3
 	},
 	ComboWindow = 0.8,
 	Range = 6,
@@ -274,9 +274,9 @@ local Emberfang: ComboWeapon = {
 	ModelFit = { Length = 5.4, GripFrom = 0.12 }, -- the hand on the grip wrap
 	TrailColor = Color3.fromRGB(255, 120, 40),
 	Combo = {
-		{ Animation = Sword.Combo[1].Animation, Damage = 26, Cooldown = 0.55, HitDelay = 0.26 },
-		{ Animation = Sword.Combo[2].Animation, Damage = 32, Cooldown = 0.55, HitDelay = 0.24 },
-		{ Animation = Sword.Combo[3].Animation, Damage = 52, Cooldown = 0.85, HitDelay = 0.4 },
+		{ Animation = Sword.Combo[1].Animation, Damage = 42, Cooldown = 0.55, HitDelay = 0.26 },
+		{ Animation = Sword.Combo[2].Animation, Damage = 52, Cooldown = 0.55, HitDelay = 0.24 },
+		{ Animation = Sword.Combo[3].Animation, Damage = 85, Cooldown = 0.85, HitDelay = 0.4 },
 	},
 	ComboWindow = 0.8,
 	Range = 6.5,
@@ -314,11 +314,11 @@ local Mace: ComboWeapon = {
 	ModelFit = { Length = 4.4, GripFrom = 0.14 },
 	Combo = {
 		-- Slower animations land later: the sword's HitDelays divided by MACE_SPEED.
-		{ Animation = Sword.Combo[1].Animation, Damage = 25, Cooldown = 0.7, HitDelay = 0.26 / MACE_SPEED },
-		{ Animation = Sword.Combo[2].Animation, Damage = 30, Cooldown = 0.7, HitDelay = 0.24 / MACE_SPEED },
+		{ Animation = Sword.Combo[1].Animation, Damage = 40, Cooldown = 0.7, HitDelay = 0.26 / MACE_SPEED },
+		{ Animation = Sword.Combo[2].Animation, Damage = 47, Cooldown = 0.7, HitDelay = 0.24 / MACE_SPEED },
 		{
 			Animation = Sword.Combo[3].Animation,
-			Damage = 55,
+			Damage = 87,
 			Cooldown = 1.05,
 			HitDelay = 0.4 / MACE_SPEED,
 			Knockback = 30,

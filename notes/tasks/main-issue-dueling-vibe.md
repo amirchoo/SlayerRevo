@@ -6,13 +6,16 @@ Opened 2026-10-17. **Say "do the main issue" in a new session**: Claude reads th
 first unticked step below, ticks it here (with a link to its log note), and logs it as usual.
 
 ## Where we left off (end of 2026-10-17 session)
-- **User feedback 2026-10-17 (after the perf pass):** attack animations still feel a bit stiff (they
-  were using the Rapier, which hasn't had the whole-body rework yet). Ask whether the reworked Sword
-  feels stiff too: if not, roll the recipe out (Rapier next?); if so, the recipe itself needs work.
+- **2026-10-17, after the perf pass:** the user said the Sword still snaps back after a swing.
+  Researched how soulslikes animate swings ([research](../research/sword-swing-animation.md)) and
+  gave the Sword swings a real recovery, plus chain and end blending for every combo weapon
+  ([log](../log/2026-10-17-sword-recovery-blend.md)). The damage raise is applied too.
+  **Waiting on the user:** restart Rojo, publish SwordSwing1–3 from Rig.AnimSaves, send the IDs,
+  then play. If the Sword feels right, give the Rapier the same recovery next (the user uses it).
 - **Waiting on the user:**
   - a playtest of the new Sword swings and the body dash
   - ~~a decision on Sword, Emberfang and Mace damage~~ **Decided 2026-10-17: raise them back to the old damage
-    per second.** Not applied yet. Proposed (combo time old → new: Sword and Emberfang 1.2 → 1.95 s, ×1.625;
+    per second.** Applied 2026-10-17 ([log](../log/2026-10-17-sword-recovery-blend.md)). Proposed (combo time old → new: Sword and Emberfang 1.2 → 1.95 s, ×1.625;
     Mace 1.55 → 2.45 s, ×1.58):
 
     | Weapon | Damage now (hits 1, 2, 3) | Proposed |
