@@ -228,15 +228,15 @@ export type GreatswordSwing = {
 local Sword: ComboWeapon = {
 	ToolName = "Sword",
 	Hand = "Right",
-	IdleAnimation = "rbxassetid://138485130990728",
+	IdleAnimation = "rbxassetid://128056004893251", -- SwordIdle (katana-style, 2026-10-18)
 	AnimationSpeed = 1,
 	Stamina = 8,
 	ModelFit = { Length = 5.2, GripFrom = 0.11 },
 	Combo = {
 		-- HitDelay matches each swing's "Hit" keyframe in tools/sword_anims.py.
-		{ Animation = "rbxassetid://105789243194617", Damage = 33, Cooldown = 0.55, HitDelay = 0.26 }, -- SwordSwing1
-		{ Animation = "rbxassetid://125525200710497", Damage = 41, Cooldown = 0.55, HitDelay = 0.24 }, -- SwordSwing2
-		{ Animation = "rbxassetid://108194359632313", Damage = 65, Cooldown = 0.85, HitDelay = 0.4 }, -- SwordSwing3
+		{ Animation = "rbxassetid://90592657091699", Damage = 33, Cooldown = 0.55, HitDelay = 0.18 }, -- SwordSwing1
+		{ Animation = "rbxassetid://99968467521543", Damage = 41, Cooldown = 0.55, HitDelay = 0.15 }, -- SwordSwing2
+		{ Animation = "rbxassetid://98009756362330", Damage = 65, Cooldown = 0.85, HitDelay = 0.38 }, -- SwordSwing3
 	},
 	ComboWindow = 0.8,
 	Range = 6,
@@ -274,9 +274,9 @@ local Emberfang: ComboWeapon = {
 	ModelFit = { Length = 5.4, GripFrom = 0.12 }, -- the hand on the grip wrap
 	TrailColor = Color3.fromRGB(255, 120, 40),
 	Combo = {
-		{ Animation = Sword.Combo[1].Animation, Damage = 42, Cooldown = 0.55, HitDelay = 0.26 },
-		{ Animation = Sword.Combo[2].Animation, Damage = 52, Cooldown = 0.55, HitDelay = 0.24 },
-		{ Animation = Sword.Combo[3].Animation, Damage = 85, Cooldown = 0.85, HitDelay = 0.4 },
+		{ Animation = Sword.Combo[1].Animation, Damage = 42, Cooldown = 0.55, HitDelay = Sword.Combo[1].HitDelay },
+		{ Animation = Sword.Combo[2].Animation, Damage = 52, Cooldown = 0.55, HitDelay = Sword.Combo[2].HitDelay },
+		{ Animation = Sword.Combo[3].Animation, Damage = 85, Cooldown = 0.85, HitDelay = Sword.Combo[3].HitDelay },
 	},
 	ComboWindow = 0.8,
 	Range = 6.5,

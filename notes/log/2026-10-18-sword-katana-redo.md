@@ -61,3 +61,15 @@ in Emberfang, and the TrainingStands Emberfang pose (PoseAt about 0.37, just aft
   0.48) and the Cooldowns in CombatConfig set the rhythm.
 - The guard (SwordGuard) wasn't changed; it may want to match the new stance later.
 - Rapier next if the Sword feels right.
+
+## Published (2026-10-18, later)
+The user published the clips. In:
+| Clip | ID | Where |
+|---|---|---|
+| SwordIdle | 128056004893251 | `Sword.IdleAnimation` (Emberfang uses it too) |
+| SwordSwing1 | 90592657091699 | `Sword.Combo[1]`, HitDelay 0.26 → 0.18 |
+| SwordSwing2 | 99968467521543 | `Sword.Combo[2]`, HitDelay 0.24 → 0.15 |
+| SwordSwing3 | 98009756362330 | `Sword.Combo[3]`, HitDelay 0.40 → 0.38; TrainingStands Emberfang pose, PoseAt 0.37 |
+
+Emberfang's HitDelays now read the Sword's (`Sword.Combo[n].HitDelay`), so they can't drift apart.
+Studio has it (Rojo synced, CombatConfig requires cleanly). Not playtested.

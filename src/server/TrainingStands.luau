@@ -27,7 +27,7 @@ type Stand = {
 -- In order along the wall, north to south.
 local STANDS: { Stand } = {
 	{ Set = "Leather", Weapon = "Sword", Pose = "rbxassetid://82457273702146", PoseAt = 1 }, -- SwordGuard
-	{ Set = "Iron", Weapon = "Emberfang", Pose = "rbxassetid://108194359632313", PoseAt = 0.38 }, -- SwordSwing3, just past the hit (0.46 of 1.20 s)
+	{ Set = "Iron", Weapon = "Emberfang", Pose = "rbxassetid://98009756362330", PoseAt = 0.37 }, -- SwordSwing3, the overhead just landed (0.45 of 1.20 s)
 	{ Set = "Warhide", Weapon = "Greatsword", Pose = "rbxassetid://98786062327224", PoseAt = 1 }, -- GreatswordCharge
 	{ Set = "Woodcutter", Weapon = "Axe", Pose = "rbxassetid://86819744387869", PoseAt = 1 }, -- AxeWindUp
 	{ Set = "Warden", Weapon = "Mace", Pose = "rbxassetid://92676795728467", PoseAt = 1 }, -- MaceWindUp

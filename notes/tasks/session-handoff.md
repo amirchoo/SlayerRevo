@@ -16,7 +16,7 @@ the two notes it points to. Update this note at the end of every session.
   reached Studio (Rojo had stopped).
 
 ## Waiting on the user (in this order, on the Mac)
-> 2026-10-18 (later): the Sword was redone katana-style ([log](../log/2026-10-18-sword-katana-redo.md)). **First:** the user publishes SwordIdle and SwordSwing1–3 from Rig.AnimSaves and sends the IDs; put them in Sword (IdleAnimation, Combo with HitDelay 0.18/0.15/0.38) and Emberfang, and the TrainingStands Emberfang pose (PoseAt about 0.37).
+> 2026-10-18 (later): the Sword was redone katana-style and the four clips are published and in ([log](../log/2026-10-18-sword-katana-redo.md)). **First:** ask how the new Sword plays.
 > 2026-10-18: steps 1 and 2 are done (Rojo connected; Sword IDs in, [log](../log/2026-10-18-sword-recovery-ids.md)). Step 3 and a Sword playtest are left.
 
 1. **Start `rojo serve` and connect the plugin.** The Rojo server stopped mid-session, and the
