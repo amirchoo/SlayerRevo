@@ -69,4 +69,4 @@ Claude adds each step's checks here as it finishes ([[perf-polish]], [[perf-poli
 ## The result
 - [ ] FPS now, phone: town ___ forest ___ dungeon ___ (before: ___ / ___ / ___)
 - [ ] FPS now, Mac: town ___ forest ___ dungeon ___
-- [ ] Sword: walk while swinging. The legs walk (no sliding), each swing steps you in a little; standing still, the swing's stance plays. ([log](../log/2026-10-18-sword-walk-while-swinging.md))
+- [ ] Sword: walk while swinging. The legs walk (no sliding), you walk at half speed while swinging; standing still, the swing's stance plays. ([log](../log/2026-10-18-sword-walk-while-swinging.md))

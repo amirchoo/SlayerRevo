@@ -44,3 +44,11 @@ step forward (not slower walking).
 - Checked in a playtest (walking driven by script, position-measured): 16 studs/s walking, 32 from
   0.07 s to the hit at 0.18 s, then back to 16.
 - Tuning: `Sword.MovingStep` in CombatConfig (Speed for how far, Time for how long before the hit).
+
+## Replaced: slower walking instead of the step (added after)
+The user tried the step-in: "too op, it dashes you forward." Removed `MovingStep`. Now:
+- `SwingWalkSpeed` on the weapon config: from a swing's click until its Cooldown is over, you walk
+  at that speed. Sword **8** (half of 16); Emberfang reads the Sword's. A chained swing keeps it slow
+  until the last one's cooldown. A block or heavy started meanwhile sets its own speed.
+- Checked in a playtest: WalkSpeed 8 at the click (moving about 4–8 studs/s), back to 16 at 0.55 s.
+- Tuning: `Sword.SwingWalkSpeed` in CombatConfig.

@@ -444,14 +444,16 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		if lunge and root and root:IsA("BasePart") then
 			Push.apply(root, root.CFrame.LookVector, lunge, LUNGE_TIME)
 		end
-		-- Swinging on the move steps us in with the cut (ending on the hit). Standing still stays planted.
-		local stepIn = config.MovingStep
-		if stepIn and not lunge and root and root:IsA("BasePart") then
-			local stepRoot: BasePart = root
-			local humanoid = (character :: Model):FindFirstChildOfClass("Humanoid")
-			task.delay(math.max(0, combo[step].HitDelay - stepIn.Time), function()
-				if humanoid and humanoid.MoveDirection.Magnitude > MOVING_SPEED and stepRoot.Parent then
-					Push.apply(stepRoot, stepRoot.CFrame.LookVector, stepIn.Speed, stepIn.Time)
+		-- Swinging slows our walk until the swing's cooldown is over (a block or heavy started meanwhile
+		-- sets its own speed and restores it after).
+		local slow = config.SwingWalkSpeed
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if slow and humanoid then
+			humanoid.WalkSpeed = slow
+			local token = swingToken
+			task.delay(combo[step].Cooldown, function()
+				if token == swingToken and not stopBlock and not stopHeavy and humanoid.WalkSpeed == slow then
+					humanoid.WalkSpeed = normalSpeed()
 				end
 			end)
 		end

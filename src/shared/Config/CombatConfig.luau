@@ -193,9 +193,9 @@ export type ComboWeapon = {
 	AnimationSpeed: number, -- playback speed for its swing animations (below 1 = heavier)
 	Stamina: number, -- stamina each swing costs
 	Combo: { ComboMove },
-	-- Swinging while walking steps you in: a short push the way you face, timed to end on each
-	-- swing's hit (ComboWeaponClient). Speed in studs/s over Time seconds (walking is 16).
-	MovingStep: { Speed: number, Time: number }?,
+	-- Walk speed from a swing's click until its Cooldown is over, so attacking on the move is slower
+	-- (ComboWeaponClient). Walking is 16.
+	SwingWalkSpeed: number?,
 	ComboWindow: number, -- seconds after a swing's cooldown to click again before the combo resets
 	Range: number, -- hitbox depth in front of the player, in studs
 	Width: number,
@@ -244,7 +244,7 @@ local Sword: ComboWeapon = {
 		{ Animation = "rbxassetid://99968467521543", MovingAnimation = "rbxassetid://88649716388151", Damage = 41, Cooldown = 0.55, HitDelay = 0.15 }, -- SwordSwing2
 		{ Animation = "rbxassetid://98009756362330", MovingAnimation = "rbxassetid://79289853982811", Damage = 65, Cooldown = 0.85, HitDelay = 0.38 }, -- SwordSwing3
 	},
-	MovingStep = { Speed = 32, Time = 0.12 }, -- about 4 studs into the cut, 2 more than walking would
+	SwingWalkSpeed = 8, -- half speed while swinging
 	ComboWindow = 0.8,
 	Range = 6,
 	Width = 6,
@@ -285,7 +285,7 @@ local Emberfang: ComboWeapon = {
 		{ Animation = Sword.Combo[2].Animation, MovingAnimation = Sword.Combo[2].MovingAnimation, Damage = 52, Cooldown = 0.55, HitDelay = Sword.Combo[2].HitDelay },
 		{ Animation = Sword.Combo[3].Animation, MovingAnimation = Sword.Combo[3].MovingAnimation, Damage = 85, Cooldown = 0.85, HitDelay = Sword.Combo[3].HitDelay },
 	},
-	MovingStep = Sword.MovingStep,
+	SwingWalkSpeed = Sword.SwingWalkSpeed,
 	ComboWindow = 0.8,
 	Range = 6.5,
 	Width = 6,
