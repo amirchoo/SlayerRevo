@@ -25,16 +25,19 @@ battlegrounds steps ([[battlegrounds-combat]]).
 - The authoring controls are built for a weapon in the right hand (a two-handed grip works with
   `"offhand_space": "world"`). Weapons held or used differently (dual blades, bow, crossbow, guns, the
   staff's casting, the grimoire) may need new controls first: say so and plan it before posing.
-- **Open question for the user (2026-10-18):** also give each weapon a walk (carry) clip, the blade
-  low and trailing so it looks heavy, like the Arcane Atelier video ([[arcane-atelier-reference]])?
-  Not decided; ask before the next weapon.
+- **Every weapon also gets a walk (carry) clip** (the user said yes, 2026-10-18): upper body only, played
+  instead of the idle while moving; the weapon low and trailing so it looks heavy, like the Arcane Atelier
+  video ([[arcane-atelier-reference]]). Name it `<Weapon>Walk`.
+- **Read [[weapon-animation-research]] first**: how each weapon really works and how to animate it.
 - Ask before changing how a move plays (its timing, reach or what it does); the look is Claude's call
   within [[animation-style]].
 
 ## Weapons (the user may reorder; their own weapon, the Rapier, goes first after the Sword)
 - [x] **Sword** combo: SwordSwing1–3 (+ Moving twins). [log](../log/2026-10-18-sword-combo-exaggerated.md).
   Published 2026-10-18 over the existing IDs.
-- [ ] **Sword** rest: SwordIdle (check it still fits the new combo's stance), SwordGuard, SwordSpin.
+- [ ] **Sword** rest: SwordIdle (kept: the combo starts from it), SwordGuard, SwordSpin, SwordWalk
+  (+ the idle ↔ walk switch, `WeaponWalk`). **Authored 2026-10-18, waiting on the user's look and publish**
+  ([log](../log/2026-10-18-sword-rest-walk.md)).
   Emberfang reuses all of the Sword's.
 - [ ] **Rapier:** RapierIdle, RapierThrust1–3, RapierWindUp, RapierFlurry.
 - [ ] **Spear:** SpearIdle, SpearThrust1–3, SpearWindUp, SpearLunge.

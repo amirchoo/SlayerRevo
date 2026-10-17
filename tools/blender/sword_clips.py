@@ -28,6 +28,7 @@ The combo is a chain (after Dueling Grounds' katana, notes/log/2026-10-18-sword-
 each cut ends in a held pose that the next swing starts from, so they share the same dicts.
 Hit times match HitDelay in src/shared/Config/CombatConfig.luau (Sword; Emberfang follows it).
 """
+import math
 
 
 def P(base=None, **changes):
@@ -109,6 +110,74 @@ S3_TOP = P(S2_HELD, grip=(0.15, 0.75, 4.75), blade=(0.0, -0.75, 0.66), edge=(0.0
           hips=(0, 0.6, 0.45), hips_turn=(0, 0, 0), chest=(0, 14, 0), head=(0, 10),
           lfoot=(-0.8, 0.95, 1.15, 12, 20), rfoot=(0.8, 0.25, 1.05, -12, -20))
 
+# --- The rest of the Sword (the remake, 2026-10-18; notes/research/weapon-animation-research.md) ---
+
+def spun(pose, deg):
+    """The whole pose turned `deg` degrees to the left about the character's centre (Z): every
+    world-space control moves round, and the hips, head and feet turn with it."""
+    a = math.radians(deg)
+    c, s_ = math.cos(a), math.sin(a)
+
+    def rot(v):
+        x, y, z = v[:3]
+        return (x * c - y * s_, x * s_ + y * c, z) + tuple(v[3:])
+
+    out = dict(pose)
+    for key in ("grip", "blade", "edge", "elbow", "lwrist", "lelbow"):
+        out[key] = rot(pose[key])
+    for key in ("lfoot", "rfoot"):
+        x, y, z, yaw, *rest = pose[key]
+        out[key] = rot((x, y, z)) + (yaw + deg,) + tuple(rest)
+    turn, *tilt = pose.get("hips_turn", (0, 0, 0))
+    out["hips_turn"] = (turn + deg, *tilt)
+    hyaw, hpitch = pose.get("head", (0, 0))
+    out["head"] = (hyaw + deg, hpitch)
+    return out
+
+
+# Guard: the blade held level across the face, pointing left, the edge out; the left hand braces the
+# flat near its middle. The chest turns the right shoulder forward and hunches behind the blade.
+GUARD_GRIP, GUARD_BLADE = (0.95, 1.2, 3.4), (-0.97, 0.15, 0.12)
+GUARD = P(IDLE, grip=GUARD_GRIP, blade=GUARD_BLADE, edge=(0.1, 0.95, -0.25),
+          elbow=(2.4, 0.2, 2.4), lwrist=(-0.6, 1.3, 3.62), lelbow=(-2.4, 0.4, 2.7),
+          chest=(-12, -10, 0), head=(0, -4))
+GUARD_IN = P(GUARD, grip=(0.93, 1.15, 3.35), lwrist=(-0.62, 1.25, 3.57), chest=(-13, -8, 0))  # breathing in
+
+# Spin (heavy, loops 0.5 s a turn = Sword.Heavy.TickInterval): a low, wide whirl, the sword arm flung
+# out to the right with the blade level as its extension, the free arm out the other way, the body
+# leaning in and the head looking where it's turning (left). Turned a full circle by `spun`.
+SPIN_TIME = 0.5
+SPIN = P(IDLE, grip=(2.35, 0.35, 2.75), blade=(0.96, 0.25, -0.05), edge=(-0.25, 0.97, -0.1),
+         elbow=(2.0, -1.4, 3.4), lwrist=(-1.95, -0.35, 2.9), lelbow=(-1.8, -1.8, 3.6),
+         hips=(0, 0, -0.6), hips_turn=(0, 0, 0), chest=(0, -18, 0), head=(25, -5),
+         lfoot=(-1.05, 0.35, 0.15, 25), rfoot=(1.05, -0.35, 0.15, -25))
+SPIN_STEPS = 30  # a key on every 60 fps sample: between keys the hand would cut a straight chord across the circle
+
+# Walk (carry, after the Arcane Atelier video): the sword hangs low in the right hand, the tip
+# trailing behind just off the ground, the arm swinging back and forth with the steps and the
+# blade a beat behind it, so it reads as a heavy blade being carried. Upper body only: the legs
+# keep Roblox's walk/run, and WeaponWalk keeps this in step with it. One cycle = two steps.
+WALK_TIME = 1.0
+WALK_MID = P(IDLE, grip=(1.25, -0.3, 2.8), blade=(0.25, -0.84, -0.44), edge=(0.0, 0.3, -1.0),
+             elbow=(2.2, -1.6, 3.2), lwrist=(-1.15, 0.0, 2.5), lelbow=(-2.0, -1.4, 3.0),
+             chest=(0, -6, 0), head=(0, -2))
+# The right arm back (left foot forward) and forward (right foot forward); the left arm opposite.
+# The chest counter-turns against the hips and leans away from the sword's weight.
+WALK_BACK = P(WALK_MID, grip=(1.22, -0.72, 2.87), blade=(0.22, -0.9, -0.38), lwrist=(-1.1, 0.42, 2.55),
+              chest=(-6, -6, 3))
+WALK_FWD = P(WALK_MID, grip=(1.25, 0.12, 2.8), blade=(0.28, -0.8, -0.53), lwrist=(-1.12, -0.38, 2.5),
+             chest=(6, -6, 3))
+WALK_UP = {"grip": 0.06, "lwrist": 0.04}  # the passing positions ride a little higher
+
+
+def lifted(pose, by):
+    out = dict(pose)
+    for key, dz in by.items():
+        x, y, z = out[key]
+        out[key] = (x, y, z + dz)
+    return out
+
+
 CLIPS = {
     "SwordSwing1": {
         "moving_twin": True,  # forehand: coil back, blade cocked behind the right shoulder, lunge and cut down across to low left
@@ -179,6 +248,43 @@ CLIPS = {
                      hips=(0, 0.35, -0.5), hips_turn=(4, 0, 0), chest=(8, -10, 0),
                      lfoot=(-0.7, 0.6, 0.3, 8), rfoot=(0.6, -0.05, 0.15, -8)), "smooth"),  # the right hand takes the blade up, rising, the feet drawing in
             (1.20, START),
+        ],
+    },
+    "SwordGuard": {
+        # Looping block stance (loops while block is held): the blade level across the face, the left
+        # hand bracing the flat, breathing. Upper body only, so the legs keep walking while blocking.
+        "loop": True,
+        "upper_body_only": True,
+        "hit": None,
+        "offhand_space": "world",  # the left hand stays on the blade
+        "overlap": {},
+        "keys": [
+            (0.0, GUARD),
+            (0.8, GUARD_IN),
+            (1.6, GUARD),
+        ],
+    },
+    "SwordSpin": {
+        # Heavy: loops while left-click is held, one full turn per hit (TickInterval 0.5 s).
+        "loop": True,
+        "hit": None,
+        "overlap": {},  # a steady whirl: everything turns together
+        "keys": [(SPIN_TIME * i / SPIN_STEPS, spun(SPIN, 360 * i / SPIN_STEPS), "linear") for i in range(SPIN_STEPS + 1)],
+    },
+    "SwordWalk": {
+        # The carry while walking (upper body only, in step with the legs: see WeaponWalk).
+        "loop": True,
+        "upper_body_only": True,
+        "hit": None,
+        # The heavy blade swings a quarter cycle behind the hand: keyed into the poses (overlap
+        # offsets would leave the loop's first and last keys in place and jolt at the seam).
+        "overlap": {},
+        "keys": [
+            (0.0, P(WALK_BACK, blade=WALK_MID["blade"])),
+            (0.25, P(lifted(WALK_MID, WALK_UP), blade=WALK_BACK["blade"])),
+            (0.5, P(WALK_FWD, blade=WALK_MID["blade"])),
+            (0.75, P(lifted(WALK_MID, WALK_UP), blade=WALK_FWD["blade"])),
+            (1.0, P(WALK_BACK, blade=WALK_MID["blade"])),
         ],
     },
 }

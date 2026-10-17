@@ -44,6 +44,7 @@ local ParryPredict = require(script.Parent.ParryPredict)
 local HitFeel = require(script.Parent.HitFeel)
 local Push = require(script.Parent.Push)
 local Quality = require(script.Parent.Quality)
+local WeaponWalk = require(script.Parent.WeaponWalk)
 
 type ComboWeapon = CombatConfig.ComboWeapon
 type SpinHeavy = CombatConfig.SpinHeavy
@@ -113,6 +114,7 @@ end
 
 type Tracks = {
 	idle: AnimationTrack?,
+	walk: AnimationTrack?, -- the carry while moving (upper body; WeaponWalk keeps it in step)
 	shieldIdle: AnimationTrack?, -- a one-handed weapon's idle with a shield worn
 	guard: AnimationTrack?,
 	shieldGuard: AnimationTrack?, -- a one-handed weapon's guard with a shield worn
@@ -132,6 +134,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 	local offhandWeldName = `{config.ToolName}OffhandGrip`
 
 	local idleAnimation = makeAnimation(config.IdleAnimation)
+	local walkAnimation = makeAnimation(config.WalkAnimation or "")
 	local guardAnimation = makeAnimation(config.Block.Animation)
 	local shieldIdleAnimation: Animation? = nil
 	local shieldGuardAnimation: Animation? = nil
@@ -195,6 +198,12 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			idle.Priority = Enum.AnimationPriority.Idle
 			idle.Looped = true
 			tracks.idle = idle
+		end
+		if walkAnimation then
+			local walk = animator:LoadAnimation(walkAnimation)
+			walk.Priority = Enum.AnimationPriority.Idle
+			walk.Looped = true
+			tracks.walk = walk
 		end
 		if shieldIdleAnimation then
 			local shieldIdle = animator:LoadAnimation(shieldIdleAnimation)
@@ -268,14 +277,19 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		return typeof(player:GetAttribute("Shield")) == "string"
 	end
 
-	-- Loops the idle that fits (the shield stance's while a shield is worn) and stops the other.
+	-- Loops the idle that fits (the shield stance's while a shield is worn, the walk's carry while
+	-- moving) and stops the others. `walkingNow` is kept by the walk watcher (startWalkWatch).
+	local walkingNow = false
 	local function playIdle()
 		local tracks = currentTracks()
 		if not tracks then
 			return
 		end
-		local idle = if shielded() and tracks.shieldIdle then tracks.shieldIdle else tracks.idle
-		for _, track in { tracks.idle, tracks.shieldIdle } :: { AnimationTrack? } do
+		local idle = if shielded() and tracks.shieldIdle
+			then tracks.shieldIdle
+			elseif walkingNow and tracks.walk then tracks.walk
+			else tracks.idle
+		for _, track in { tracks.idle, tracks.walk, tracks.shieldIdle } :: { AnimationTrack? } do
 			if track and track ~= idle and track.IsPlaying then
 				track:Stop(0.2)
 			end
@@ -285,9 +299,41 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		end
 	end
 
+	-- While the weapon is out, swaps the idle and the walk's carry as we start and stop moving,
+	-- and keeps the carry in step with the legs.
+	local walkWatch: RBXScriptConnection? = nil
+	local function startWalkWatch(humanoid: Humanoid)
+		if walkWatch then
+			walkWatch:Disconnect()
+		end
+		local tracks = getTracks(humanoid)
+		local walk = tracks and tracks.walk
+		local animator = humanoid:FindFirstChildOfClass("Animator")
+		if not (walk and animator) then
+			walkWatch = nil
+			return
+		end
+		local moving = WeaponWalk.mover(humanoid)
+		walkWatch = RunService.Heartbeat:Connect(function()
+			local now = moving()
+			if now ~= walkingNow then
+				walkingNow = now
+				playIdle()
+			end
+			if walk.IsPlaying then
+				WeaponWalk.sync(walk, animator, config.WalkPhase)
+			end
+		end)
+	end
+
 	local function stopIdle()
+		if walkWatch then
+			walkWatch:Disconnect()
+			walkWatch = nil
+		end
+		walkingNow = false
 		local tracks = currentTracks()
-		for _, track in { tracks and tracks.idle, tracks and tracks.shieldIdle } :: { AnimationTrack? } do
+		for _, track in { tracks and tracks.idle, tracks and tracks.walk, tracks and tracks.shieldIdle } :: { AnimationTrack? } do
 			if track then
 				track:Stop(0.2)
 			end
@@ -1035,6 +1081,9 @@ function ComboWeaponClient.new(config: ComboWeapon)
 			end
 			playIdle()
 			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				startWalkWatch(humanoid)
+			end
 			if config.WalkSpeed and humanoid then
 				humanoid.WalkSpeed = config.WalkSpeed
 			end
@@ -1070,7 +1119,7 @@ function ComboWeaponClient.new(config: ComboWeapon)
 		-- Load the animations up front so the first swing doesn't stall.
 		task.spawn(function()
 			local preload: { Instance } = {}
-			for _, animation in { idleAnimation, shieldIdleAnimation, guardAnimation, shieldGuardAnimation, heavyAnimation, heavySlamAnimation } :: { Animation? } do
+			for _, animation in { idleAnimation, walkAnimation, shieldIdleAnimation, guardAnimation, shieldGuardAnimation, heavyAnimation, heavySlamAnimation } :: { Animation? } do
 				if animation then
 					table.insert(preload, animation)
 				end
@@ -1096,6 +1145,11 @@ function ComboWeaponClient.new(config: ComboWeapon)
 
 		local function onCharacterAdded(character: Model)
 			-- A respawn clears any block, spin, or combo in progress (the server resets too).
+			if walkWatch then
+				walkWatch:Disconnect()
+				walkWatch = nil
+			end
+			walkingNow = false
 			stopBlock = nil
 			stopHeavy = nil
 			pressedAt = nil

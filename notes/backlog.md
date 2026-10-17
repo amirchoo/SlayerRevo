@@ -29,6 +29,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] Research on how every weapon works and animates; Sword guard, spin and walk clip authored, walk sync code (2026-10-18, [log](log/2026-10-18-sword-rest-walk.md))
 - [x] Arcane Atelier video analysed and saved as priority 1, after the remake (2026-10-18, [log](log/2026-10-18-arcane-atelier-video.md))
 - [x] Animation style saved (docs/animation-style.md) and the weapon animation remake set as priority 0 (2026-10-18, [log](log/2026-10-18-animation-style-saved.md))
 - [x] Hit feel exaggerated: the camera jolt rolls and tilts, bigger zoom punch, longer heavy hitstop, flash-then-silhouettes impact frame (2026-10-18, [log](log/2026-10-18-hit-impact-exaggerated.md))
