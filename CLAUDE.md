@@ -35,9 +35,10 @@
   recipe is `docs/animation-style.md` (read it before authoring any clip); the checklist is
   `notes/tasks/weapon-anim-remake.md`. When the user says "do the animation remake", do its next weapon.
   **Deadline 2026-10-25** (about 2 weapons a day).
-- Priority order (the user's call, 2026-10-18): 0 this remake, 1 the Arcane Atelier look
-  (`notes/tasks/arcane-atelier-look.md`; "do the Arcane Atelier look"), 2 the perf pass
-  (`notes/tasks/perf-polish.md`), 3 the main issue below.
+- Priority order (the user's call, 2026-10-18): 0 this remake, 1 the armor remake
+  (`notes/tasks/armor-remake.md`; "do the armor remake"), 2 the Arcane Atelier look
+  (`notes/tasks/arcane-atelier-look.md`; "do the Arcane Atelier look"), 3 the perf pass
+  (`notes/tasks/perf-polish.md`), 4 the main issue below.
 
 ## Main issue
 - `notes/tasks/main-issue-dueling-vibe.md` is the current main issue (combat feel and atmosphere like

@@ -28,8 +28,15 @@ is now part of a clean clip.
   the right sleeve (0.44) for 2 frames as it gathers; the chestplate (0.28) in the squat.
 - SwordSpin, SwordWalk: clear.
 A first try at moving Swing 2/3's poses made the elbow flip and the arm lock, so it's put back: the combo
-is the user's approved one. **Open: ask the user whether to re-pose Swing 2 and 3 for armor** (6 clips to
-republish).
+is the user's approved one. **Decided (the user):** keep them; hit VFX will hide it (like Arcane Atelier).
+
+## Follow-up the same day: the armor itself
+Research (classic clothing vs rigid accessories vs layered clothing) and every set measured in Studio: the
+verdict and the per-set numbers are in [[armor-remake]]. **The user's plan:** low tiers mostly painted with
+minimal 3D, more 3D as tiers rise; the armor remake comes right after the weapon remake (priority 1; the
+Arcane Atelier look moves to 2, the perf pass 3, the main issue 4). **Players' own avatar accessories are no
+longer put on** (hats, hair, face items: `AvatarService` clears them; checked in Studio that the
+description empties).
 
 Not changed yet: the other weapons' old guards (they're remade in the remake, now with this check).
 Playtested: yes (the guard, as the user asked; posed with the guard track, measured in game).

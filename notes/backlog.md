@@ -5,9 +5,10 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 
 ## Next
 - [ ] **Priority 0: Remake every weapon's animations** in the Sword combo's style, **deadline 2026-10-25** ([note](tasks/weapon-anim-remake.md), recipe [animation-style](../docs/animation-style.md))
-- [ ] **Priority 1: The Arcane Atelier look** (bright painterly world, big hit VFX, heavy-sword walk, ornate HUD), after the remake, from the user's reference video ([note](tasks/arcane-atelier-look.md), [breakdown](research/arcane-atelier-reference.md))
-- [ ] **Priority 2: Polish and performance pass (lag)** for the phone and the Intel Mac, one step per message ([note](tasks/perf-polish.md))
-- [ ] **Priority 3: MAIN ISSUE:** combat feel and atmosphere like Dueling Grounds, one step per session ([note](tasks/main-issue-dueling-vibe.md))
+- [ ] **Priority 1: Armor remake**, after the weapon remake: low tiers mostly painted with minimal 3D, more 3D as tiers rise, weapons' paths kept clear ([note](tasks/armor-remake.md))
+- [ ] **Priority 2: The Arcane Atelier look** (bright painterly world, big hit VFX, heavy-sword walk, ornate HUD), after the remake, from the user's reference video ([note](tasks/arcane-atelier-look.md), [breakdown](research/arcane-atelier-reference.md))
+- [ ] **Priority 3: Polish and performance pass (lag)** for the phone and the Intel Mac, one step per message ([note](tasks/perf-polish.md))
+- [ ] **Priority 4: MAIN ISSUE:** combat feel and atmosphere like Dueling Grounds, one step per session ([note](tasks/main-issue-dueling-vibe.md))
 
 ## Later
 - [ ] **Idea (the user's, 2026-10-17): dungeons in their own place.** Entering teleports you (and
@@ -29,6 +30,7 @@ or turn an item into a task note (notes/tasks/) when it needs more detail.
 - [ ] 
 
 ## Done
+- [x] Players' own avatar accessories no longer worn (only the game's armor); armor remake planned as priority 1 (2026-10-18, [log](log/2026-10-18-guard-armor-clearance.md))
 - [x] Research on how every weapon works and animates; Sword guard, spin and walk clip authored, walk sync code (2026-10-18, [log](log/2026-10-18-sword-rest-walk.md))
 - [x] Arcane Atelier video analysed and saved as priority 1, after the remake (2026-10-18, [log](log/2026-10-18-arcane-atelier-video.md))
 - [x] Animation style saved (docs/animation-style.md) and the weapon animation remake set as priority 0 (2026-10-18, [log](log/2026-10-18-animation-style-saved.md))

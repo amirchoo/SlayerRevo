@@ -12,9 +12,9 @@ when the user likes it. Then ticks it here with a link to its log note.
 new controls) early in the week so they can't push the date. If it's slipping by ~2026-10-23, tell the
 user and offer to cut scope (simpler clips for the ranged/casting weapons) rather than rush the rest.
 
-Priorities now: **0 this remake**, 1 the Arcane Atelier look ([[arcane-atelier-look]], next once every weapon
-is done), 2 the perf pass ([[perf-polish]]), 3 the main issue ([[main-issue-dueling-vibe]]) and the
-battlegrounds steps ([[battlegrounds-combat]]).
+Priorities now: **0 this remake**, 1 the armor remake ([[armor-remake]], next once every weapon is done),
+2 the Arcane Atelier look ([[arcane-atelier-look]]), 3 the perf pass ([[perf-polish]]), 4 the main issue
+([[main-issue-dueling-vibe]]) and the battlegrounds steps ([[battlegrounds-combat]]).
 
 ## For each weapon
 - Port its clips from the old generator (`tools/<weapon>_anims.py`) to `tools/blender/<weapon>_clips.py`
@@ -29,7 +29,8 @@ battlegrounds steps ([[battlegrounds-combat]]).
   instead of the idle while moving; the weapon low and trailing so it looks heavy, like the Arcane Atelier
   video ([[arcane-atelier-reference]]). Name it `<Weapon>Walk`.
 - **Armor clearance:** the AUTHOR report must show 0 `WEAPON IN BODY` (the real model vs an armored body,
-  [log](../log/2026-10-18-guard-armor-clearance.md)). Open: re-pose SwordSwing2/3, which go through armor (ask).
+  [log](../log/2026-10-18-guard-armor-clearance.md)). SwordSwing2/3 go through bulky armor in places: **kept as they are** (the user, 2026-10-18: hit VFX will hide it, like
+  Arcane Atelier), and the armor remake ([[armor-remake]]) slims the bulky sets.
 - **Read [[weapon-animation-research]] first**: how each weapon really works and how to animate it.
 - Ask before changing how a move plays (its timing, reach or what it does); the look is Claude's call
   within [[animation-style]].

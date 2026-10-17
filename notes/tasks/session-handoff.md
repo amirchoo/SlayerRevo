@@ -18,12 +18,13 @@ the notes it points to. Update this note at the end of every session.
   they imagined it. Tune in `CombatConfig.HitImpact` / `Hitstop`.
 - **Dash afterimages** (battlegrounds step 2) are built ([log](../log/2026-10-18-dash-afterimages.md)).
   Battlegrounds step 3 (enemy reactions) and 4 (slash crescents) are next there ([[battlegrounds-combat]]).
-- **Priority 2: the perf pass** is built (8 steps); not re-tested on the phone since the streaming fix.
+- **Priority 1: the armor remake** ([[armor-remake]]): low tiers mostly painted, more 3D as tiers rise; after the weapon remake.
+- **Priority 3: the perf pass** is built (8 steps); not re-tested on the phone since the streaming fix.
   The target device is now an **average or weak phone**, not the user's iPhone 14. Four earlier choices to
   re-check for weak phones (the user hasn't decided): phones on Automatic start at Medium, ShadowMap
   shadows, streaming 768/128, Medium's decor 75% and 12 lights. Details: [[perf-polish-handoff]].
-- **Priority 3: the main issue** ([[main-issue-dueling-vibe]]).
-- **Priority 1: the Arcane Atelier look** ([[arcane-atelier-look]], breakdown [[arcane-atelier-reference]]):
+- **Priority 4: the main issue** ([[main-issue-dueling-vibe]]).
+- **Priority 2: the Arcane Atelier look** ([[arcane-atelier-look]], breakdown [[arcane-atelier-reference]]):
   the user's second reference video; next once every weapon's animations are remade. Open question to ask during the remake: add a weapon walk (carry)
   clip per weapon, sword low and trailing so it looks heavy?
 - **Art in Blender:** the user asked that all new animations **and 3D models** be made by Claude in

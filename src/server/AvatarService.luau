@@ -2,9 +2,10 @@
 -- Every player gets the same blocky R15 body, so armor (built for that body) fits everyone.
 -- Roblox's own avatar loading is off (StarterPlayer.LoadCharacterAppearance = false in
 -- default.project.json), so characters spawn plain and blocky; this then puts on the parts
--- of each player's avatar that don't change their shape: face, skin colors, hats and hair,
--- classic shirt/pants/t-shirt, and animations. Body parts (Rthro, dynamic heads), body
--- scaling, and 3D layered clothing are left out.
+-- of each player's avatar that don't change their shape: face, skin colors, classic
+-- shirt/pants/t-shirt, and animations. Body parts (Rthro, dynamic heads), body scaling, and
+-- every avatar accessory (hats, hair, face items, layered clothing) are left out: they'd poke
+-- through the game's armor and get in the weapons' way (the user's call, 2026-10-18).
 -- AvatarService.onApplied(callback) runs after each character gets its look (ArmorService
 -- re-dresses then, since applying a description replaces accessories).
 
@@ -46,14 +47,11 @@ local function blockyDescription(player: Player): HumanoidDescription
 	blocky.BodyTypeScale = 0
 	blocky.ProportionScale = 0
 
-	-- Keep rigid accessories (hats, hair, face items); drop layered clothing.
-	local rigid = {}
-	for _, accessory in blocky:GetAccessories(true) do
-		if not accessory.IsLayered then
-			table.insert(rigid, accessory)
-		end
+	-- No avatar accessories at all: only the game's armor goes on the body.
+	blocky:SetAccessories({}, true)
+	for _, slot in { "HatAccessory", "HairAccessory", "FaceAccessory", "NeckAccessory", "ShouldersAccessory", "FrontAccessory", "BackAccessory", "WaistAccessory" } do
+		(blocky :: any)[slot] = ""
 	end
-	blocky:SetAccessories(rigid, true)
 	return blocky
 end
 
