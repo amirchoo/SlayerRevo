@@ -26,3 +26,4 @@ assets/source/*.split.glb
 
 # Animation previews rendered by tools/blender/preview.sh
 /build/
+__pycache__/
