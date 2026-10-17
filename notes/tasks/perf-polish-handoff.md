@@ -86,6 +86,14 @@ proposes the next step.
   - [LoadingScreen](../../src/first/LoadingScreen.client.luau) in ReplicatedFirst; Sounds.preload waits
     until you're in and skips loops (`Loop = true`).
 
+## First phone check (2026-10-17)
+- No lag. But trees and ground were missing on the phone (memory: streaming was still on
+  defaults). Fixed by putting the streaming settings in `default.project.json`
+  ([log](../log/2026-10-17-streaming-fix.md)). Waiting on the user: reconnect Rojo, publish, recheck.
+- **Next after that (the user asked):** creature animation still isn't as smooth as they want. Ask
+  what looks off (which creatures, near or far, choppy or stiff) before changing PoseLod or the
+  animators.
+
 ## Next: the user's final check
 All 8 steps are built. The user does **one** publish and the combined check in [[perf-final-check]]
 (it starts with reconnecting Rojo). Then fix whatever they report, and the pass is done; next is

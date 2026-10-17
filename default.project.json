@@ -181,7 +181,12 @@
     },
     "Workspace": {
       "$properties": {
-        "FilteringEnabled": true
+        "FilteringEnabled": true,
+        "StreamingEnabled": true,
+        "StreamingTargetRadius": 768,
+        "StreamingMinRadius": 128,
+        "StreamOutBehavior": "Opportunistic",
+        "StreamingIntegrityMode": "MinimumRadiusPause"
       },
       "Baseplate": {
         "$className": "Part",

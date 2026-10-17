@@ -6,12 +6,10 @@ Console (F9, or the menu on the phone) shows the `[Quality]` line.
 Claude adds each step's checks here as it finishes ([[perf-polish]], [[perf-polish-handoff]]).
 
 ## Before you start (Studio, once)
-- [ ] **Reconnect Rojo** (Disconnect, then Connect in the Rojo plugin) so the new loading screen
-  appears in ReplicatedFirst. A changed project file needs a reconnect.
+- [ ] **Reconnect Rojo** (Disconnect, then Connect in the Rojo plugin). A changed project file needs
+  a reconnect: it adds the loading screen to ReplicatedFirst and applies the Workspace streaming
+  settings ([streaming fix](../log/2026-10-17-streaming-fix.md)).
 - [ ] The place is saved (Cmd+S), then published.
-- [ ] Optional, Workspace streaming ([step 4 log](../log/2026-10-17-streaming-density.md)): note the current
-  values, then set `StreamOutBehavior` Opportunistic, `StreamingTargetRadius` 768,
-  `StreamingMinRadius` 128. If the mountains vanish or pop from town, go back to 1024.
 - [ ] Before you start, write down the FPS in town, in the forest and in a dungeon room, on the
   phone if you remember it, to compare against.
 
@@ -32,7 +30,10 @@ Claude adds each step's checks here as it finishes ([[perf-polish]], [[perf-poli
 - [ ] The Destroyed house is still there.
 - [ ] Joining a fresh server takes the same time or less.
 
-## Step 4: streaming and density ([log](../log/2026-10-17-streaming-density.md))
+## Step 4: streaming and density ([log](../log/2026-10-17-streaming-density.md), [fix](../log/2026-10-17-streaming-fix.md))
+- [ ] **The Hunting Grounds have trees, near and far** (the first test had none).
+- [ ] **Near Grimgorg's Lair the ground is there all round you**, also after dashing about.
+- [ ] From town, the distant hills and mountains are still there.
 - [ ] Trees and town props pop in whole, never half-built.
 - [ ] Meadows on the phone still look full (Medium keeps about 75% of small plants).
 - [ ] Arrows and spells pass through leaves and grass; tree trunks still block you.
